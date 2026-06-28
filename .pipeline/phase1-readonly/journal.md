@@ -297,3 +297,31 @@ Feature gotchas:
 Done when: Card 01 is back to status=review, PR #1 is updated, and handoff returns to pipeline-review.
 On failure: attempts++; attempts >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=9 · 2026-06-28T13:03:34Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Fixed review-03's lone blocker on feat/phase1-readonly (commit 4ab49f2). src/main.rs now only
+        exits 0 for explicit --help/--version; a bare `omi` / missing subcommand emits the JSON usage
+        envelope (code=usage) and exits 64. Behavior matrix verified (bare omi=64, --help/--version=0,
+        frobnicate=64, health --help=0, quote-without-symbol=64). Freeze gate empty (git diff 13e522d
+        -- tests/). cargo build + clippy -D warnings + cargo test (12 unit + 5 cli_contract +
+        7 data_commands) green. Card 01 → review (attempts stays 2). Card 02 already review.
+output: feat/phase1-readonly @ 4ab49f2, PR #1 updated; tasks/01.md (status=review + Fix attempt 2)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/1
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - .pipeline/phase1-readonly/reviews/review-01..03.md (full rejection history to confirm each is closed)
+  - .pipeline/phase1-readonly/tasks/01.md "## Fix attempt 2" + tasks/02.md "## Fix attempt 1"
+  - PR #1 diff at head 4ab49f2 (gh pr diff 1)
+Your task (concrete, numbered):
+  1. Freeze gate: `git fetch origin && git diff 13e522dc70a432b0403cd75d4b5b82531a77a6fa origin/feat/phase1-readonly -- tests/` MUST be empty.
+  2. Full verify on origin/feat/phase1-readonly: `cargo build` && `cargo test` GREEN; `cargo clippy --all-targets -- -D warnings` clean.
+  3. Re-verify review-03 closed: build it, then `./target/debug/omi` → exit 64 + {"error":{"code":"usage"}};
+     `omi --help` exit 0; `omi --version` exit 0; `omi frobnicate` exit 64. Confirm review-01/02 behaviors intact.
+  4. HARD GATE — do NOT merge until the OPERATOR confirms manual paper-account acceptance (PRD 1–8 on a
+     paper gateway :4002). Only pipeline-review merges, human-confirmed.
+On merge (after human confirm): squash-merge PR #1, set both cards status=done, current.json.stage=done, append journal.
+On reject: Card 01 attempts→3 ⇒ blocked ⇒ pipeline-hunt (circuit breaker); Card 02 reject ⇒ attempts++ ⇒ impl.
+<<< END
