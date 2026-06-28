@@ -3,6 +3,6 @@
   "branch": "main",
   "pr": "https://github.com/jackypanster/oh-my-ib/pull/2",
   "feature": "tz-aliases",
-  "stage": "review",
+  "stage": "done",
   "full-verify": ["cargo build", "cargo test"]
 }

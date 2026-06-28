@@ -126,3 +126,16 @@ review→done entry, and main is pushed.
 On rejection or new red gate: increment card attempts, flip card 01 to todo/blocked per CONTRACT, append
 a failed journal entry, commit, and hand off to pipeline-impl or pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-06-28T15:31:37Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   PHASE 1.1 SHIPPED. Operator authorized merge ("go"). gpt-5-codex review-01 approved (no blocking
+        findings); freeze gates empty (a072015 tz + 13e522d phase1); build/test/clippy green; live
+        acceptance (connect without IBAPI_TIMEZONE_ALIASES) operator+impl verified. Squash-merged PR #2
+        → main f9fc6d9, feat/tz-aliases deleted. Card 01 → done; current.json.stage=done. omi now
+        connects to the Tiger/HK gateway out-of-the-box (finding A closed).
+output: main f9fc6d9 (squash-merge of PR #2); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature tz-aliases (Phase 1.1) COMPLETE — no next stage. Finding A from review-05 is resolved.
+Remaining review-05 follow-ups (optional, new features): B) transient EAGAIN on back-to-back
+account_updates (retry/rotate client_id); C) quote DelayedVolume scaling. Or proceed to Phase 2
+(gated order placement) per the original /think plan. Daily use: just `omi --live <cmd>` (no env var).
