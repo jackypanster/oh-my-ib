@@ -167,3 +167,33 @@ On merge (after human confirm): squash-merge PR #1, set every card status=done, 
 On reject: attempts++; route the offending card to pipeline-impl (or pipeline-task to re-freeze if the
   spec itself is wrong); >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-06-28T09:14:58Z · review→impl · failed · by=hermes-gpt-5.5
+
+done:   Reviewed PR #1 at head 9bd8e4e. Freeze gate passed and full offline verify passed
+        (`cargo build`, `cargo test`, `cargo clippy --all-targets -- -D warnings`), but semantic review
+        found contract blockers in global `--md-type` handling and account/positions JSON shaping.
+output: .pipeline/phase1-readonly/reviews/review-01.md; tasks/01.md and tasks/02.md set back to todo
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/1
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md — repo conventions + hard read-only/public-repo safety rules
+  - .pipeline/phase1-readonly/{PRD.md,arch.md,CONTEXT.md} and docs/adr/0006-lib-bin-split-freeze-coverage.md
+  - .pipeline/phase1-readonly/reviews/review-01.md — exact review blockers + verification evidence
+  - .pipeline/phase1-readonly/tasks/01.md and tasks/02.md — both status=todo, attempts=1
+Your task (concrete, numbered):
+  1. Reuse/update PR branch feat/phase1-readonly; do not edit frozen spec paths tests/cli_contract.rs or tests/data_commands.rs.
+  2. Card 01 fix: make `--md-type live|delayed|frozen` a GLOBAL flag with flag>toml>default precedence. `omi --md-type delayed quote AAPL --port 65000 --format json` must parse and then hit the structured connection envelope on the dead port.
+  3. Card 02 fix: shape `account` JSON to stable documented keys (`account`, `net_liquidation`, `total_cash`, `buying_power`, `available_funds`, `currency`) and shape `positions` JSON to documented keys (`symbol`, `conid`, `qty`, `avg_cost`, `market_value`, `unrealized_pnl`). If ibapi `positions()` cannot provide market_value/unrealized_pnl, route to pipeline-task for a re-spec instead of guessing.
+  4. Keep Phase 1 structurally read-only: no place/modify/cancel order path; no secrets/account ids in repo.
+  5. Verify card-scoped commands (`cargo build`, `cargo test --test cli_contract`, `cargo test --test data_commands`) and then full `cargo build && cargo test`; clippy with `--all-targets -- -D warnings` should remain green.
+Feature gotchas:
+  - Freeze gate already passed for PR head 9bd8e4e; after fixes, review will re-run `git diff 13e522d..HEAD -- tests/` and it must still be empty.
+  - `cargo fmt --check` currently reports formatting drift only in frozen trunk spec tests; do not fix it from impl unless the operator explicitly routes a re-freeze/task change.
+  - Orders debug-string JSON was noted as a follow-up/advisory, not the rejection reason.
+Done when: both cards are back to status=review, PR #1 updated, and handoff returns to pipeline-review.
+On failure: attempts++; attempts >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
