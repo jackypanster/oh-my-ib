@@ -13,14 +13,23 @@ fn main() {
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
         Err(err) => match err.kind() {
-            // --help / --version are not failures: let clap render them (to stdout) and exit 0.
-            ClapErrorKind::DisplayHelp
-            | ClapErrorKind::DisplayVersion
-            | ClapErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
+            // Explicit --help / --version are not failures: clap renders them (to stdout), exit 0.
+            ClapErrorKind::DisplayHelp | ClapErrorKind::DisplayVersion => {
                 let _ = err.print();
                 std::process::exit(0);
             }
-            // Any real parse failure becomes the structured JSON error envelope.
+            // A bare `omi` (or any missing required subcommand) is an INVALID call, not a success:
+            // emit the JSON usage envelope + non-zero exit so an agent/script never reads it as ok.
+            ClapErrorKind::MissingSubcommand
+            | ClapErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
+                let app_err = AppError::usage(
+                    "a subcommand is required",
+                    "run `omi --help` to list commands",
+                );
+                output::emit_error(&app_err);
+                std::process::exit(app_err.exit_code());
+            }
+            // Any other parse failure becomes the structured JSON error envelope.
             _ => {
                 let msg = err
                     .to_string()
