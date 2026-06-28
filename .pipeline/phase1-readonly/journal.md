@@ -352,3 +352,21 @@ If rejected:
   - Name the offending card and reason. Card 01 rejection increments attempts to 3 and routes to
     pipeline-hunt; Card 02 rejection increments attempts to 2 and routes to pipeline-impl.
 <<< END
+
+## seq=11 · 2026-06-28T13:38:17Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   PHASE 1 SHIPPED. Operator confirmed LIVE read-only acceptance (their choice over paper) against
+        a Tiger Brokers gateway (TWS-API-compatible) on :4001 and explicitly authorized the merge.
+        PRD criteria 1-8 all PASS (health/account/positions/orders/quote-delayed/contract/history/table
+        + connection-error path). Squash-merged PR #1 → main 1c36b7c, feat/phase1-readonly deleted.
+        Both cards → done; current.json.stage=done. Account id + balances redacted (public repo).
+        Live acceptance surfaced 3 non-blocking follow-ups (see reviews/review-05.md): A) HKT timezone
+        alias required to connect (IBAPI_TIMEZONE_ALIASES=HKT=Asia/Hong_Kong) — auto-register at startup;
+        B) transient EAGAIN on back-to-back account_updates (same client_id) — retry/rotate; C) quote
+        DelayedVolume unscaled / DelayedOpen=0 — verify tick mapping.
+output: main 1c36b7c (squash-merge of PR #1); reviews/review-05.md; tasks/01.md+02.md (done);
+        .pipeline/current.json (stage=done)
+--- handoff ---
+Phase 1 (read-only daily driver) is COMPLETE — no next stage for this feature.
+Daily use: `export IBAPI_TIMEZONE_ALIASES=HKT=Asia/Hong_Kong` then `omi --live <cmd>` (live :4001) or
+`omi <cmd>` (paper :4002). Optional next: start a NEW pipeline feature (e.g. phase1.1-tz-reliability)
+via pipeline-prd to land follow-ups A/B/C, or Phase 2 (gated order placement) per the original /think plan.
