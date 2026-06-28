@@ -34,3 +34,22 @@ Card: spec-paths=[tests/connect_retry.rs], impl-paths=[src/ib/mod.rs], verify=[c
 Gotcha: do NOT touch the other frozen specs (13e522d phase1, a072015 tz). New file = own spec-rev.
 Done when: freeze+record on main; then pipeline-impl.
 <<< END
+
+## seq=3 · 2026-06-28T15:38:56Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   Froze spec in two commits. Freeze fd72d90 (tests/connect_retry.rs only) = this feature's
+        spec-rev; confirmed RED (unresolved oh_my_ib::ib::is_transient_io). Record: tasks/01.md
+        (spec-rev=fd72d90), current.json stage=task.
+output: .pipeline/connect-retry/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-impl; roles.yaml impl=goal-driven-impl-claude)
+First: git pull --rebase. Read .pipeline/connect-retry/{PRD,arch}.md + tasks/01.md.
+  1. Branch feat/connect-retry from main.
+  2. In src/ib/mod.rs add pub fn is_transient_io + the bounded retry loop in connect (per arch.md).
+  3. Green: cargo build + cargo test --test connect_retry + full cargo test; clippy -D warnings; fmt
+     (do NOT touch any tests/ spec file).
+  4. LIVE ACCEPTANCE (gateway :4001): run `omi --live account` then immediately `omi --live positions`
+     several times — must succeed with no surfaced EAGAIN. Confirm `omi health --port 65000` still fails fast.
+  5. Push feat/connect-retry, open PR, flip card 01 review + stage=impl + journal on main.
+Gotcha: new spec fd72d90 is this feature's gate only; 13e522d (phase1) + a072015 (tz) stay frozen/untouched.
+Done when: card review, PR open, stage=impl; then pipeline-review (human-confirmed merge).
+<<< END
