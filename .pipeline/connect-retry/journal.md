@@ -18,3 +18,19 @@ Live acceptance: omi --live account then immediately omi --live positions succee
 Done when: arch.md + freeze/record + impl + PR; stage advances per CONTRACT; merge is human-confirmed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-06-28T15:36:38Z · arch→task · completed · by=claude-opus-4-8(claude-code)
+done:   Locked design: is_transient_io(ErrorKind)->bool (WouldBlock|Interrupted|TimedOut) + bounded
+        retry loop (3x, 250ms*attempt) in ib::connect, classifying via ibapi::Error::Io(io::Error).kind().
+        Dead-port refused stays fast (no retry) so the existing frozen test is unaffected. No ADR.
+output: .pipeline/connect-retry/arch.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-task)
+First: git pull --rebase. Read .pipeline/connect-retry/{PRD,arch}.md.
+ONE card. Freeze tests/connect_retry.rs (std-only): use oh_my_ib::ib::is_transient_io; assert
+  WouldBlock/Interrupted/TimedOut => true, ConnectionRefused/NotFound => false. Compiles only after impl
+  adds the fn => RED. Two-commit freeze (test only = new spec-rev; then card 01 + current.json stage=task).
+Card: spec-paths=[tests/connect_retry.rs], impl-paths=[src/ib/mod.rs], verify=[cargo build, cargo test --test connect_retry].
+Gotcha: do NOT touch the other frozen specs (13e522d phase1, a072015 tz). New file = own spec-rev.
+Done when: freeze+record on main; then pipeline-impl.
+<<< END

@@ -3,6 +3,6 @@
   "branch": "main",
   "pr": null,
   "feature": "connect-retry",
-  "stage": "prd",
+  "stage": "arch",
   "full-verify": ["cargo build", "cargo test"]
 }
