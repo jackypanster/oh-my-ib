@@ -264,3 +264,36 @@ Your task (concrete, numbered):
 On merge (after human confirm): squash-merge PR #1, set both cards status=done, current.json.stage=done, append journal.
 On reject: attempts++ (=2); route to pipeline-impl; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=8 · 2026-06-28T12:58:03Z · review→impl · failed · by=codex-gpt-5
+done:   Reviewed PR #1 at head 5545b56 after the review-01/02 fixes. Freeze gate passed; final
+        full-suite gate on a detached PR worktree passed (`cargo build`, `cargo test`), and
+        `cargo clippy --all-targets -- -D warnings` passed. Prior blockers were rechecked and closed,
+        but semantic review found one remaining Card 01 CLI error-contract blocker: bare `omi` exits 0
+        with help instead of a JSON usage error for the missing required subcommand.
+output: .pipeline/phase1-readonly/reviews/review-03.md; tasks/01.md set to todo, attempts=2
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/1
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md — read-only/public-repo/live-port safety rules
+  - .pipeline/phase1-readonly/reviews/review-03.md — exact remaining blocker + verification evidence
+  - .pipeline/phase1-readonly/tasks/01.md — status=todo, attempts=2; this is the retry target
+  - .pipeline/phase1-readonly/tasks/02.md — still status=review; do not redo it unless your change touches it
+Your task (concrete, numbered):
+  1. Reuse PR branch feat/phase1-readonly; do not edit frozen spec paths tests/cli_contract.rs or tests/data_commands.rs.
+  2. Fix Card 01 only: explicit `omi --help` and `omi --version` must remain successful, but bare `omi`
+     (missing required subcommand) must not exit 0. Route it through the structured JSON usage envelope
+     (`{"error":{"code":"usage",...}}`) with exit 64, or otherwise satisfy the non-zero error contract.
+  3. If adding coverage, keep it in impl-owned source/unit tests; do not edit frozen `tests/cli_contract.rs`.
+  4. Re-run `cargo build`, `cargo test --test cli_contract`, full `cargo test`, and
+     `cargo clippy --all-targets -- -D warnings`.
+Feature gotchas:
+  - Review already re-verified the prior review-01/02 blockers at PR head 5545b56; keep those behaviors intact.
+  - Card 02 remains review-ready; keep the diff scoped to `src/main.rs` / impl-owned coverage unless the fix truly needs more.
+  - Freeze gate must stay empty for frozen spec paths; do not change `tests/cli_contract.rs` or `tests/data_commands.rs` from impl.
+Done when: Card 01 is back to status=review, PR #1 is updated, and handoff returns to pipeline-review.
+On failure: attempts++; attempts >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
