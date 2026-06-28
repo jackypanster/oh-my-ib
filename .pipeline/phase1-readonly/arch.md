@@ -64,7 +64,8 @@ chat -> Claude Code -> `omi <cmd> [flags]`
 | Connection (refused/timeout/handshake) | `connection` | 2 |
 | NotFound (unknown contract/account) | `not_found` | 3 |
 | Data (gateway returned an error/notice) | `data` | 4 |
-| Config (bad toml / bad flag combo) | `config` | 5 |
+| Config (bad toml / bad flag combo / live-port without --live) | `config` | 5 |
+| Usage (clap argument-parse failure) | `usage` | 64 |
 | (catch-all) | `error` | 1 |
 
 Serialized to stderr as `{"error":{"code":<above>,"message":<human>,"context":<where/input>}}`.

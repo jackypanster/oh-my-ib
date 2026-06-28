@@ -228,3 +228,39 @@ Feature gotchas:
 Done when: both cards are back to status=review, PR #1 updated, and handoff returns to pipeline-review.
 On failure: attempts++; attempts >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-06-28T12:46:53Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Fixed every review-01 + review-02 blocker on feat/phase1-readonly (commit 5545b56).
+        Card 01: global --md-type w/ flag>toml>default; clap parse errors → JSON envelope (code=usage,
+        exit 64); live port 4001 refused without --live; default_account config key (alias account);
+        removed no-op --timeout. Card 02: account/positions now use account_updates (account-scoped,
+        real market_value/unrealized_pnl — resolved BLOCKER 3 in code, NO re-spec needed); stable
+        snake_case keys; orders/history structured JSON; --account honored; quote/contract guard
+        non-STK + honor --exchange/--currency. Freeze gate empty (git diff 13e522d -- tests/).
+        Verified offline: cargo build + clippy -D warnings + cargo test (12 unit + 5 cli_contract +
+        7 data_commands). Both cards → review (attempts stays 1; this is the fix for the same reject).
+output: feat/phase1-readonly @ 5545b56, PR #1 updated; tasks/01.md+02.md (status=review + Fix notes),
+        arch.md (usage error row), current.json (stage=impl)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/1
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - .pipeline/phase1-readonly/reviews/review-01.md + review-02.md (the rejection list to re-verify)
+  - .pipeline/phase1-readonly/tasks/01.md + 02.md "## Fix attempt 1" notes (what changed)
+  - PR #1 diff at head 5545b56 (gh pr diff 1)
+Your task (concrete, numbered):
+  1. Freeze gate: `git fetch origin && git diff 13e522dc70a432b0403cd75d4b5b82531a77a6fa origin/feat/phase1-readonly -- tests/` MUST be empty.
+  2. Full verify on origin/feat/phase1-readonly: `cargo build` && `cargo test` GREEN (offline); `cargo clippy --all-targets -- -D warnings` clean.
+  3. Re-verify each prior blocker is closed by READING + (where offline-checkable) running:
+     - global `omi --md-type delayed quote AAPL --port 65000 --format json` → JSON connection envelope (not clap error)
+     - `omi frobnicate` → JSON {"error":{"code":"usage"}}, exit 64
+     - `omi account --port 4001` (no --live) → JSON config error (live refused)
+     - read src/ib/account.rs + positions.rs: stable keys + account_updates (market_value/unrealized_pnl present)
+     - read src/ib/orders.rs + history.rs: structured JSON, no Debug strings; orders filters by --account
+  4. HARD GATE — do NOT merge until the OPERATOR confirms manual paper-account acceptance (PRD 1–8 on a
+     live paper gateway :4002). Offline suite cannot prove live values. Only pipeline-review merges, human-confirmed.
+On merge (after human confirm): squash-merge PR #1, set both cards status=done, current.json.stage=done, append journal.
+On reject: attempts++ (=2); route to pipeline-impl; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
