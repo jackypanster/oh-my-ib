@@ -325,3 +325,30 @@ Your task (concrete, numbered):
 On merge (after human confirm): squash-merge PR #1, set both cards status=done, current.json.stage=done, append journal.
 On reject: Card 01 attempts→3 ⇒ blocked ⇒ pipeline-hunt (circuit breaker); Card 02 reject ⇒ attempts++ ⇒ impl.
 <<< END
+
+## seq=10 · 2026-06-28T13:11:16Z · review→review · completed · by=codex-gpt-5
+done:   Reviewed PR #1 at head 4ab49f2 after the review-03 fix. Freeze gate empty; final full-suite
+        gate passed on a detached PR worktree (`cargo build`, `cargo test`), and
+        `cargo clippy --all-targets -- -D warnings` passed. Rechecked the bare `omi` fix plus prior
+        review-01/02 blockers; no blocking findings remain. Verdict: approve, awaiting explicit human
+        confirm plus paper-account acceptance.
+output: .pipeline/phase1-readonly/reviews/review-04.md
+--- handoff ---
+>>> NEXT
+Await explicit human confirmation before merge. Do NOT merge automatically.
+
+Required confirmation:
+  1. Operator has run/accepted PRD criteria 1-8 against a paper IB Gateway on port 4002.
+  2. Operator authorizes pipeline-review to squash-merge PR #1.
+
+If confirmed:
+  1. First run `git pull --rebase`; re-read PR #1 state and ensure head is still
+     4ab49f2d415ee1658aa04fb7fedf1b6150f061e7. If the head changed, re-run freeze gate and full verify.
+  2. Squash-merge PR #1 via GitHub, deleting `feat/phase1-readonly`.
+  3. On `main`, set both cards to `done`, set `.pipeline/current.json.stage` to `done`, append the
+     `review→done` journal entry, commit, and push trunk metadata.
+
+If rejected:
+  - Name the offending card and reason. Card 01 rejection increments attempts to 3 and routes to
+    pipeline-hunt; Card 02 rejection increments attempts to 2 and routes to pipeline-impl.
+<<< END
