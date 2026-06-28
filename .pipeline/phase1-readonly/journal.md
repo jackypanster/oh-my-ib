@@ -133,3 +133,37 @@ Feature gotchas:
 Done when: both cards status=review, feat/phase1-readonly pushed with an open PR, current.json.stage=impl.
 On failure of a card: attempts++; <3 ⇒ card todo + retry pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-06-28T07:59:28Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Implemented BOTH cards in one continuous impl run on feat/phase1-readonly (single operator,
+        so the transient in-progress flips were collapsed). Built the omi crate (lib+bin), 7 read-only
+        subcommands, JSON error envelope, ibapi sync ib/** layer. Frozen specs go green and are
+        byte-intact (git diff 13e522d..branch -- tests/ is empty). cargo build + clippy -D warnings +
+        cargo test (7 unit + 5 cli_contract + 7 data_commands) all pass OFFLINE. Cards 01+02 → review.
+        PR #1 opened. STOPPED before merge per operator (merge needs human confirm + paper acceptance).
+output: feat/phase1-readonly @ 9bd8e4e, PR https://github.com/jackypanster/oh-my-ib/pull/1,
+        tasks/01.md tasks/02.md (status=review), current.json (stage=impl, pr set)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/1
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md, .pipeline/phase1-readonly/{PRD,arch,CONTEXT}.md, docs/adr/0006 (freeze coverage)
+  - tasks/01.md, tasks/02.md (both status=review), the PR diff (gh pr diff 1)
+roles.yaml: review slot = check. Forge = github → use gh.
+Your task (concrete, numbered):
+  1. Freeze gate (deterministic): `git fetch origin && git diff 13e522dc70a432b0403cd75d4b5b82531a77a6fa origin/feat/phase1-readonly -- tests/` MUST be empty. Non-empty ⇒ reject (attempts++, route impl/task).
+  2. Full-verify on the branch tip (current.json.full-verify): checkout origin/feat/phase1-readonly,
+     run `cargo build` then `cargo test` — must be GREEN (it is offline; no gateway needed for the suite).
+  3. Semantic review by READING (ADR 0006 — ib/** is not freeze-covered): src/ib/** correctness,
+     error mapping, no order-placement code (read-only), no secrets, paper-default safety.
+     Known first-cut: src/ib/orders.rs serializes orders via debug form — flag for a follow-up card if desired.
+  4. HARD GATE — do NOT squash-merge until the OPERATOR confirms manual paper-account acceptance
+     (PRD criteria 1-8 against a running paper IB Gateway on :4002). The offline suite does NOT prove
+     live data correctness. Only pipeline-review merges, only after explicit human confirm.
+On merge (after human confirm): squash-merge PR #1, set every card status=done, current.json.stage=done,
+  append a journal entry. Then Phase 1 is shipped.
+On reject: attempts++; route the offending card to pipeline-impl (or pipeline-task to re-freeze if the
+  spec itself is wrong); >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
