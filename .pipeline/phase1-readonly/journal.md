@@ -92,3 +92,44 @@ Done when: freeze commit (tests only) + record commit (cards 01,02 + current.jso
   + journal) on main. On success: run pipeline-impl (it picks card 01 first).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-06-28T07:43:35Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   Froze the spec in two ordered commits. Freeze commit 13e522d (tests/cli_contract.rs +
+        tests/data_commands.rs only) = the feature's single spec-rev; confirmed RED (no crate yet).
+        Record commit writes cards 01+02 (status=todo, spec-rev=13e522d), current.json{stage:task,
+        full-verify=[cargo build, cargo test]}.
+output: .pipeline/phase1-readonly/tasks/01.md, tasks/02.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md          — conventions + hard safety rules (read FIRST)
+  - .pipeline/phase1-readonly/arch.md, CONTEXT.md, docs/adr/*  — shape + glossary + locked decisions
+  - .pipeline/phase1-readonly/tasks/01.md  — the OLDEST todo card; pick this first
+  - .pipeline/phase1-readonly/tasks/02.md  — next card (same branch/PR)
+roles.yaml: impl slot = goal-driven-impl-claude (Claude-native; NOT the Hermes goal skill).
+Your task (concrete, numbered):
+  1. Create branch feat/phase1-readonly from main; flip card 01 status->in-progress, commit that flip to main.
+  2. Implement card 01 inside its impl-paths (Cargo.toml + src/**) until `cargo build` and
+     `cargo test --test cli_contract` both exit 0. NEVER edit tests/ (spec-paths, frozen).
+  3. Verify the ibapi 3.1 SYNC api on docs.rs before writing src/ib/** (type
+     ibapi::client::blocking::Client; connect("host:port", client_id); account_summary / positions /
+     open_orders / market_data builder snapshot / contract_details / historical_data). Do NOT guess names.
+  4. Green ⇒ push feat/phase1-readonly, open PR via gh, then on main flip card 01 status->review,
+     set current.json.stage=impl, append journal — ONE commit on main. Then run pipeline-impl for card 02.
+  5. Card 02: implement the six subcommands until `cargo test --test data_commands` is green (same branch).
+     When BOTH cards are status=review, hand off to pipeline-review (NOT before).
+Feature gotchas:
+  - GREENFIELD: you create Cargo.toml + all of src/. dev-deps: assert_cmd, predicates, serde_json.
+  - Make global flags (--format/--host/--port/--client-id/--account/--md-type/--live/--timeout)
+    clap `global = true` so they parse before AND after the subcommand (the frozen tests rely on this:
+    e.g. `omi --format json health --host .. --port 65000`).
+  - quote --help MUST contain `--md-type`; history --help MUST contain `--bar` and `--duration`.
+  - Connection failure (dead port) MUST print `{"error":{"code":"connection",..}}` to stderr + exit!=0.
+  - Repo is PUBLIC + Phase 1 read-only: no secrets committed, no order-placement code.
+  - cargo test --test cli_contract is CARD-SCOPED; data_commands stays red until card 02 — that is expected.
+Done when: both cards status=review, feat/phase1-readonly pushed with an open PR, current.json.stage=impl.
+On failure of a card: attempts++; <3 ⇒ card todo + retry pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
