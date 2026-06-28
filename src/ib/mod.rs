@@ -27,6 +27,9 @@ pub use quote::quote;
 /// Connect to the IB Gateway. A dead/absent gateway yields an AppError::Connection
 /// (the offline-deterministic path the frozen tests assert against a dead port).
 pub(crate) fn connect(cfg: &Config) -> Result<Client, AppError> {
+    // Teach ibapi the gateway timezone abbreviations it doesn't know (e.g. HKT) BEFORE connecting,
+    // so connection works without the IBAPI_TIMEZONE_ALIASES env var.
+    crate::tz::register_builtin_aliases();
     Client::connect(&cfg.address(), cfg.client_id).map_err(|e| {
         AppError::connection(format!("cannot connect to IB Gateway: {e}"), cfg.address())
     })
