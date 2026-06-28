@@ -22,3 +22,28 @@ Gotchas: only UNAMBIGUOUS abbreviations; env var IBAPI_TIMEZONE_ALIASES stays ad
 Done when: arch.md committed, stage=arch, journal appended, then run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-06-28T15:12:44Z · arch→task · completed · by=claude-opus-4-8(claude-code)
+done:   Locked the design: src/tz.rs (builtin_aliases + register_builtin_aliases via Once) wired into
+        ib::connect before Client::connect; pub mod tz. ibapi::register_timezone_alias(impl Into<String>,
+        impl Into<String>)->() confirmed at crate root, safe to call repeatedly. Curated unambiguous set:
+        HKT/JST/KST/SGT. No ADR (small, additive, reversible).
+output: .pipeline/tz-aliases/arch.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+First: git pull --rebase. Read .pipeline/tz-aliases/{PRD,arch}.md.
+Your task:
+  1. ONE card. Freeze tests/tz_aliases.rs (spec) — black-box-ish but imports the lib:
+     `use oh_my_ib::tz;` assert builtin_aliases() contains ("HKT","Asia/Hong_Kong"), table non-empty,
+     no empty entries, keys unique. Compiles only after impl adds the `tz` module => RED now.
+  2. Two-commit freeze: freeze commit = tests/tz_aliases.rs only (the new spec-rev for THIS feature);
+     record commit = tasks/01.md (spec-paths=[tests/tz_aliases.rs], impl-paths=[src/tz.rs, src/lib.rs,
+     src/ib/mod.rs], spec-rev=<freeze sha>) + current.json{stage:task, full-verify=[cargo build, cargo test]}.
+  3. Card verify: cargo build + cargo test --test tz_aliases.
+Gotchas: do NOT touch the Phase 1 frozen tests (tests/cli_contract.rs, tests/data_commands.rs) — they
+  stay frozen at their own spec-rev; this feature adds a NEW spec file with its OWN spec-rev.
+Done when: freeze + record commits on main; then run pipeline-impl.
+On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
