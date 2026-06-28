@@ -13,6 +13,8 @@ pub enum ErrorKind {
     Data,
     /// Bad local config or flag combination.
     Config,
+    /// Invalid command-line usage (argument parsing failure).
+    Usage,
     /// Anything else.
     Other,
 }
@@ -44,6 +46,9 @@ impl AppError {
     pub fn config(message: impl Into<String>, context: impl Into<String>) -> Self {
         Self::new(ErrorKind::Config, message, Some(context.into()))
     }
+    pub fn usage(message: impl Into<String>, context: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Usage, message, Some(context.into()))
+    }
     pub fn other(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Other, message, None)
     }
@@ -55,6 +60,7 @@ impl AppError {
             ErrorKind::NotFound => "not_found",
             ErrorKind::Data => "data",
             ErrorKind::Config => "config",
+            ErrorKind::Usage => "usage",
             ErrorKind::Other => "error",
         }
     }
@@ -66,6 +72,7 @@ impl AppError {
             ErrorKind::NotFound => 3,
             ErrorKind::Data => 4,
             ErrorKind::Config => 5,
+            ErrorKind::Usage => 64, // EX_USAGE
             ErrorKind::Other => 1,
         }
     }

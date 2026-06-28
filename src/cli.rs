@@ -37,9 +37,9 @@ pub struct GlobalOpts {
     /// Account id (default: first managed account)
     #[arg(long, global = true)]
     pub account: Option<String>,
-    /// Connection timeout in seconds
+    /// Market data type: live|delayed|frozen (default: config / delayed)
     #[arg(long, global = true)]
-    pub timeout: Option<u64>,
+    pub md_type: Option<String>,
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,10 +70,7 @@ pub enum Command {
 pub struct QuoteArgs {
     /// Ticker symbol, e.g. AAPL
     pub symbol: String,
-    /// Market data type: live|delayed|frozen (default: config / delayed)
-    #[arg(long)]
-    pub md_type: Option<String>,
-    /// Security type
+    /// Security type (Phase 1: STK only)
     #[arg(long, default_value = "STK")]
     pub sec_type: String,
     /// Exchange

@@ -21,7 +21,22 @@ pub fn history(cfg: &Config, args: &HistoryArgs) -> Result<serde_json::Value, Ap
         .fetch()
         .map_err(|e| AppError::data(format!("historical_data failed: {e}"), "history"))?;
 
-    let bars: Vec<_> = data.bars.iter().map(|b| json!(format!("{b:?}"))).collect();
+    let bars: Vec<_> = data
+        .bars
+        .iter()
+        .map(|b| {
+            json!({
+                "date": format!("{:?}", b.date),
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "volume": b.volume,
+                "wap": b.wap,
+                "count": b.count,
+            })
+        })
+        .collect();
     Ok(json!({
         "symbol": args.symbol,
         "bars": bars,

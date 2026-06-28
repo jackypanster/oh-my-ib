@@ -8,6 +8,12 @@ use crate::config::Config;
 use crate::error::AppError;
 
 pub fn contract(cfg: &Config, args: &ContractArgs) -> Result<serde_json::Value, AppError> {
+    if !args.sec_type.eq_ignore_ascii_case("STK") {
+        return Err(AppError::config(
+            format!("unsupported sec-type: {}", args.sec_type),
+            "Phase 1 supports --sec-type STK only",
+        ));
+    }
     let client = super::connect(cfg)?;
     let contract = Contract::stock(args.symbol.as_str()).build();
     let details = client
