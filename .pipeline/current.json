@@ -1,8 +1,8 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "pr": "https://github.com/jackypanster/oh-my-ib/pull/1",
-  "feature": "phase1-readonly",
-  "stage": "done",
+  "pr": null,
+  "feature": "tz-aliases",
+  "stage": "prd",
   "full-verify": ["cargo build", "cargo test"]
 }
