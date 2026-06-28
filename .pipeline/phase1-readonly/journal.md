@@ -36,3 +36,59 @@ Done when: arch.md + CONTEXT.md + ADRs committed to trunk; current.json.stage=ar
   append a journal entry, then run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-06-28T07:40:04Z · arch→task · completed · by=claude-opus-4-8(claude-code)
+done:   Locked the architecture: lib(oh_my_ib)+bin(omi) split so the freeze gate can protect the
+        black-box CLI contract (incl. an offline-deterministic connection-error envelope), while the
+        live ib/** calls are reviewed-by-reading + manual paper acceptance. Wrote arch.md, CONTEXT.md,
+        and ADRs 0001-0006. ibapi sync surface confirmed (Client at ibapi::client::blocking::Client).
+output: .pipeline/phase1-readonly/arch.md, CONTEXT.md, docs/adr/0001..0006, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md           — project conventions + hard safety rules (read FIRST)
+  - .pipeline/phase1-readonly/arch.md      — crate shape, component->card map, freeze coverage
+  - .pipeline/phase1-readonly/CONTEXT.md   — domain glossary (ports 4002/4001, md-type, conId, ...)
+  - .pipeline/phase1-readonly/docs/adr/*   — ADR 0006 defines what IS frozen
+Your task (concrete, numbered):
+  1. Decompose into TWO cards (arch.md "component boundaries" maps to them):
+     - card 01 = core: crate scaffold + clap CLI skeleton + global flags + `health` subcommand +
+       config + error/output envelope. Frozen spec tests/cli_contract.rs.
+     - card 02 = the six read subcommands (account/positions/orders/quote/contract/history) wired to
+       ibapi. Frozen spec tests/data_commands.rs.
+  2. Freeze ALL feature tests in ONE commit (CONTRACT spec-rev double-commit): write tests/cli_contract.rs
+     + tests/data_commands.rs as BLACK-BOX subprocess tests via assert_cmd::Command::cargo_bin("omi").
+     They reference ONLY binary name + args + stdout/stderr/exit — no internal symbols.
+  3. Freeze coverage (greenfield): at freeze time there is NO crate yet, so `cargo test` is RED
+     (does not compile / no Cargo.toml). That IS the red state. impl creates Cargo.toml + src to go green.
+     Record this in each card's `## Freeze coverage`.
+  4. Card-scoped verify (CONTRACT): card 01 -> `cargo test --test cli_contract`; card 02 ->
+     `cargo test --test data_commands` (+ `cargo build` in each). Set current.json.full-verify =
+     ["cargo build", "cargo test"] (whole-suite runner for review's final gate).
+  5. impl-paths: card 01 = Cargo.toml, src/{main,lib,cli,config,output,error,model}.rs, src/ib/{mod,client,account... but account is card 02}. Keep spec-paths (tests/*) disjoint from impl-paths.
+Frozen-test assertions to author (black-box, must FAIL on an empty repo, go green when impl builds it):
+  cli_contract.rs:
+   - `omi --help` stdout contains: health account positions orders quote contract history
+   - `omi --version` exits success
+   - `omi health --help` exits success
+   - unknown subcommand `omi frobnicate` exits FAILURE
+   - `omi --format json health --host 127.0.0.1 --port 65000` exits NON-ZERO and stderr parses as JSON
+     with a top-level "error" object whose code == "connection"  (dead port => deterministic, no gateway)
+  data_commands.rs:
+   - `omi account --help`, `omi positions --help`, `omi orders --help`, `omi contract --help` exit success
+   - `omi quote --help` stdout mentions `--md-type`
+   - `omi history --help` stdout mentions `--bar` and `--duration`
+   - `omi quote AAPL --port 65000 --format json` exits NON-ZERO with the JSON error envelope (dead port)
+Feature gotchas:
+  - GREENFIELD: empty repo, no Cargo project yet. assert_cmd needs Cargo.toml [[bin]] name="omi" +
+    [dev-dependencies] assert_cmd, predicates — those are impl-paths (impl creates them).
+  - Repo is PUBLIC: no account ids/secrets in any committed file or test.
+  - Phase 1 read-only: do NOT author any order-placement test or card.
+  - Use a dead port (65000) for error-path tests so they never depend on a running gateway.
+Done when: freeze commit (tests only) + record commit (cards 01,02 + current.json{stage:task,full-verify}
+  + journal) on main. On success: run pipeline-impl (it picks card 01 first).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
