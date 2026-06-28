@@ -47,3 +47,28 @@ Gotchas: do NOT touch the Phase 1 frozen tests (tests/cli_contract.rs, tests/dat
 Done when: freeze + record commits on main; then run pipeline-impl.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-06-28T15:13:59Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   Froze the spec in two commits. Freeze a072015 (tests/tz_aliases.rs only) = this feature's
+        spec-rev; confirmed RED (unresolved import oh_my_ib::tz). Record commit: tasks/01.md
+        (spec-rev=a072015), current.json{stage:task, full-verify=[cargo build, cargo test]}.
+output: .pipeline/tz-aliases/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+First: git pull --rebase. Read .pipeline/tz-aliases/{PRD,arch}.md + tasks/01.md.
+roles.yaml: impl slot = goal-driven-impl-claude.
+Your task (concrete, numbered):
+  1. Branch feat/tz-aliases from main; flip card 01 in-progress on main (or do it in one continuous run).
+  2. Add src/tz.rs (builtin_aliases + register_builtin_aliases via Once), pub mod tz in lib.rs, and call
+     crate::tz::register_builtin_aliases() at the top of src/ib/mod.rs::connect.
+  3. Make `cargo test --test tz_aliases` + `cargo build` green; never edit tests/ (any spec file).
+  4. LIVE ACCEPTANCE (gateway up on :4001): `unset IBAPI_TIMEZONE_ALIASES; omi --live health` must
+     connect (this is the whole point — proves finding A fixed). Also confirm Phase 1 cmds still work.
+  5. Push feat/tz-aliases, open PR, flip card 01 review + stage=impl + journal on main.
+Gotchas: only the new spec a072015 is this feature's gate; phase1-readonly's 13e522d tests stay frozen
+  & untouched. Keep diff to src/tz.rs + lib.rs + ib/mod.rs (+ impl-owned unit tests if any).
+Done when: card 01 review, PR open, stage=impl; then pipeline-review (human-confirmed merge).
+On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
