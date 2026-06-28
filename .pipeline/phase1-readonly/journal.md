@@ -197,3 +197,34 @@ Feature gotchas:
 Done when: both cards are back to status=review, PR #1 updated, and handoff returns to pipeline-review.
 On failure: attempts++; attempts >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-06-28T09:19:06Z · review→impl · failed · by=hermes-gpt-5.5
+
+done:   Added delegated-review addendum after the parallel Rust/CLI reviewers completed. This does not
+        increment attempts again; it enriches the same PR #1 rejection with additional blockers:
+        live-port opt-in bypass, ignored account scoping, clap parse errors outside JSON envelope,
+        no-op timeout, `default_account` config mismatch, and debug-string orders/history output.
+output: .pipeline/phase1-readonly/reviews/review-02.md; tasks/01.md and tasks/02.md rejection notes expanded
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/1
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md — repo conventions + hard read-only/public-repo/live-port safety rules
+  - .pipeline/phase1-readonly/{PRD.md,arch.md,CONTEXT.md} and docs/adr/0006-lib-bin-split-freeze-coverage.md
+  - .pipeline/phase1-readonly/reviews/review-01.md and review-02.md — complete rejection evidence
+  - .pipeline/phase1-readonly/tasks/01.md and tasks/02.md — both status=todo, attempts=1
+Your task (concrete, numbered):
+  1. Reuse/update PR branch feat/phase1-readonly; do not edit frozen spec paths tests/cli_contract.rs or tests/data_commands.rs.
+  2. Card 01 fix list: global `--md-type` with precedence; structured JSON envelope for clap parse failures; no silent live port via `--port 4001` or config without explicit `--live`; implement/remove `--timeout`; support documented `default_account` config key.
+  3. Card 02 fix list: honor `--account`/configured account for account-scoped commands; stable account JSON keys; stable positions JSON keys; replace orders/history Debug strings with structured JSON. If `positions()` cannot provide market_value/unrealized_pnl, route to pipeline-task for re-spec.
+  4. Keep Phase 1 structurally read-only: no place/modify/cancel order path; no secrets/account ids in repo.
+  5. Verify card-scoped commands (`cargo build`, `cargo test --test cli_contract`, `cargo test --test data_commands`) and then full `cargo build && cargo test`; clippy with `--all-targets -- -D warnings` should remain green.
+Feature gotchas:
+  - Freeze gate must remain empty: `git diff 13e522dc70a432b0403cd75d4b5b82531a77a6fa HEAD -- tests/`.
+  - `cargo fmt --check` reported formatting drift only in frozen trunk spec tests; do not fix frozen tests from impl unless routed through task/re-freeze.
+  - This seq=6 is an addendum to the same rejection, not a second attempts increment.
+Done when: both cards are back to status=review, PR #1 updated, and handoff returns to pipeline-review.
+On failure: attempts++; attempts >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
