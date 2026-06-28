@@ -1,0 +1,10 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Local secrets & account config — NEVER commit (repo is public).
+# Real config lives at ~/.config/oh-my-ib/config.toml, outside the repo.
+.env
+.env.local
+config.local.toml
+*.secret
