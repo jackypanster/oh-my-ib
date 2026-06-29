@@ -86,3 +86,36 @@ First: git pull --rebase. Read .pipeline/quote-drop-volume/{PRD,arch}.md + tasks
   5. HARD GATE: human-confirmed merge. On confirm: squash-merge PR #4, card→done, current.json.stage=done, journal.
 On reject: attempts++; route to pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-06-29T15:31:42Z · impl→review · completed · by=codex-gpt-5(codex)
+done:   Semantic review approved PR #4 with no blocking findings. Freeze gates were empty; final
+        full-verify (`cargo build`, `cargo test`) ran green on isolated PR-head worktree 0dd6499;
+        clippy `--all-targets -- -D warnings` also green. Review verdict written; awaiting human confirm.
+output: .pipeline/quote-drop-volume/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review merge disposition on a FRESH session after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/4
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context:
+  - AGENTS.md or CLAUDE.md
+  - .pipeline/quote-drop-volume/PRD.md
+  - .pipeline/quote-drop-volume/arch.md
+  - .pipeline/quote-drop-volume/tasks/01.md
+  - .pipeline/quote-drop-volume/reviews/review-01.md
+Your task:
+  1. Proceed only after the operator explicitly says merge/go.
+  2. Re-read PR #4 and confirm the head is still the reviewed commit 0dd6499 (or rerun freeze/full-verify if it moved).
+  3. Confirm every quote-drop-volume card is still status=review.
+  4. Squash-merge PR #4 via `gh pr merge --squash --delete-branch`.
+  5. On main, set card 01 status=done, set current.json stage=done, append the final review→done journal entry, commit, and push.
+Feature gotchas:
+  - Never merge without explicit human confirmation.
+  - PR code patch is only Cargo.toml, src/ib/mod.rs, src/ib/quote.rs. A local two-dot diff against main
+    may show metadata skew because main carries the impl journal commit; use the forge PR patch as the
+    review surface.
+  - Freeze gates already ran empty against PR head 0dd6499; final full-verify already ran green on an
+    isolated worktree in this review.
+Done when: PR #4 squash-merged, card 01 done, current.json stage=done, final journal entry committed and pushed to main.
+On failure: if rejected, attempts++ and card 01 -> todo (or blocked at >=3), then route pipeline-impl/hunt.
+<<< END
