@@ -3,6 +3,6 @@
   "branch": "main",
   "pr": "https://github.com/jackypanster/oh-my-ib/pull/3",
   "feature": "connect-retry",
-  "stage": "impl",
+  "stage": "review",
   "full-verify": ["cargo build", "cargo test"]
 }

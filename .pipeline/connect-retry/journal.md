@@ -74,3 +74,33 @@ First: git pull --rebase. Read .pipeline/connect-retry/{PRD,arch}.md + tasks/01.
   5. HARD GATE: human-confirmed merge. On confirm: squash-merge PR #3, card→done, current.json.stage=done, journal.
 On reject: attempts++; route to pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-06-29T14:32:01Z · impl→review · completed · by=gpt-5-codex
+done:   Review verdict written: approve, no blocking findings. Freeze gates empty for connect-retry,
+        tz-aliases, and inherited Phase 1 specs. Full verify on detached PR head 7959d22 passed
+        (`cargo build`, `cargo test`); clippy passed; dead-port smoke failed fast in 0.023s.
+        Awaiting explicit human merge confirmation.
+output: .pipeline/connect-retry/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session to merge PR #3 only after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/3
+First: git pull --rebase; read CONTRACT.md, AGENTS.md/CLAUDE.md, .pipeline/current.json, and
+.pipeline/connect-retry/reviews/review-01.md.
+Your task:
+  1. Confirm the operator has explicitly said go/merge.
+  2. Re-read PR #3 head. If it changed from 7959d229f641a11642556c49d6ec8b6e197bc43b, rerun review,
+     freeze gates, and current.json.full-verify before merging.
+  3. If still approved and green, squash-merge PR #3 via the GitHub forge adapter and delete the merged
+     feat/connect-retry branch.
+  4. On main, set .pipeline/connect-retry/tasks/01.md status=done, set .pipeline/current.json stage=done,
+     append the final review→done journal entry, commit, and push trunk.
+Feature gotchas:
+  - Only pipeline-review may merge, and never without explicit human confirmation.
+  - Product diff is one file: src/ib/mod.rs. Do not author product code in review.
+  - Live B acceptance was operator-reported, not re-run by review-01.
+Done when: PR #3 is squash-merged, card 01 is done, current.json stage=done, journal has the final
+review→done entry, and main is pushed.
+On rejection or new red gate: increment card attempts, flip card 01 to todo/blocked per CONTRACT, append
+a failed journal entry, commit, and hand off to pipeline-impl or pipeline-hunt.
+<<< END
