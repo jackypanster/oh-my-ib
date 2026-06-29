@@ -119,3 +119,15 @@ Feature gotchas:
 Done when: PR #4 squash-merged, card 01 done, current.json stage=done, final journal entry committed and pushed to main.
 On failure: if rejected, attempts++ and card 01 -> todo (or blocked at >=3), then route pipeline-impl/hunt.
 <<< END
+
+## seq=7 · 2026-06-29T15:41:19Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   FOLLOW-UP C SHIPPED. Operator authorized merge ("go"). codex-gpt-5 review-01 approved (no
+        blocking findings); 4 freeze gates empty; build/test(30)/clippy green; live C verified (quote =
+        price keys only, no volume). Squash-merged PR #4 → main 986f37c, feat/quote-drop-volume deleted.
+        Card 01 → done; current.json.stage=done. quote no longer emits the unreliable volume tick.
+        ALL THREE review-05 follow-ups (A tz-aliases, B connect-retry, C quote-drop-volume) now shipped.
+output: main 986f37c (squash-merge of PR #4); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature quote-drop-volume (review-05 follow-up C) COMPLETE — no next stage. review-05 fully closed.
+Phase 1 + 1.1 done; A/B/C done. Next option: Phase 2 (gated order placement) per the /think plan.
+Daily use: `omi --live <cmd>` (no env var; connection retries transient errors; quote = clean prices).
