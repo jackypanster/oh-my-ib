@@ -1,8 +1,8 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "pr": null,
+  "pr": "https://github.com/jackypanster/oh-my-ib/pull/6",
   "feature": "slim-claude-md",
-  "stage": "task",
+  "stage": "impl",
   "full-verify": ["cargo build", "cargo test"]
 }

@@ -52,3 +52,21 @@ First: git pull --rebase. Read .pipeline/slim-claude-md/{PRD,arch}.md + tasks/01
 Gotcha: spec b61e9a5 is this feature's gate only; phase1/tz/connect-retry/quote/agents-md specs stay frozen.
 Done when: card review, PR open, stage=impl; then pipeline-review (human-confirmed merge).
 <<< END
+
+## seq=4 · 2026-06-29T16:24:42Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Implemented card 01 on feat/slim-claude-md (commit 5cd155b). CLAUDE.md slimmed 4316→675 bytes,
+        now a pointer at AGENTS.md + one-line backstops; AGENTS.md untouched. Frozen claude_md test green;
+        all 6 freeze gates empty (b61e9a5/05d685f/cd191e2/fd72d90/a072015/13e522d). build + clippy
+        -D warnings + cargo test (32). Docs-only — no live acceptance. PR #6 opened. Card 01 → review.
+output: feat/slim-claude-md @ 5cd155b, PR https://github.com/jackypanster/oh-my-ib/pull/6,
+        tasks/01.md (review), current.json (stage=impl, pr set)
+--- handoff ---
+>>> NEXT (pipeline-review; human-confirmed merge)
+First: git pull --rebase. Read .pipeline/slim-claude-md/{PRD,arch}.md + tasks/01.md; PR #6 diff.
+  1. Freeze gates empty: git diff b61e9a5 origin/feat/slim-claude-md -- tests/claude_md.rs; + inherited 5 specs.
+  2. Full verify on origin/feat/slim-claude-md: cargo build && cargo test GREEN; clippy --all-targets -D warnings.
+  3. Read CLAUDE.md: short pointer at AGENTS.md + backstops; AGENTS.md NOT modified; no Rust code touched.
+  4. Docs-only — no live acceptance needed.
+  5. HARD GATE: human-confirmed merge. On confirm: squash-merge PR #6, card→done, current.json.stage=done, journal.
+On reject: attempts++; route to pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
