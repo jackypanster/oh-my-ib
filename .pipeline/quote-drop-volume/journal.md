@@ -66,3 +66,23 @@ Gotcha: spec cd191e2 is this feature's gate only; phase1(13e522d)/tz(a072015)/co
   stay frozen/untouched. Cargo.toml is impl-owned.
 Done when: card review, PR open, stage=impl; then pipeline-review (human-confirmed merge).
 <<< END
+
+## seq=4 · 2026-06-29T15:24:20Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Implemented card 01 on feat/quote-drop-volume (commit 0dd6499). src/ib/quote.rs: quote_price_tick
+        (Some for Price, None else) + loop drops Size arm; src/ib/mod.rs re-exports it; Cargo.toml adds
+        ibapi dev-dep. Frozen quote_ticks green; all 4 freeze gates empty (cd191e2/fd72d90/a072015/
+        13e522d). build + clippy -D warnings + cargo test (30). LIVE C ACCEPTANCE: omi --live quote AAPL
+        --md-type delayed => {DelayedClose/High/Low/Open}, NO volume/size key, valid JSON. PR #4 opened.
+output: feat/quote-drop-volume @ 0dd6499, PR https://github.com/jackypanster/oh-my-ib/pull/4,
+        tasks/01.md (review), current.json (stage=impl, pr set)
+--- handoff ---
+>>> NEXT (pipeline-review; human-confirmed merge)
+First: git pull --rebase. Read .pipeline/quote-drop-volume/{PRD,arch}.md + tasks/01.md; PR #4 diff.
+  1. Freeze gates empty: git diff cd191e2 origin/feat/quote-drop-volume -- tests/quote_ticks.rs; and the
+     inherited fd72d90 (connect-retry) + a072015 (tz) + 13e522d (phase1) specs.
+  2. Full verify on origin/feat/quote-drop-volume: cargo build && cargo test GREEN; clippy --all-targets -D warnings.
+  3. Read src/ib/quote.rs: quote_price_tick keeps only Price; Size arm gone. Cargo.toml dev-dep ibapi.
+  4. Live C acceptance already done by impl (quote shows price keys only, no volume).
+  5. HARD GATE: human-confirmed merge. On confirm: squash-merge PR #4, card→done, current.json.stage=done, journal.
+On reject: attempts++; route to pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
