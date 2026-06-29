@@ -44,3 +44,25 @@ Gotcha: Cargo.toml dev-dep add is impl-owned (NOT spec). Do not touch other froz
   (13e522d phase1, a072015 tz, fd72d90 connect-retry).
 Done when: freeze+record on main; then pipeline-impl.
 <<< END
+
+## seq=3 · 2026-06-29T15:18:20Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   Froze spec in two commits. Freeze cd191e2 (tests/quote_ticks.rs only) = this feature's spec-rev;
+        confirmed RED (unresolved oh_my_ib::ib::quote_price_tick). TickPrice/TickSize exact fields
+        verified before freezing (frozen test can't be edited). Record: tasks/01.md (spec-rev=cd191e2),
+        current.json stage=task.
+output: .pipeline/quote-drop-volume/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-impl; roles.yaml impl=goal-driven-impl-claude)
+First: git pull --rebase. Read .pipeline/quote-drop-volume/{PRD,arch}.md + tasks/01.md.
+  1. Branch feat/quote-drop-volume from main.
+  2. src/ib/quote.rs: add pub fn quote_price_tick + rewrite loop (drop Size arm). src/ib/mod.rs: pub use
+     quote::quote_price_tick. Cargo.toml: add ibapi to [dev-dependencies].
+  3. Green: cargo build + cargo test --test quote_ticks + full cargo test; clippy -D warnings; fmt
+     (do NOT touch any tests/ spec file).
+  4. LIVE ACCEPTANCE (gateway :4001): omi --live quote AAPL --md-type delayed => price keys, NO
+     *Volume/size key, valid JSON. Confirm other commands unaffected.
+  5. Push feat/quote-drop-volume, open PR, flip card review + stage=impl + journal on main.
+Gotcha: spec cd191e2 is this feature's gate only; phase1(13e522d)/tz(a072015)/connect-retry(fd72d90)
+  stay frozen/untouched. Cargo.toml is impl-owned.
+Done when: card review, PR open, stage=impl; then pipeline-review (human-confirmed merge).
+<<< END
