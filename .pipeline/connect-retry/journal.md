@@ -104,3 +104,15 @@ review→done entry, and main is pushed.
 On rejection or new red gate: increment card attempts, flip card 01 to todo/blocked per CONTRACT, append
 a failed journal entry, commit, and hand off to pipeline-impl or pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-06-29T14:57:05Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   FOLLOW-UP B SHIPPED. Operator authorized merge ("go"). gpt-5-codex review-01 approved (no
+        blocking findings); 3 freeze gates empty; build/test/clippy green; dead-port fast-fail 0.023s;
+        live B operator-reported 4/4 back-to-back clean. Squash-merged PR #3 → main 068f983,
+        feat/connect-retry deleted. Card 01 → done; current.json.stage=done. ib::connect now retries
+        transient EAGAIN — back-to-back account/positions no longer flaky.
+output: main 068f983 (squash-merge of PR #3); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature connect-retry (review-05 follow-up B) COMPLETE — no next stage. review-05 follow-ups A and B
+are now both shipped. Remaining: C (quote DelayedVolume scaling — minor data-quality), or Phase 2
+(gated order placement) per the /think plan. Daily use unchanged: `omi --live <cmd>` (no env var).
