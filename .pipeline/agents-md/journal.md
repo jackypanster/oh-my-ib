@@ -108,3 +108,15 @@ Feature gotchas:
 Done when: PR #5 squash-merged, card 01 done, current.json stage=done, final journal entry committed and pushed to main.
 On failure: if rejected, attempts++ and card 01 -> todo (or blocked at >=3), then route pipeline-impl/hunt.
 <<< END
+
+## seq=7 · 2026-06-29T16:17:02Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   SHIPPED. Operator authorized merge ("go"). codex-gpt-5 review-01 approved (1 non-blocking
+        advisory). Squash-merged PR #5 → main 9bcb3f8; AGENTS.md (46 lines) now tracked at the repo root;
+        feat/agents-md deleted. Card 01 → done; current.json.stage=done. The repo now states the
+        agent-first authoring convention (docs+code for agents) + a pointer to the pipeline CONTRACT, so
+        any cold agent reads it first. CLAUDE.md untouched.
+output: main 9bcb3f8 (squash-merge of PR #5); AGENTS.md; tasks/01.md (done); current.json (stage=done)
+--- handoff ---
+Feature agents-md COMPLETE — no next stage. Optional follow-ups (operator's call, not queued):
+  - dedupe CLAUDE.md → slim it to a pointer at AGENTS.md (they currently overlap);
+  - Phase 2 (gated order placement) per the /think plan.
