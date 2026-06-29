@@ -3,6 +3,6 @@
   "branch": "main",
   "pr": null,
   "feature": "slim-claude-md",
-  "stage": "arch",
+  "stage": "task",
   "full-verify": ["cargo build", "cargo test"]
 }
