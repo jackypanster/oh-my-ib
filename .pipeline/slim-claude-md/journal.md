@@ -101,3 +101,13 @@ Feature gotchas:
 Done when: PR #6 is squash-merged, card is done, current.json stage=done, final journal entry is committed and pushed on main.
 On failure/reject: attempts++; card 01 -> todo (or blocked at >=3) and route to pipeline-impl/hunt.
 <<< END
+
+## seq=7 · 2026-06-29T16:33:40Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   SHIPPED. Operator authorized merge ("go"). codex-gpt-5 review-01 approved (no findings).
+        Squash-merged PR #6 → main e99b1b0; CLAUDE.md now 675 bytes pointing at AGENTS.md (was 4316,
+        a duplicate); feat/slim-claude-md deleted. Card 01 → done; current.json.stage=done. CLAUDE.md /
+        AGENTS.md de-duplicated — AGENTS.md is the single canonical agent-conventions doc.
+output: main e99b1b0 (squash-merge of PR #6); CLAUDE.md (slim); tasks/01.md (done); current.json (stage=done)
+--- handoff ---
+Feature slim-claude-md COMPLETE — no next stage. Repo docs are now single-source (AGENTS.md canonical,
+CLAUDE.md a pointer). Optional next: Phase 2 (gated order placement) per the /think plan.
