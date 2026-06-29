@@ -3,6 +3,9 @@
   "branch": "main",
   "pr": null,
   "feature": "agents-md",
-  "stage": "prd",
-  "full-verify": ["cargo build", "cargo test"]
+  "stage": "arch",
+  "full-verify": [
+    "cargo build",
+    "cargo test"
+  ]
 }

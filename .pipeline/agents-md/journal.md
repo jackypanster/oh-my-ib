@@ -23,3 +23,19 @@ Gotcha: do NOT touch the other frozen specs (13e522d phase1, a072015 tz, fd72d90
 Done when: arch.md + freeze/record + impl + PR; merge human-confirmed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-06-29T15:52:47Z · arch→task · completed · by=claude-opus-4-8(claude-code)
+done:   Locked design: tests/agents_md.rs reads AGENTS.md (CARGO_MANIFEST_DIR) and asserts markers
+        [agent-first, "Authoring — agent-first", CONTRACT.md, read-only, OMI_ALLOW_LIVE] + len>800.
+        AGENTS.md (impl-owned, git-add) = canonical agent doc: project map + agent-first authoring rule +
+        safety rules + pipeline pointer. Markers pin facts without coupling to prose. No ADR.
+output: .pipeline/agents-md/arch.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-task)
+First: git pull --rebase. Read .pipeline/agents-md/{PRD,arch}.md.
+ONE card. Freeze tests/agents_md.rs (offline marker test, per arch.md). RED now (untracked AGENTS.md
+  lacks markers). Two-commit freeze (test = new spec-rev; then card 01 + current.json stage=task).
+Card: spec-paths=[tests/agents_md.rs], impl-paths=[AGENTS.md], verify=[cargo build, cargo test --test agents_md].
+Gotcha: AGENTS.md is impl-owned (git add it). Do NOT touch other frozen specs or CLAUDE.md.
+Done when: freeze+record on main; then pipeline-impl.
+<<< END
