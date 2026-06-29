@@ -20,3 +20,17 @@ Gotcha: do NOT touch the other frozen specs (phase1/tz/connect-retry/quote/agent
 Done when: arch.md + freeze/record + impl + PR; merge human-confirmed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-06-29T16:20:06Z · arch→task · completed · by=claude-opus-4-8(claude-code)
+done:   Locked design: tests/claude_md.rs reads CLAUDE.md and asserts contains("AGENTS.md") + 100<len<900.
+        CLAUDE.md (impl-owned) slimmed to a pointer + one-line backstops (~400-700 bytes). No ADR.
+output: .pipeline/slim-claude-md/arch.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-task)
+First: git pull --rebase. Read .pipeline/slim-claude-md/{PRD,arch}.md.
+ONE card. Freeze tests/claude_md.rs (offline; per arch.md). RED now (CLAUDE.md 4316 bytes, no AGENTS.md
+  ref). Two-commit freeze (test = new spec-rev; then card 01 + current.json stage=task).
+Card: spec-paths=[tests/claude_md.rs], impl-paths=[CLAUDE.md], verify=[cargo build, cargo test --test claude_md].
+Gotcha: CLAUDE.md is impl-owned. Do NOT touch AGENTS.md or other frozen specs.
+Done when: freeze+record on main; then pipeline-impl.
+<<< END
