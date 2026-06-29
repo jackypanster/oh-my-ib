@@ -70,3 +70,34 @@ First: git pull --rebase. Read .pipeline/slim-claude-md/{PRD,arch}.md + tasks/01
   5. HARD GATE: human-confirmed merge. On confirm: squash-merge PR #6, card→done, current.json.stage=done, journal.
 On reject: attempts++; route to pipeline-impl; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-06-29T16:30:47Z · review→review · completed · by=codex-gpt-5
+done:   Review verdict written: approve, no blocking findings. Freeze gate empty; PR diff is CLAUDE.md
+        only; isolated full-verify passed (`cargo build`, `cargo test`) plus clippy.
+output: .pipeline/slim-claude-md/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review final merge step only after explicit human "go" (assume you know nothing; rebuild
+from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/6
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context before acting:
+  - AGENTS.md and CLAUDE.md
+  - ../pipeline/CONTRACT.md
+  - .pipeline/slim-claude-md/PRD.md
+  - .pipeline/slim-claude-md/arch.md
+  - .pipeline/slim-claude-md/tasks/01.md
+  - .pipeline/slim-claude-md/reviews/review-01.md
+Your task:
+  1. Refresh PR #6 head and confirm it is still 5cd155b75f004b300b169be15ea51fd280fb1e7e or rerun review gates if it moved.
+  2. Confirm every slim-claude-md card is status=review.
+  3. Confirm final full-verify is green on PR head (`cargo build`, `cargo test`); current review also ran clippy.
+  4. On explicit human go only: squash-merge PR #6 via gh, deleting the branch.
+  5. After merge, set tasks/01.md status=done, set current.json stage=done, append journal review->done, commit and push main.
+Feature gotchas:
+  - Docs-only. No live gateway acceptance required.
+  - Review verdict is approve with no findings; do not merge without explicit human confirmation.
+Done when: PR #6 is squash-merged, card is done, current.json stage=done, final journal entry is committed and pushed on main.
+On failure/reject: attempts++; card 01 -> todo (or blocked at >=3) and route to pipeline-impl/hunt.
+<<< END
