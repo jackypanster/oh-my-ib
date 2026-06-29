@@ -1,9 +1,9 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "pr": null,
+  "pr": "https://github.com/jackypanster/oh-my-ib/pull/5",
   "feature": "agents-md",
-  "stage": "task",
+  "stage": "impl",
   "full-verify": [
     "cargo build",
     "cargo test"
