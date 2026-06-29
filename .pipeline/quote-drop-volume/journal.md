@@ -24,3 +24,23 @@ Gotcha: do NOT touch the other frozen specs (13e522d phase1, a072015 tz, fd72d90
 Done when: arch.md + freeze/record + impl + PR; merge human-confirmed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-06-29T15:16:29Z · arch→task · completed · by=claude-opus-4-8(claude-code)
+done:   Locked design: quote_price_tick(&TickTypes)->Option<(String,f64)> (Some for Price, None else) +
+        loop rewrite dropping the Size arm; pub use in ib/mod.rs. Verified the frozen-test seam is
+        constructible: TickAttribute derives Default; TickType::{DelayedClose,DelayedVolume} exist;
+        TickPrice/TickSize fields public. ibapi goes in [dev-dependencies]. No ADR.
+output: .pipeline/quote-drop-volume/arch.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-task)
+First: git pull --rebase. Read .pipeline/quote-drop-volume/{PRD,arch}.md.
+ONE card. Freeze tests/quote_ticks.rs (offline; add ibapi to [dev-dependencies]): construct a
+  TickTypes::Price (=> quote_price_tick is Some) and a TickTypes::Size DelayedVolume tick (=> None).
+  Compiles only after impl adds + re-exports quote_price_tick => RED. Two-commit freeze (test = new
+  spec-rev; then card 01 + current.json stage=task).
+Card: spec-paths=[tests/quote_ticks.rs], impl-paths=[src/ib/quote.rs, src/ib/mod.rs, Cargo.toml],
+  verify=[cargo build, cargo test --test quote_ticks].
+Gotcha: Cargo.toml dev-dep add is impl-owned (NOT spec). Do not touch other frozen specs
+  (13e522d phase1, a072015 tz, fd72d90 connect-retry).
+Done when: freeze+record on main; then pipeline-impl.
+<<< END
