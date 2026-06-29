@@ -3,7 +3,7 @@
   "branch": "main",
   "pr": null,
   "feature": "agents-md",
-  "stage": "arch",
+  "stage": "task",
   "full-verify": [
     "cargo build",
     "cargo test"

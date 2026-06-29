@@ -39,3 +39,22 @@ Card: spec-paths=[tests/agents_md.rs], impl-paths=[AGENTS.md], verify=[cargo bui
 Gotcha: AGENTS.md is impl-owned (git add it). Do NOT touch other frozen specs or CLAUDE.md.
 Done when: freeze+record on main; then pipeline-impl.
 <<< END
+
+## seq=3 · 2026-06-29T15:54:18Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   Froze spec in two commits. Freeze 05d685f (tests/agents_md.rs only) = spec-rev; confirmed RED
+        (clean compile+fail: untracked AGENTS.md lacks "agent-first"). Markers: agent-first,
+        "Authoring (agent-first)", CONTRACT.md, OMI_ALLOW_LIVE (ASCII, robust). Record: tasks/01.md, stage=task.
+output: .pipeline/agents-md/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT (pipeline-impl; roles.yaml impl=goal-driven-impl-claude)
+First: git pull --rebase. Read .pipeline/agents-md/{PRD,arch}.md + tasks/01.md.
+  1. Branch feat/agents-md from main.
+  2. Write AGENTS.md (per arch/card) and `git add` it. Must contain markers: agent-first,
+     "Authoring (agent-first)", CONTRACT.md, OMI_ALLOW_LIVE; len>800.
+  3. Green: cargo build + cargo test --test agents_md + full cargo test; clippy -D warnings; fmt
+     (do NOT touch any tests/ spec file; do NOT touch CLAUDE.md).
+  4. No live acceptance (docs only).
+  5. Push feat/agents-md, open PR, flip card review + stage=impl + journal on main.
+Gotcha: spec 05d685f is this feature's gate only; phase1/tz/connect-retry/quote specs stay frozen/untouched.
+Done when: card review, PR open, stage=impl; then pipeline-review (human-confirmed merge).
+<<< END
