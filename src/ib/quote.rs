@@ -41,15 +41,11 @@ pub fn quote(cfg: &Config, args: &QuoteArgs) -> Result<Value, AppError> {
     let mut ticks = serde_json::Map::new();
     for tick in subscription.iter_data() {
         let tick = tick.map_err(|e| AppError::data(format!("market_data stream: {e}"), "quote"))?;
-        match tick {
-            TickTypes::Price(p) => {
-                ticks.insert(format!("{:?}", p.tick_type), json!(p.price));
-            }
-            TickTypes::Size(s) => {
-                ticks.insert(format!("{:?}", s.tick_type), json!(s.size));
-            }
-            TickTypes::SnapshotEnd => break,
-            _ => {}
+        if matches!(tick, TickTypes::SnapshotEnd) {
+            break;
+        }
+        if let Some((label, price)) = quote_price_tick(&tick) {
+            ticks.insert(label, json!(price));
         }
     }
 
@@ -58,4 +54,14 @@ pub fn quote(cfg: &Config, args: &QuoteArgs) -> Result<Value, AppError> {
         "delayed": delayed,
         "ticks": ticks,
     }))
+}
+
+/// The `(label, price)` to keep for a quote tick: `Some` only for price ticks. Size ticks — which
+/// include the gateway's unreliable volume (observed at 1.4e13) — are dropped; use `omi history`
+/// for volume.
+pub fn quote_price_tick(tick: &TickTypes) -> Option<(String, f64)> {
+    match tick {
+        TickTypes::Price(p) => Some((format!("{:?}", p.tick_type), p.price)),
+        _ => None,
+    }
 }

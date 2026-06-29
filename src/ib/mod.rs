@@ -24,7 +24,7 @@ pub use contract::contract;
 pub use history::history;
 pub use orders::orders;
 pub use positions::positions;
-pub use quote::quote;
+pub use quote::{quote, quote_price_tick};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;

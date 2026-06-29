@@ -26,3 +26,4 @@ toml = "0.8"
 assert_cmd = "2"
 predicates = "3"
 serde_json = "1"
+ibapi = { version = "3.1", default-features = false, features = ["sync"] }
