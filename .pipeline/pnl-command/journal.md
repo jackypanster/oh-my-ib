@@ -148,3 +148,46 @@ Done when: feat/pnl-command PR open, card 01 status=review, `cargo test --test p
   whole suite green + clippy clean. Then run pipeline-review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-06-30T16:15:05Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Card 01 GREEN. Implemented on feat/pnl-command (impl-paths only): new src/ib/pnl.rs (pnl(cfg)
+        take-first via next_data() per ADR 0007 + pure pnl_number sentinel filter), src/ib/mod.rs
+        re-exports, src/cli.rs Pnl variant, src/main.rs dispatch. Frozen tests/pnl_command.rs UNTOUCHED
+        and green (6/6). Whole suite 38 green; clippy -D warnings clean. PR #7 opened. Card 01 →review,
+        current.json stage=impl + pr set. No other todo cards → route to pipeline-review.
+output: PR https://github.com/jackypanster/oh-my-ib/pull/7 (branch feat/pnl-command @ impl commit);
+        tasks/01.md (status=review); .pipeline/current.json (stage=impl, pr set)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/7
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; gh is authed (github.com forge adapter).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions (agent-first, hard safety rules, verify model). Read FIRST.
+  - .pipeline/pnl-command/tasks/01.md — the card (spec-rev dc9357d, spec-paths, impl-paths, Freeze coverage)
+  - .pipeline/pnl-command/arch.md + docs/adr/0007 — design + the take-first trap
+  - PR #7 diff (the review surface): gh pr diff 7
+Your task (concrete, numbered):
+  1. FREEZE GATE (deterministic, run FIRST): `git diff dc9357de41ddfe7bdd4dd74a5eff979c04ff3986 origin/feat/pnl-command -- tests/pnl_command.rs`
+     MUST be empty. Non-empty ⇒ reject (attempts++, card→todo, route impl; or hunt at >=3).
+  2. FULL-SUITE GATE on the branch HEAD (current.json.full-verify): `cargo build` && `cargo test` must be
+     GREEN, plus `cargo clippy --all-targets -- -D warnings` clean. (Already green at impl; re-confirm on
+     branch tip.)
+  3. SEMANTIC REVIEW of the PR #7 diff. The freeze covers only the black-box CLI + the pure pnl_number
+     seam, so REVIEW MUST READ (not frozen): client.pnl() wiring; the next_data() TAKE-FIRST (ADR 0007 —
+     confirm there is NO drain loop that would hang); resolve_account reuse; JSON assembly
+     {account,daily_pnl,unrealized_pnl,realized_pnl}; that --format table was NOT hand-coded (output.rs
+     untouched); read-only invariant (no order path, no OMI_ALLOW_LIVE).
+  4. On pass: get EXPLICIT human confirmation, then squash-merge PR #7 via gh, delete branch. On main:
+     card 01 →done, current.json stage=done, append final review→done journal entry, commit, push.
+Feature gotchas:
+  - Live acceptance (`omi --live pnl`) is BLOCKED until the operator reopens the Tiger gateway on :4001 —
+    it is OPERATOR acceptance, POST-merge; do NOT block the merge on it (matches the repo's verify model:
+    gateway behavior = reviewed-by-reading + operator live acceptance).
+  - Only pipeline-review merges, and only after explicit human confirm. Never force-push trunk.
+  - A local two-dot diff vs main may show metadata skew (main carries the impl journal commit); use the
+    PR patch (`gh pr diff 7`) as the review surface.
+Done when: PR #7 squash-merged, card 01 done, current.json stage=done, final journal entry pushed to main.
+On failure: reject → attempts++, card→todo (or blocked at >=3), route pipeline-impl/hunt.
+<<< END
