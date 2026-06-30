@@ -191,3 +191,38 @@ Feature gotchas:
 Done when: PR #7 squash-merged, card 01 done, current.json stage=done, final journal entry pushed to main.
 On failure: reject → attempts++, card→todo (or blocked at >=3), route pipeline-impl/hunt.
 <<< END
+
+## seq=5 · 2026-06-30T22:51:22Z · impl→review · completed · by=gpt-5-codex
+done:   Review verdict written: approve, no blocking findings. Freeze gate empty for
+        tests/pnl_command.rs at PR head 38d0cbf. Full verify on detached PR head passed
+        (`cargo build`, `cargo test` with 38 tests); clippy passed. Awaiting explicit human
+        merge confirmation.
+output: .pipeline/pnl-command/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session to merge PR #7 only after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/7
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; read CONTRACT.md, AGENTS.md, .pipeline/current.json, and
+.pipeline/pnl-command/reviews/review-01.md.
+Your task:
+  1. Confirm the operator has explicitly said go/merge.
+  2. Re-read PR #7 head. If it changed from 38d0cbfcac9af7267ee1f555627ed0a7a5e2922d, rerun semantic
+     review, freeze gate, and current.json.full-verify before merging.
+  3. If still approved and green, squash-merge PR #7 via the GitHub forge adapter and delete the merged
+     feat/pnl-command branch.
+  4. On main, set .pipeline/pnl-command/tasks/01.md status=done, set .pipeline/current.json stage=done,
+     append the final review→done journal entry, commit, and push trunk.
+Feature gotchas:
+  - Only pipeline-review may merge, and never without explicit human confirmation.
+  - Product diff is limited to src/cli.rs, src/ib/mod.rs, src/ib/pnl.rs, and src/main.rs. Do not author
+    product code in review.
+  - The key semantic invariant is ADR 0007: reqPnL is unbounded, so `omi pnl` must take exactly one
+    `subscription.next_data()` reading, not drain to End.
+  - Live `omi --live pnl` acceptance is operator-run after the Tiger gateway reopens on :4001; review did
+    not run it and it is not a merge blocker under this repo's verify model.
+Done when: PR #7 is squash-merged, card 01 is done, current.json stage=done, journal has the final
+review→done entry, and main is pushed.
+On rejection or new red gate: increment card attempts, flip card 01 to todo/blocked per CONTRACT, append
+a failed journal entry, commit, and hand off to pipeline-impl or pipeline-hunt.
+<<< END
