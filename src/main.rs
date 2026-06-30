@@ -63,6 +63,7 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
     match &cli.command {
         Command::Health => ib::health(&config),
         Command::Account => ib::account(&config),
+        Command::Pnl => ib::pnl(&config),
         Command::Positions => ib::positions(&config),
         Command::Orders => ib::orders(&config),
         Command::Quote(args) => ib::quote(&config, args),
