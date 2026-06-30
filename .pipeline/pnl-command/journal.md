@@ -103,3 +103,48 @@ Done when: freeze commit + record commit on trunk (main), current.json.stage=tas
   then run pipeline-impl.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-06-30T16:09:28Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   ONE card frozen. Verified src/lib.rs present + `pub mod ib` → tests/ CAN import the seam (NOT the
+        binary-only case): freeze covers BOTH black-box CLI AND the pure pnl_number seam. Wrote
+        tests/pnl_command.rs (6 tests: --help lists pnl; pnl --help ok; real number; f64::MAX/1.7e308→null;
+        ±inf/NaN→null; None→null). Confirmed RED: `unresolved import oh_my_ib::ib::pnl_number` (compile-
+        fail, same precedent as connect_retry/quote_ticks). Two-commit freeze done: freeze commit dc9357d
+        (test only) = spec-rev; record commit = tasks/01.md + current.json(stage=task, full-verify=[cargo
+        build, cargo test]). ibapi already a dev-dep → no Cargo.toml change; seam needs no ibapi import.
+output: tests/pnl_command.rs (spec-rev dc9357d), .pipeline/pnl-command/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (config at ~/.config/oh-my-ib/config.toml, not needed).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions (agent-first, hard safety rules, verify model). Read FIRST.
+  - .pipeline/pnl-command/tasks/01.md — THE card (scope, impl-paths, freeze coverage)
+  - .pipeline/pnl-command/arch.md + docs/adr/0007-pnl-take-first-unbounded-stream.md — how / the take-first trap
+  - .pipeline/pnl-command/CONTEXT.md — PnL glossary + the f64::MAX unset sentinel
+  - src/ib/account.rs (mirror this) ; tests/pnl_command.rs (the frozen target — READ, never edit)
+Your task (concrete, numbered):
+  1. git checkout -b feat/pnl-command (cut from main HEAD, which carries spec-rev dc9357d).
+  2. Implement card 01 in impl-paths ONLY (src/ib/pnl.rs new; src/ib/mod.rs `mod pnl;`+
+     `pub use pnl::{pnl, pnl_number};`; src/cli.rs `Pnl` variant; src/main.rs dispatch). Do NOT touch
+     tests/pnl_command.rs (freeze gate) or src/output.rs (table is free via generic render_table).
+  3. Make verify green: `cargo build` && `cargo test --test pnl_command`. Also run
+     `cargo clippy --all-targets -- -D warnings` (repo gate) and `cargo test` (whole suite stays green).
+  4. Open PR feat/pnl-command → main; set card 01 status→review; push.
+Feature gotchas (project-specific traps the next node MUST know):
+  - TAKE-FIRST, NO LOOP: reqPnL is unbounded with NO End marker — use `sub.next_data()` for ONE reading.
+    A `for … in sub.iter_data()` loop (the account/quote pattern) HANGS. (ADR 0007.)
+  - SENTINEL→NULL: IB "no value" = f64::MAX (1.7976931348623157e308), a real f64 — pnl_number drops it
+    (+ ±inf/NaN) to null. The frozen test asserts exactly this; match the arch.md predicate.
+  - --format table is FREE: render_table is generic over serde_json::Value. Do NOT write table code,
+    do NOT touch src/output.rs.
+  - PnL fields: daily_pnl is f64 (wrap Some()); unrealized_pnl/realized_pnl are Option<f64> (pass through).
+  - Read-only: NO order path, NO OMI_ALLOW_LIVE. `--live` is allowed (read-only on live, ADR 0005).
+  - Live acceptance is BLOCKED until the operator reopens the Tiger gateway on :4001 — offline gates
+    (build/clippy/test) are the merge gate; live `omi --live pnl` is operator acceptance, post-merge.
+Done when: feat/pnl-command PR open, card 01 status=review, `cargo test --test pnl_command` green +
+  whole suite green + clippy clean. Then run pipeline-review.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
