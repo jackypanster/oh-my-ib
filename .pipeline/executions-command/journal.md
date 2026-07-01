@@ -203,6 +203,26 @@ gateway reopens on :4001. On rejection: attempts++, append fixes to card 01, fli
 blocked), route pipeline-impl (or pipeline-hunt).
 <<< END
 
+## seq=6 · 2026-07-01T16:53:40Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   Operator authorized merge ("go"). PR #8 head unchanged from review (2e12854), review valid.
+        Squash-merged PR #8 → main 6bd06b8; feat/executions-command deleted. Post-merge sanity on main:
+        build clean, whole suite 35 green (executions_command 8/8), `omi --help` lists `executions`,
+        `omi executions --help` exit 0, src/ib/executions.rs on trunk. Card 01 → done;
+        current.json.stage=done. FEATURE COMPLETE. `omi executions` shipped: read-only account current-day
+        fills, exec↔commission joined by exec_id (missing→null), drain-to-End (ADR 0008), realized_pnl via
+        pnl_number, side=BOT/SLD, empty=exit 0 []. 8 features now on main.
+output: main 6bd06b8 (squash-merge of PR #8); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature executions-command COMPLETE — no next stage. Order lifecycle now covered end-to-end: `orders`
+(working) + `executions` (filled) + `positions`/`pnl` (net result).
+OUTSTANDING (operator, post-merge): live acceptance `omi --live executions` once the Tiger gateway reopens
+on :4001 — expect itemized fills with price on a trading day (commission/realized_pnl if the gateway sends
+them), `[]` on a flat day; corrections may appear as distinct rows. If commission fields are consistently
+null on a day with known commissions, the recorded fallback (ADR 0008) is a bounded post-End read
+(next_timeout). Optional next per the /think ROI ranking: `executions-filters` card (--symbol/--side), or
+Phase 2 (gated orders).
+<<< END
+
 ## seq=4 · 2026-07-02T00:00:00Z · impl→review · completed · by=claude-sonnet-5(claude-code)
 done:   Card 01 implemented on feat/executions-command (cut from main @ 75dc44e). New src/ib/executions.rs:
         ExecRow/CommissionRow plain rows (fields match the frozen test's struct literals exactly);
