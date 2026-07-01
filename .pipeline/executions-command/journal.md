@@ -180,3 +180,63 @@ Done when: card 01 verify green + full-verify green + clippy clean; PR opened fe
 card status=in-progress→review; journal appended; then run pipeline-review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-02T00:00:00Z · impl→review · completed · by=claude-sonnet-5(claude-code)
+done:   Card 01 implemented on feat/executions-command (cut from main @ 75dc44e). New src/ib/executions.rs:
+        ExecRow/CommissionRow plain rows (fields match the frozen test's struct literals exactly);
+        pure merge_executions(execs, comms) JOIN seam — HashMap<exec_id,&CommissionRow> index, per-exec
+        passthrough + joined/null commission fields, orphan commissions dropped, order preserved; gateway
+        executions(cfg) mirrors orders.rs/positions.rs drain-to-End via `for item in sub.iter_data()`
+        (ADR 0008 — NOT the reqPnL take-first of ADR 0007). realized_pnl reuses super::pnl_number verbatim.
+        side = d.execution.side.as_str().to_string() ("BOT"/"SLD"). d.contract.symbol is ibapi's `Symbol`
+        newtype (not String) — needed `.to_string()` (only surprise vs the card's guidance). Wired
+        mod.rs (`mod executions;` + re-exports), cli.rs (Command::Executions, no args), main.rs (dispatch).
+        Did NOT touch tests/executions_command.rs (spec-paths) or any other frozen spec.
+        Verify green: cargo build; cargo test --test executions_command (8/8). Also full-verify green:
+        cargo test (whole suite, all files incl. executions_command 8/8); cargo clippy --all-targets
+        -- -D warnings (clean, zero warnings). Pushed feat/executions-command, opened PR #8 via `gh`
+        (forge token present — gh auth status confirmed jackypanster). Card 01 -> status=review on main;
+        current.json.pr set, stage=impl. This is the feature's ONLY card, so ALL cards are now `review`
+        — routing to pipeline-review (feature-complete), not back to pipeline-impl.
+output: https://github.com/jackypanster/oh-my-ib/pull/8, src/ib/executions.rs, src/ib/mod.rs, src/cli.rs,
+        src/main.rs (on feat/executions-command @ 2e12854), .pipeline/executions-command/tasks/01.md,
+        .pipeline/current.json, .pipeline/executions-command/journal.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/executions-command pr=https://github.com/jackypanster/oh-my-ib/pull/8
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (config at ~/.config/oh-my-ib/config.toml, not needed to build/test).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions (agent-first, hard safety rules, verify model). Read FIRST.
+  - .pipeline/executions-command/tasks/01.md — the card (spec-rev, spec-paths, impl-paths, freeze coverage section)
+  - .pipeline/executions-command/arch.md, CONTEXT.md, docs/adr/0008-executions-drain-and-commission-join.md
+  - PR #8 diff (feat/executions-command vs main) — src/ib/executions.rs, src/ib/mod.rs, src/cli.rs, src/main.rs
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic, two-commit diff): `git diff 374ea2f <branch-tip> -- tests/executions_command.rs`
+     MUST be empty (spec untouched). Non-empty ⇒ reject, attempts++, route to pipeline-impl (or hunt at >=3).
+  2. Read-review what the freeze coverage section (card 01) flags as NOT frozen: `client.executions()` wiring,
+     the drain-to-End `iter_data()` loop (must NOT be take-first, must NOT loop without an End — ADR 0008),
+     the ibapi-item -> row extraction (exec_id/order_id/perm_id/time/symbol/conid/side/shares/price/
+     cumulative_qty/avg_price/exchange field mapping), resolve_account reuse, the {account, executions:[...]}
+     assembly, and --format table (should be free via generic render_table).
+  3. Run the full-suite gate on the branch HEAD: current.json.full-verify = ["cargo build", "cargo test"].
+     Both must be green. Also re-run `cargo clippy --all-targets -- -D warnings` (clean expected).
+  4. Semantic check: side is the wire string via ExecutionSide::as_str() (NOT Debug); realized_pnl goes
+     through pnl_number (no reimplemented sentinel filter); orphan commission dropped, not phantom-rowed;
+     missing commission -> null triple, not an error; ExecRow/CommissionRow field lists match card 01 exactly.
+  5. If clean: write reviews/review-01.md, flip card 01 status -> done, advance current.json.stage -> review,
+     append journal seq=5, commit to main. Then get an explicit human confirm before squash-merging PR #8
+     (only pipeline-review merges). After merge: current.json.stage -> done.
+Feature gotchas (project-specific traps the next node MUST know):
+  - This is a binary+lib crate: gateway wiring can't be frozen offline — review-by-reading covers the
+    gaps the freeze gate can't (see card 01 Freeze coverage section) instead of demanding more tests.
+  - Live acceptance (`omi --live executions` after a day with fills) is BLOCKED until the operator reopens
+    the Tiger gateway on :4001 — do NOT block the merge gate on it; it's a separate operator-run check.
+  - Do NOT touch other frozen specs (phase1 cli_contract, tz, connect-retry, quote, pnl, agents-md, slim-claude-md).
+  - Only this card on this feature — once it's done, current.json.stage should read review before human-confirmed merge, then done after merge.
+Done when: review-01.md written, freeze gate + full-suite gate confirmed green, card 01 -> done, human has
+explicitly confirmed the merge, PR #8 squash-merged into main, current.json.stage -> done.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt (route to the offending card or a feature-level
+reviews/integration-NN.md report per CONTRACT, never a blind retry).
+<<< END
