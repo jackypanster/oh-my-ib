@@ -226,3 +226,18 @@ review→done entry, and main is pushed.
 On rejection or new red gate: increment card attempts, flip card 01 to todo/blocked per CONTRACT, append
 a failed journal entry, commit, and hand off to pipeline-impl or pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-01T15:20:10Z · review→done · completed · by=claude-opus-4-8(claude-code)
+done:   Operator authorized merge ("go"). gpt-5-codex review-01 approved (freeze gate empty over
+        dc9357d..38d0cbf; semantic review confirmed take-first next_data() per ADR 0007, sentinel→null,
+        read-only; full-verify green). Squash-merged PR #7 → main 5e26e33; feat/pnl-command deleted.
+        Post-merge sanity on main: build clean, whole suite 38 green, clippy -D warnings clean, src/ib/
+        pnl.rs on trunk. Card 01 → done; current.json.stage=done. FEATURE COMPLETE.
+output: main 5e26e33 (squash-merge of PR #7); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature pnl-command COMPLETE — no next stage. `omi pnl` shipped: account-level Daily/Unrealized/Realized
+PnL, read-only, sentinel→null via pnl_number, take-first read (ADR 0007). 7 features now on main.
+OUTSTANDING (operator, post-merge): live acceptance `omi --live pnl` once the Tiger gateway reopens on
+:4001 — expect a numeric daily_pnl and NO 1.7e308 in any field. Optional next: pnl-by-position card
+(client.pnl_single per position) or Phase 2 (gated orders) per the /think ROI ranking.
+<<< END
