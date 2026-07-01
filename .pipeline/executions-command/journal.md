@@ -181,6 +181,28 @@ card status=in-progress→review; journal appended; then run pipeline-review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
 
+## seq=5 · 2026-07-01T16:50:52Z · impl→review · completed · by=claude-opus-4-8(claude-code)
+done:   Reviewed PR #8 (head 2e12854, feat/executions-command). FREEZE GATE PASS: git diff 374ea2f..2e12854
+        -- tests/executions_command.rs empty (frozen spec untouched); no other spec touched. Semantic
+        review (check): PR surface = only the 4 card impl-paths (spec ∩ impl = ∅); merge_executions join
+        matches the frozen contract (order preserved, missing→null, orphan dropped, realized_pnl via
+        pnl_number); gateway executions() drains to End via iter_data (ADR 0008) — verified in ibapi source
+        that ExecutionDataEnd→EndOfStream→NextAction::Return(None) (sync.rs:171), so the drain terminates
+        cleanly and never spuriously errors (cannot hang; opposite of reqPnL/ADR 0007); CommissionReport
+        routed ByExecutionId correlates by exec_id; read-only (no place/modify/cancel, no OMI_ALLOW_LIVE);
+        output.rs untouched (table free). FULL-SUITE GATE PASS on 2e12854: cargo build + cargo test (whole
+        suite 35 tests, executions_command 8/8, no regressions) + clippy --all-targets -D warnings clean.
+        Wrote review-01.md (verdict: approve). AWAITING EXPLICIT HUMAN MERGE CONFIRM — only pipeline-review
+        merges, never without a go.
+output: .pipeline/executions-command/reviews/review-01.md, .pipeline/executions-command/journal.md
+--- handoff ---
+APPROVED, awaiting human confirm. On operator "go": squash-merge PR #8 via gh, delete feat/executions-
+command, set card 01 status=done, current.json stage=done, append the final review→done journal entry,
+push main. Post-merge (operator, not a merge gate): live acceptance `omi --live executions` once the Tiger
+gateway reopens on :4001. On rejection: attempts++, append fixes to card 01, flip status=todo (>=3 ⇒
+blocked), route pipeline-impl (or pipeline-hunt).
+<<< END
+
 ## seq=4 · 2026-07-02T00:00:00Z · impl→review · completed · by=claude-sonnet-5(claude-code)
 done:   Card 01 implemented on feat/executions-command (cut from main @ 75dc44e). New src/ib/executions.rs:
         ExecRow/CommissionRow plain rows (fields match the frozen test's struct literals exactly);
