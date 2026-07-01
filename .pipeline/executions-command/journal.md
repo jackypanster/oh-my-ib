@@ -126,3 +126,57 @@ Done when: tasks/01.md written with the frozen red test committed to trunk (spec
 then run pipeline-impl.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-01T16:39:48Z · task→impl · completed · by=claude-opus-4-8(claude-code)
+done:   ONE atomic card. Froze the red spec tests/executions_command.rs in a SEPARATE freeze commit
+        374ea2f (spec-rev): 2 black-box (--help lists `executions`; `executions --help` ok) + 6 pure-seam
+        `merge_executions` cases (matched join → numeric commission/currency/realized_pnl; missing
+        commission → 3x null; realized_pnl sentinel 1.7976931348623157e308 / None → null via pnl_number;
+        order preserved; side "BOT"/"SLD" verbatim; orphan commission dropped; empty → []). Verified
+        genuinely RED for the right reason: `cargo build` GREEN (lib+bin), `cargo test --test
+        executions_command` fails with E0432 unresolved `oh_my_ib::ib::{merge_executions,ExecRow,
+        CommissionRow}` (goes green when impl adds the seam + Executions subcommand). Wrote card 01
+        (spec-rev=374ea2f, status=todo, verify=[cargo build, cargo test --test executions_command],
+        spec-paths=tests/executions_command.rs, impl-paths=src/ib/executions.rs+mod.rs+cli.rs+main.rs,
+        disjoint). current.json stage=task, full-verify=[cargo build, cargo test].
+output: tests/executions_command.rs (freeze commit 374ea2f), .pipeline/executions-command/tasks/01.md,
+        .pipeline/current.json, .pipeline/executions-command/journal.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none  card=01
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (config at ~/.config/oh-my-ib/config.toml, not needed to build/test).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions (agent-first, hard safety rules, verify model). Read FIRST.
+  - .pipeline/executions-command/tasks/01.md — the card (scope, impl-paths, near-complete impl guidance)
+  - .pipeline/executions-command/arch.md — component boundaries, ibapi surface, data flow, frozen surface
+  - .pipeline/executions-command/CONTEXT.md — execution/fill/commission/exec_id glossary
+  - .pipeline/executions-command/docs/adr/0008-executions-drain-and-commission-join.md — drain-to-End + join proof
+  - src/ib/orders.rs + src/ib/positions.rs — the drain-to-End iter_data() pattern to mirror
+  - src/ib/pnl.rs — pnl_number (REUSE for realized_pnl; already re-exported in mod.rs)
+Your task (concrete, numbered):
+  1. Branch feat/executions-command off main. Implement card 01 in impl-paths ONLY:
+     src/ib/executions.rs (ExecRow/CommissionRow plain structs + pure merge_executions seam + gateway
+     executions(cfg)); src/ib/mod.rs (`mod executions;` + `pub use executions::{executions,
+     merge_executions, ExecRow, CommissionRow};`); src/cli.rs (Command::Executions, no args);
+     src/main.rs (dispatch Command::Executions => ib::executions(&config)).
+  2. Make verify GREEN: `cargo build` && `cargo test --test executions_command`. Also keep the whole
+     suite + clippy clean: `cargo test` (full-verify) and `cargo clippy --all-targets -- -D warnings`.
+  3. Open a PR feat/executions-command -> main. Do NOT merge (only pipeline-review merges, after a human go).
+Feature gotchas (project-specific traps you MUST honor):
+  - DRAIN TO END via `for item in sub.iter_data()` — ExecutionDataEnd → EndOfStream (ADR 0008). Do NOT
+    take-first (that's reqPnL/ADR 0007); do NOT loop without End (there IS an End here).
+  - JOIN exec↔commission by exec_id in merge_executions; missing commission → 3x null (NOT error);
+    orphan commission → drop (no phantom row). Best-effort by stream position (Tiger may omit/reorder).
+  - realized_pnl MUST reuse super::pnl_number (do NOT re-implement the sentinel filter).
+  - side = d.execution.side.as_str().to_string() → "BOT"/"SLD" (NOT Debug). time = raw IB string.
+    Empty result = exit 0 {account, executions:[]}.
+  - ExecRow/CommissionRow field lists are FROZEN by the test (struct-literal construction) — match them
+    EXACTLY (see card 01). Changing a field name/type breaks the frozen spec → re-route to task, do NOT edit the test.
+  - Do NOT edit tests/executions_command.rs (spec-paths) or any other frozen spec. spec ∩ impl = ∅.
+  - reqExecutions is current-day only; no filter flags this card (ExecutionFilter default except account_code).
+Done when: card 01 verify green + full-verify green + clippy clean; PR opened feat/executions-command -> main;
+card status=in-progress→review; journal appended; then run pipeline-review.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
