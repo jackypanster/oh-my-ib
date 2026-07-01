@@ -54,6 +54,8 @@ pub enum Command {
     Health,
     /// Account summary (net liq, cash, buying power)
     Account,
+    /// Account PnL (daily, unrealized, realized)
+    Pnl,
     /// Current positions
     Positions,
     /// Open (working) orders — read only

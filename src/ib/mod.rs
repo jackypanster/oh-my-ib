@@ -15,6 +15,7 @@ mod client;
 mod contract;
 mod history;
 mod orders;
+mod pnl;
 mod positions;
 mod quote;
 
@@ -23,6 +24,7 @@ pub use client::health;
 pub use contract::contract;
 pub use history::history;
 pub use orders::orders;
+pub use pnl::{pnl, pnl_number};
 pub use positions::positions;
 pub use quote::{quote, quote_price_tick};
 
