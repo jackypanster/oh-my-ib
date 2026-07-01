@@ -60,6 +60,8 @@ pub enum Command {
     Positions,
     /// Open (working) orders — read only
     Orders,
+    /// Current-day executions (fills), joined to commission reports
+    Executions,
     /// Snapshot quote for a symbol
     Quote(QuoteArgs),
     /// Resolve contract details for a symbol
