@@ -235,3 +235,39 @@ Done when: review-01.md committed+pushed; merge executed ONLY after D3 live acce
 human authorization (or a clean reject routed to impl).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-02T16:35:23Z · review→review · completed · by=claude-fable-5(claude-code)
+done:   Reviewed PR #9 at head 308891b. Freeze gate EMPTY (two-commit diff 367d671..308891b over
+        spec-paths). Full-suite gate on a detached worktree at the head: cargo build + cargo test
+        GREEN (12 targets / 56 cases, trunk red resolved), clippy -D warnings clean. Semantic
+        review by session + independent adversarial subagent against ibapi-3.1.0 source: all 7
+        binding constraints hold (take-first; fail-fast no-partial; symbol-from-discovery; 4 money
+        fields via pnl_number; qty==0 unfiltered; drop-cancels verified incl. error paths; spec
+        untouched). 2 ADVISORY findings only (dup-conid mirror of positions.rs; wedged-gateway
+        blocking read = ADR 0009's recorded next_timeout fallback scenario). Verdict: APPROVE,
+        awaiting explicit human confirm + PRD D3 live acceptance. Gateway probed at review time:
+        :4001 connection refused ⇒ D3 NOT satisfiable yet ⇒ merge BLOCKED on the operator.
+output: .pipeline/pnl-by-position/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Await the OPERATOR. Do NOT merge automatically. (Only pipeline-review merges, human-confirmed.)
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/9
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+Required before merge (PRD D3, in order):
+  1. Operator starts the Tiger gateway (live :4001, API on, Trusted IP 127.0.0.1).
+  2. Operator (or bot at operator's ask) runs from ~/workspace/oh-my-ib:
+     - `cargo run -q --bin omi -- --live pnl` → numeric daily_pnl, NO 1.7e308 in any field
+     - `cargo run -q --bin omi -- --live pnl-by-position` → rows for held positions ([] if flat);
+       note whether qty==0 closed-today rows appear (D6 live observation)
+     If pnl works but pnl-by-position fails ⇒ reqPnLSingle unsupported on Tiger ⇒ REJECT card 01
+     (attempts++ → 1, card→todo, journal status=failed, route pipeline-impl/task per finding).
+  3. Operator explicitly authorizes the merge.
+On confirm (all three satisfied):
+  1. `git pull --rebase`; re-read PR #9 state; ensure head is still
+     308891bbaea804d7aaf0bb777e9ce51b5c032dce (changed head ⇒ re-run freeze gate + full verify first).
+  2. Squash-merge PR #9 via gh, deleting feat/pnl-by-position.
+  3. On main: card 01 status=done, current.json.stage=done, append the review→done journal entry
+     (include live-acceptance evidence, REDACT account ids/balances — public repo), commit once, push.
+On reject: name the offending behavior; attempts++ (→1); card 01 → todo; journal status=failed;
+route pipeline-impl (or pipeline-task if the spec itself is wrong — name the spec target).
+<<< END
