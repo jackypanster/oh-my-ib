@@ -122,3 +122,60 @@ Feature gotchas (traps the next node MUST know):
 Done when: freeze commit + record commit pushed to main, journal seq=3 appended, card 01 = todo.
 On success: run pipeline-impl. On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-02T16:17:07Z · task→impl · completed · by=claude-fable-5(claude-code)
+done:   ONE card (arch pre-fixed the split). Freeze commit 367d671 = spec-rev: tests/
+        pnl_by_position_command.rs — black-box CLI (help lists pnl-by-position; subcommand --help ok)
+        + pure seam via oh_my_ib::ib lib import (finite pass-through; sentinel → null in all 4 money
+        fields; NAN/±INF → null; conid/symbol/position raw; qty==0 row EMITTED not filtered (PRD D6);
+        exact 7-key set; order preserved; [] on empty). RED verified at spec-rev: card runner fails
+        with E0432 unresolved import (the sanctioned red, same shape as executions card 01);
+        `cargo build` stays green. Record commit: tasks/01.md (status=todo, attempts=0, verify
+        card-scoped `cargo test --test pnl_by_position_command`, spec∩impl=∅ asserted),
+        current.json.stage=task, full-verify unchanged ["cargo build","cargo test"]. NOTE: trunk
+        full suite is now RED by design until the impl PR merges (CONTRACT §State authority).
+output: tests/pnl_by_position_command.rs (spec-rev 367d671334311f428fb917a7a54fc9b84b8289f8),
+        .pipeline/pnl-by-position/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (config lives at ~/.config/oh-my-ib/config.toml, not needed offline).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions (agent-first authoring, hard safety rules). Read FIRST.
+  - .pipeline/pnl-by-position/tasks/01.md — THE card: exact scope, verify, freeze coverage
+  - .pipeline/pnl-by-position/arch.md — component boundaries + step-by-step gateway fn shape
+  - .pipeline/pnl-by-position/CONTEXT.md + docs/adr/0009-pnl-by-position-sweep.md — binding: take-first, fail-fast, sentinel routing
+  - src/ib/pnl.rs (pnl_number seam + take-first model), src/ib/positions.rs (discovery model),
+    src/ib/executions.rs (newest module/seam style to mirror)
+Your task (concrete, numbered):
+  1. Pick card 01 (oldest todo): set status=in-progress (journal it), cut feat/pnl-by-position from trunk.
+  2. Make the card verify green — `cargo build` + `cargo test --test pnl_by_position_command` — by
+     writing ONLY impl-paths: src/ib/pnl_by_position.rs (PnlSingleRow + shape_pnl_by_position +
+     pnl_by_position per the card's step-by-step), src/cli.rs (PnlByPosition variant), src/main.rs
+     (dispatch arm), src/ib/mod.rs (mod + pub use).
+  3. Also run `cargo clippy --all-targets -- -D warnings` (repo verify convention, AGENTS.md).
+  4. Push feat/pnl-by-position; open the PR (gh pr create, base main); card status=review; append
+     journal seq=4; commit metadata to trunk; push.
+  5. NEVER create/modify/delete tests/pnl_by_position_command.rs or ANY tests/** file (all frozen).
+Feature gotchas (traps the next node MUST know):
+  - TAKE-FIRST per pnl_single subscription: next_data() once, then drop. NEVER iter_data()/drain —
+    reqPnLSingle is markerless (no End); a drain loop hangs forever (ADR 0009, ADR 0007).
+  - FAIL-FAST: Some(Err)/None from ANY read → AppError::data naming the failing conid; never emit a
+    partial by_position array (ADR 0009 — partial is indistinguishable from complete to the agent).
+  - symbol comes from DISCOVERY (PnLSingle carries no contract identity); position/value/PnL fields
+    come from the PnLSingle reading (fresher than the portfolio snapshot).
+  - All 4 money fields (daily/unrealized/realized/value) through pnl_number(Some(x)); conid/symbol/
+    position raw; never filter qty==0 rows (frozen test asserts this).
+  - ContractId is a newtype: ibapi::accounts::types::ContractId, From<i32> exists.
+  - clap derive kebab-cases PnlByPosition → pnl-by-position automatically; no rename attribute.
+  - Drop the account_updates subscription BEFORE the sweep (explicit drop — Drop sends cancel).
+  - Trunk full suite is RED at spec-rev by design; only the card-scoped runner must go green on your
+    branch (plus build + clippy). Review runs the full suite on the PR head (full-verify).
+  - MERGE GATE (PRD D3): review must NOT merge until operator live-accepts `omi --live pnl` first
+    (Tiger gateway currently CLOSED) — carry this line into your handoff to review.
+Done when: card verify + clippy green on feat/pnl-by-position, PR open, card status=review,
+journal seq=4 appended + pushed. On success: run pipeline-review.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
