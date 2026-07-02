@@ -271,3 +271,27 @@ On confirm (all three satisfied):
 On reject: name the offending behavior; attempts++ (→1); card 01 → todo; journal status=failed;
 route pipeline-impl (or pipeline-task if the spec itself is wrong — name the spec target).
 <<< END
+
+## seq=6 · 2026-07-02T16:45:39Z · review→done · completed · by=claude-fable-5(claude-code)
+done:   FEATURE DONE. Operator opened the Tiger gateway (:4001); D3 live acceptance ran from a
+        detached worktree at the PR head: (1) `omi --live health` connected ✓; (2) `omi --live pnl`
+        → numeric daily/unrealized/realized (all 0.0 — flat account; NO 1.7e308 leak) ⇒ reqPnL
+        family PROVEN on Tiger; (3) `omi --live pnl-by-position` → {"account":…,"by_position":[]}
+        exit 0 — the flat-account path per PRD criterion 3, cross-checked consistent with
+        `omi --live positions` → []. Account ids/balances redacted (public repo). Operator
+        explicitly authorized the merge (HITL confirm). Squash-merged PR #9 → main cbdd4c6,
+        feat/pnl-by-position deleted. Card 01 → done; current.json.stage=done. Trunk suite GREEN
+        post-merge (13 targets, 0 failed).
+        OPEN OBSERVATION (not a blocker; PRD D3 text explicitly accepts [] when flat): the account
+        held ZERO positions, so the sweep issued ZERO reqPnLSingle calls — Tiger's reqPnLSingle
+        support is still unexercised live. On the first trading day WITH positions, run
+        `omi --live pnl-by-position` once: rows appear ⇒ fully proven; a pnl_single error/hang ⇒
+        open a fix card via pipeline-task (ADR 0009 records next_timeout as the fallback), and
+        note whether qty==0 closed-today rows appear (D6 observation).
+output: main cbdd4c6 (squash-merge of PR #9); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature pnl-by-position is COMPLETE — no next stage. omi now has 10 read-only subcommands.
+Daily use: `omi --live pnl-by-position` (live :4001) or `omi pnl-by-position` (paper :4002).
+First trading day with positions: re-run `omi --live pnl-by-position` to close the reqPnLSingle
+observation above. Optional next feature: a NEW pipeline via pipeline-prd (operator decides).
+<<< END
