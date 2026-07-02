@@ -17,6 +17,7 @@ mod executions;
 mod history;
 mod orders;
 mod pnl;
+mod pnl_by_position;
 mod positions;
 mod quote;
 
@@ -27,6 +28,7 @@ pub use executions::{executions, merge_executions, CommissionRow, ExecRow};
 pub use history::history;
 pub use orders::orders;
 pub use pnl::{pnl, pnl_number};
+pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
 pub use positions::positions;
 pub use quote::{quote, quote_price_tick};
 

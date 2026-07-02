@@ -56,6 +56,8 @@ pub enum Command {
     Account,
     /// Account PnL (daily, unrealized, realized)
     Pnl,
+    /// Per-position PnL (daily, unrealized, realized)
+    PnlByPosition,
     /// Current positions
     Positions,
     /// Open (working) orders — read only
