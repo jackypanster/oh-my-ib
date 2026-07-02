@@ -64,3 +64,61 @@ Done when: arch.md + CONTEXT.md + docs/adr/* committed on main + pushed, journal
 current.json.stage=arch. On success: run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-02T16:10:14Z · arch→task · completed · by=claude-fable-5(claude-code)
+done:   Architecture locked, all design questions resolved CODE-FIRST (zero human questions needed).
+        Shape: new src/ib/pnl_by_position.rs = ibapi-free PnlSingleRow + pure seam
+        shape_pnl_by_position(Vec<PnlSingleRow>) -> Value (mirror merge_executions) + gateway fn
+        pnl_by_position(cfg) doing discovery (account_updates drain-to-End, positions.rs pattern, drop
+        → cancel) then N sequential pnl_single take-first reads in discovery order; Command::PnlByPosition
+        (clap kebab-cases to pnl-by-position); dispatch in main.rs; re-exports in ib/mod.rs. Interleaving
+        proven safe in crate source: account_updates = shared-channel routing, pnl_single = request-id
+        routing (disjoint domains, sequential phases). ADR 0009: fail-fast (no partial sweep — partial is
+        indistinguishable from complete to the agent); sentinel routing incl. defensive `value`; blocking
+        next_data() default with next_timeout fallback. CORRECTIONS vs seq=1 handoff: crate is lib+bin
+        (ADR 0006) NOT "binary crate"; ADR 0007 file is 0007-pnl-take-first-unbounded-stream.md.
+output: .pipeline/pnl-by-position/arch.md, .pipeline/pnl-by-position/CONTEXT.md,
+        .pipeline/pnl-by-position/docs/adr/0009-pnl-by-position-sweep.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (config lives at ~/.config/oh-my-ib/config.toml, not needed for task).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions (agent-first authoring, hard safety rules). Read FIRST.
+  - .pipeline/pnl-by-position/PRD.md — what (D1-D6 locked)
+  - .pipeline/pnl-by-position/arch.md — the locked shape; its §Freeze coverage is your card input
+  - .pipeline/pnl-by-position/CONTEXT.md + docs/adr/0009-pnl-by-position-sweep.md — binding terms + stream decision
+  - .pipeline/executions-command/tasks/01.md + tests/executions_command.rs — the card + frozen-test model to MIRROR
+Your task (concrete, numbered):
+  1. ONE card (mirror executions card 01): card 01 = whole feature (module + seam + CLI variant +
+     dispatch). Arch fixed the components; no split (one command, one module, one seam).
+  2. FREEZE COMMIT (touches ONLY spec-paths, ONE commit): write tests/pnl_by_position_command.rs per
+     arch.md §Freeze coverage — black-box (`omi --help` lists `pnl-by-position`;
+     `omi pnl-by-position --help` exit 0) + pure seam via
+     `use oh_my_ib::ib::{shape_pnl_by_position, PnlSingleRow}` (finite pass-through; sentinel
+     1.7976931348623157e308 → null in daily/unrealized/realized/value; NAN/INFINITY → null;
+     conid/symbol/position raw; row order preserved; empty Vec → []; exact 7-key set per row).
+     Mirror executions_command.rs header style (FROZEN SPEC banner + explicit NOT-frozen list).
+     Expected RED = the card-scoped runner FAILS at spec-rev (unresolved lib import + missing
+     subcommand — the sanctioned red shape, exactly like executions card 01).
+  3. RECORD COMMIT (metadata only, never spec-paths): tasks/01.md frontmatter — status: todo,
+     attempts: 0, spec-rev: <freeze commit sha>, spec-paths: [tests/pnl_by_position_command.rs],
+     impl-paths: [src/ib/pnl_by_position.rs, src/cli.rs, src/main.rs, src/ib/mod.rs],
+     verify: `cargo test --test pnl_by_position_command` (card-scoped, NEVER full suite).
+     Include ## Freeze coverage (frozen = CLI black-box + pure seam; review must READ the gateway fn
+     + hold PRD D3 live gate). Advance current.json.stage=task (full-verify stays
+     ["cargo build","cargo test"]). Append journal seq=3. Commit once; push BOTH commits.
+  4. Assert spec-paths ∩ impl-paths = ∅ before committing.
+Feature gotchas (traps the next node MUST know):
+  - Crate is lib+bin (ADR 0006): the frozen test imports oh_my_ib::ib::... — do NOT write it as
+    binary-only black-box; the pure-seam half needs the lib import.
+  - Write ZERO src code — task authors the red test + card metadata only.
+  - reqPnLSingle is MARKERLESS (take-first, ADR 0009) — nothing gateway-touching belongs in the
+    frozen file; the seam is pure by design so the test needs no ibapi import.
+  - MERGE GATE (PRD D3): carries through every later handoff — PR must not merge until operator
+    live-accepts `omi --live pnl` first (Tiger gateway currently CLOSED).
+Done when: freeze commit + record commit pushed to main, journal seq=3 appended, card 01 = todo.
+On success: run pipeline-impl. On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
