@@ -179,3 +179,59 @@ Done when: card verify + clippy green on feat/pnl-by-position, PR open, card sta
 journal seq=4 appended + pushed. On success: run pipeline-review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-02T16:24:24Z · impl→review · completed · by=claude-fable-5(claude-code)
+done:   Card 01 GREEN on feat/pnl-by-position @ 308891b (PR #9). Wrote ONLY impl-paths:
+        src/ib/pnl_by_position.rs (new — PnlSingleRow + pure shape_pnl_by_position + two-phase
+        gateway fn: account_updates discovery drain → explicit drop → N sequential pnl_single
+        take-first reads, fail-fast naming the conid), src/ib/mod.rs (mod + pub use), src/cli.rs
+        (PnlByPosition variant), src/main.rs (dispatch). One fix during the loop: contract.symbol
+        is a Symbol newtype → .to_string(). Verify: cargo build ✓, cargo test --test
+        pnl_by_position_command ✓ (9/9), cargo clippy --all-targets -- -D warnings ✓. Frozen spec
+        untouched. No remaining todo cards (single-card feature) → route pipeline-review.
+output: feat/pnl-by-position @ 308891b; https://github.com/jackypanster/oh-my-ib/pull/9;
+        .pipeline/pnl-by-position/tasks/01.md (status=review); .pipeline/current.json (stage=impl, pr)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/9
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo; gh is authenticated (forge = github.com → gh adapter).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions + verify commands. Read FIRST.
+  - .pipeline/pnl-by-position/tasks/01.md — the card; its ## Freeze coverage names what to read by hand
+  - .pipeline/pnl-by-position/arch.md + docs/adr/0009-pnl-by-position-sweep.md — the binding design
+  - .pipeline/pnl-by-position/PRD.md — D3 MERGE GATE (live acceptance sequence)
+  - .pipeline/executions-command/reviews/ — the review style to mirror
+Your task (concrete, numbered):
+  1. FREEZE GATE FIRST (deterministic, two-commit diff): git fetch origin, PR head sha via
+     `gh pr view 9 --json headRefOid`; then
+     `git diff 367d671334311f428fb917a7a54fc9b84b8289f8 <head> -- tests/pnl_by_position_command.rs`
+     MUST be empty. Non-empty ⇒ REJECT: attempts++, card→todo, journal, stop.
+  2. FULL-SUITE GATE on the PR head (detached worktree, exact commands from current.json.full-verify):
+     `cargo build` + `cargo test` — the WHOLE suite must be green on the head (trunk is red by design;
+     the head resolves it). Also `cargo clippy --all-targets -- -D warnings` (repo convention).
+  3. SEMANTIC REVIEW per the card's Freeze coverage (gateway fn is NOT frozen — read it):
+     take-first next_data() per pnl_single (NEVER iter_data/drain — markerless, ADR 0009);
+     fail-fast on Some(Err)/None naming the conid (NO partial by_position); symbol from discovery,
+     position/value/PnL from the reading; all 4 money fields through pnl_number; qty==0 rows not
+     filtered; explicit drop(subscription) between phases; ContractId::from(i32); AppError context
+     strings name "pnl-by-position"; spec-paths ∩ impl-paths = ∅ re-check.
+  4. HARD GATE — PRD D3 (do NOT skip, do NOT merge early): the OPERATOR must (a) live-accept
+     `omi --live pnl` (numeric daily_pnl, no 1.7e308 leak — proves Tiger serves the reqPnL family),
+     (b) live-accept `omi --live pnl-by-position` (rows for held positions or [] flat), and
+     (c) explicitly authorize the merge. Tiger gateway is currently CLOSED — surface the ask and WAIT.
+  5. Verdict: approve ⇒ write reviews/review-01.md, journal the approve-awaiting-human entry; after
+     explicit human confirm: squash-merge PR #9 (delete feat/pnl-by-position), card→done,
+     current.json.stage=done, journal the review→done entry. Reject ⇒ name the offending finding,
+     attempts++ (→1), card→todo, journal, route pipeline-impl.
+Feature gotchas (traps the next node MUST know):
+  - Trunk full suite is RED at 367d671..main by design (frozen red test) — judge the FULL suite only
+    on the PR head, never on trunk (CONTRACT §State authority).
+  - The freeze-gate diff targets the PR HEAD sha, not a working tree.
+  - reviews/* + card status + current.json + journal are your write-set; NEVER edit product code.
+  - Only pipeline-review merges, and only after the explicit human confirm (CONTRACT §State machine).
+Done when: review-01.md committed+pushed; merge executed ONLY after D3 live acceptance + explicit
+human authorization (or a clean reject routed to impl).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
