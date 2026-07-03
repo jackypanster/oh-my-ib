@@ -21,6 +21,7 @@ mod pnl;
 mod pnl_by_position;
 mod positions;
 mod quote;
+mod search;
 
 pub use account::account;
 pub use brief::{assemble_brief, brief};
@@ -33,6 +34,7 @@ pub use pnl::{pnl, pnl_number};
 pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
 pub use positions::positions;
 pub use quote::{quote, quote_price_tick, shape_quotes};
+pub use search::{search, shape_search, SearchRow};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
