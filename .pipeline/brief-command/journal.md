@@ -216,3 +216,46 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: review-01.md written; if human-confirmed+live-accepted: PR #10 squash-merged, card done,
 stage=done, seq=5 pushed. On reject: card→todo/attempts=1, route pipeline-impl.
 <<< END
+
+## seq=5 · 2026-07-03T03:10:42Z · review→review · completed · by=claude-fable-5(claude-code)
+done:   Reviewed PR #10 at head 6808d09. Freeze gate EMPTY (f7cab5d..6808d09 over spec-paths = 0;
+        tests/ vs main = 0 — the seq=4 fmt incident verified reverted). Full-suite gate on a
+        detached worktree at the head: build + 64/0 tests + clippy -D warnings GREEN. Semantic
+        review by session + independent adversarial subagent (first subagent instance stalled at
+        startup and was killed — lost ~10min; sync relaunch completed): all 7 binding claims
+        CONFIRMED against ibapi-3.1.0 source (routing domains disjoint; CommissionsReport
+        ByExecutionId-only; sibling byte-identity incl. BTreeMap key-order proof; as_of UTC
+        infallible; fail-fast contexts). 1 ADVISORY (orders unfiltered w/o --account — ADR 0011
+        by-design). LIVE ACCEPTANCE (criterion 10, operator gateway :4001): omi --live brief
+        PASS fresh-session (3.6s, 8 keys, ISO as_of, no sentinel leak, [] flat-account sections);
+        cross-check account EXACT match + positions/orders/executions/pnl-by-position [] match
+        (5/6). SIDE-FINDING: standalone `omi --live pnl` WEDGED (blocking next_data, reproduced
+        w/ fresh client-id, pre-kill), and after diagnostic kills orphaned the reqPnL channel a
+        2nd brief run wedged at its pnl step — ADR 0007's recorded next_timeout trigger has now
+        FIRED live. Pre-existing class, diff-independent (byte-identity adversarially confirmed).
+        Verdict: APPROVE, awaiting explicit operator confirm; recommended follow-up = NEW feature
+        `read-timeouts` via pipeline-prd (apply ADR 0007 fallback to all take-first reads);
+        recommend gateway restart + one clean re-acceptance of brief before merge (current
+        gateway session polluted by the diagnostic kills). REDACTED: account ids/balances.
+output: .pipeline/brief-command/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Await the OPERATOR. Do NOT merge automatically. (Only pipeline-review merges, human-confirmed.)
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/10
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+Required before merge (in order):
+  1. Operator restarts the Tiger/IB gateway (live :4001) — the current session's reqPnL channel is
+     polluted by orphaned subscriptions from the wedge diagnostics.
+  2. One clean re-acceptance from the PR-head worktree (or any checkout of 6808d09):
+     `omi --live brief` → exit 0, 8 keys, numeric pnl, NO wedge. Do NOT run standalone
+     `omi --live pnl` immediately before it (known wedge trigger on this gateway build).
+  3. Operator explicitly authorizes the merge.
+On confirm (all three): git pull --rebase; verify PR #10 head still 6808d09 (changed head ⇒ re-run
+freeze gate + full verify first); squash-merge via gh, delete feat/brief-command; card 01
+status=done; current.json.stage=done; journal seq=6 (review→done, live evidence REDACTED);
+one commit on main; push. THEN (recommended, operator decides): start pipeline-prd for
+`read-timeouts` — apply ADR 0007's next_timeout fallback to all take-first reads (pnl, pnl_single,
+standalone AND inside brief); the live hang trigger is now proven, evidence in review-01.md.
+On reject: name the offending behavior; attempts++ (→1); card 01 → todo; journal status=failed;
+route pipeline-impl (or pipeline-task if the spec itself is wrong — name the spec target).
+<<< END
