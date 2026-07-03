@@ -42,3 +42,42 @@ Done when: arch.md + CONTEXT.md + docs/adr/0014-*.md committed (stage=arch, jour
 one commit, pushed). On success: run pipeline-task.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-03T09:00:37Z · arch→task · completed · by=claude-fable-5
+done:   arch complete: 4-file diff (cli Search variant, NEW src/ib/search.rs with SearchRow +
+        shape_search + search, mod.rs re-export, main.rs dispatch); ADR 0014 (plain bounded
+        call class — third read class; full pass-through; no STK guard); row shape pinned from
+        proto decoder source (7 keys, decoder defaults make shape total). Freeze coverage pinned.
+output: .pipeline/search-command/arch.md, .pipeline/search-command/CONTEXT.md,
+        .pipeline/search-command/docs/adr/0014-search-plain-bounded-call.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md; .pipeline/search-command/{PRD.md,arch.md,docs/adr/0014-*.md}
+  - tests/multi_quote.rs + tests/pnl_by_position_command.rs — house freeze patterns
+    (house-red unresolved import; frozen test constructs plain rows directly)
+Your task (concrete, numbered):
+  1. FREEZE COMMIT: write tests/search_command.rs per arch.md §Freeze coverage — shape_search
+     (exact 7-key row; gateway order; "" description pass-through; empty derivative list stays
+     a present [] key; zero rows => json!([])); CLI (--help lists search; search --help ok;
+     missing pattern => code="usage"; dead port => code="connection"). ONE commit touching
+     ONLY that file; house-red via use oh_my_ib::ib::{shape_search, SearchRow}. Hash = spec-rev.
+  2. RECORD COMMIT: tasks/01.md (status todo, attempts 0,
+     verify=["cargo build","cargo test --test search_command"],
+     spec-paths=[tests/search_command.rs],
+     impl-paths=[src/cli.rs, src/ib/search.rs, src/ib/mod.rs, src/main.rs],
+     spec-rev=<freeze hash>); current.json stage=task + full-verify=["cargo build","cargo test"];
+     journal seq=3. Metadata only.
+Feature gotchas:
+  - NEVER run repo-wide cargo fmt — fmt src/** only. Public repo: no secrets.
+  - No STK guard in search (D3) — the frozen CLI tests must NOT expect a sec-type error.
+  - main.rs IS in impl-paths this time (new dispatch arm) — unlike the last two features.
+  - spec/impl paths disjoint; single card, single freeze commit.
+Done when: both commits pushed, card 01 todo, journal seq=3 appended.
+On success: run pipeline-impl (operator hands to interactive π/omp).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
