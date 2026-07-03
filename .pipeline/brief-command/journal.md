@@ -259,3 +259,41 @@ standalone AND inside brief); the live hang trigger is now proven, evidence in r
 On reject: name the offending behavior; attempts++ (→1); card 01 → todo; journal status=failed;
 route pipeline-impl (or pipeline-task if the spec itself is wrong — name the spec target).
 <<< END
+
+## seq=6 · 2026-07-03T03:21:20Z · review→review · completed · by=gpt-5-codex
+done:   Recertified PR #10 at unchanged head 6808d09. Freeze gate still EMPTY; tests/ diff still
+        empty; detached PR-head worktree reran `cargo build`, full `cargo test` (64 passed, 0 failed),
+        and `cargo clippy --all-targets -- -D warnings` GREEN. Re-read source against ADR 0010/0011
+        and card Freeze coverage: no semantic blockers found. CodeRabbit PASS. Sensitive diff sweep
+        found only Rust `AccountId` type names, no secrets/account ids. Corrected stale
+        `.pipeline/current.json.stage` from `impl` to `review` so the cache matches the journal tail.
+        Operator reports clean live re-acceptance on restarted live gateway :4001; evidence redacted.
+output: .pipeline/brief-command/reviews/review-02.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Await the OPERATOR. Do NOT merge automatically. (Only pipeline-review merges, human-confirmed.)
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/10
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+Current state:
+  - PR #10 head is 6808d09a83b1b04f5502df8b097dc3516e95b086 (feat/brief-command), approved.
+  - Card 01 status=review, attempts=0.
+  - Freeze gate f7cab5d884c3fc4ba9cc1256d9ddf54832f373a3..6808d09 over tests/brief_command.rs is EMPTY.
+  - Final full-suite gate on detached PR head is GREEN: cargo build; cargo test (64/0);
+    cargo clippy --all-targets -- -D warnings.
+  - Live acceptance criterion 10 is satisfied by operator-reported clean `omi --live brief` PASS on
+    restarted gateway :4001 (account ids/balances redacted).
+Required before merge:
+  1. The operator must explicitly authorize the merge (for example: "go merge PR #10").
+On confirm:
+  1. git pull --rebase.
+  2. Verify PR #10 head still equals 6808d09a83b1b04f5502df8b097dc3516e95b086. If changed, rerun the
+     freeze gate and full-suite gate before merging.
+  3. Squash-merge PR #10 via gh and delete feat/brief-command.
+  4. Set card 01 status=done and current.json.stage=done.
+  5. Append journal seq=7 review→done with redacted live evidence; commit and push main.
+Recommended follow-up after merge (operator decides): start pipeline-prd for `read-timeouts` to apply
+ADR 0007's `next_timeout` fallback to all take-first reads; the live reqPnL wedge is pre-existing and
+documented in review-01.md.
+On reject: name the offending behavior; attempts++ (→1); card 01 → todo; journal status=failed;
+route pipeline-impl (or pipeline-task if the spec itself is wrong — name the spec target).
+<<< END
