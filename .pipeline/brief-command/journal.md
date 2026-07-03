@@ -51,3 +51,65 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: arch.md + CONTEXT.md + ADRs on trunk, journal seq=2 appended, stage=arch pushed.
 On success: run pipeline-task. On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-03T02:18:45Z · arch→task · completed · by=claude-fable-5(claude-code)
+done:   Architecture locked, zero human questions needed (every PRD claim verified in ibapi-3.1.0
+        source). ADR 0010: one session, strictly sequential consume-then-drop fetch; full routing-
+        domain table verified in transport/routing.rs (CommissionsReport routes ByExecutionId —
+        cannot be stolen by the orders shared channel; OpenOrderEnd/ExecutionDataEnd → EndOfStream);
+        fixed fetch order resolve→as_of→drain→pnl→sweep→orders→executions; fallback deform =
+        internal sequential sessions (recorded, NOT implemented). ADR 0011: consolidated
+        account_updates drain feeds account_summary+positions+discovery in ONE pass (singleton
+        re-subscribe window never opens); shared row builders keep sections byte-identical to
+        source commands; as_of = server_time() (UTC by construction, decoders/mod.rs:60-64)
+        formatted via inherent accessors — NO new dependency. Pure frozen seam = assemble_brief
+        (exact 8-key top level, pass-through). Table rendering needs NO output.rs change (generic
+        dotted-prefix renderer, output.rs:44-75). arch.md carries the impl write-set: new
+        src/ib/brief.rs + seam extractions in account/positions/pnl/pnl_by_position/orders/
+        executions + cli/main/mod wiring.
+output: .pipeline/brief-command/arch.md, .pipeline/brief-command/CONTEXT.md,
+        .pipeline/brief-command/docs/adr/0010-brief-one-session-sequential-fetch.md,
+        .pipeline/brief-command/docs/adr/0011-brief-shared-drain-and-builders.md,
+        .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (config at ~/.config/oh-my-ib/config.toml, not needed offline).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions. Read FIRST.
+  - .pipeline/brief-command/PRD.md — what (criteria 1–10)
+  - .pipeline/brief-command/arch.md — components, JSON contract, Freeze coverage (your card content)
+  - .pipeline/brief-command/CONTEXT.md + docs/adr/0010,0011 — binding decisions
+  - tests/pnl_by_position_command.rs + tests/cli_contract.rs — the frozen-test patterns to mirror
+Your task (concrete, numbered):
+  1. Decompose into cards. Expectation: ONE card (single subcommand + seam refactors, one frozen
+     test file) — split only if you find a real seam (e.g. refactor-siblings card + brief card).
+  2. FREEZE COMMIT (touches ONLY spec-paths): write tests/brief_command.rs — black-box CLI
+     (omi --help lists brief; omi brief --help exit 0; dead-port omi brief → non-zero +
+     {"error":{...}} stderr) + pure seam assemble_brief (exact 8-key top-level set
+     {account,as_of,account_summary,pnl,pnl_by_position,positions,orders,executions}; account/as_of
+     pass-through; section Values pass through unmodified; no extra keys). Tests MUST compile and
+     FAIL now (assemble_brief does not exist yet — use the pnl_by_position_command.rs import style;
+     trunk goes red, accepted per CONTRACT §Test ownership). ONE commit for the whole feature ⇒ its
+     hash = spec-rev on every card.
+  3. RECORD COMMIT (metadata only): tasks/NN.md frontmatter (status=todo, attempts=0, verify =
+     CARD-SCOPED runner e.g. `cargo test --test brief_command`, spec-paths=[tests/brief_command.rs],
+     impl-paths=[src/ib/brief.rs, src/ib/account.rs, src/ib/positions.rs, src/ib/pnl.rs,
+     src/ib/pnl_by_position.rs, src/ib/orders.rs, src/ib/executions.rs, src/ib/mod.rs, src/cli.rs,
+     src/main.rs], spec-rev=<freeze sha>, Freeze-coverage section per arch.md); set
+     current.json.stage=task + full-verify=["cargo build","cargo test"]; append journal seq=3;
+     commit, push.
+Feature gotchas (project-specific traps the next node MUST know):
+  - spec-paths ∩ impl-paths = ∅ — the frozen test must NOT touch src/**.
+  - assemble_brief is the ONLY new frozen seam; do NOT freeze the gateway fn, the drain, as_of
+    formatting, or sibling behavior (Freeze coverage in arch.md is exact).
+  - Frozen test constructs plain serde_json::Value sections — ibapi-free (PnlSingleRow precedent).
+  - Card verify must be card-scoped (cargo test --test brief_command), NEVER the full suite
+    (trunk is red until impl merges — full suite would deadlock the loop).
+  - Public repo: no account ids/balances in test fixtures.
+Done when: freeze commit + record commit pushed; card 01 todo with correct spec-rev; trunk suite RED
+only by tests/brief_command.rs. On success: run pipeline-impl.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
