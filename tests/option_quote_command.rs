@@ -84,9 +84,11 @@ fn side_and_custom_computations_are_ignored() {
         TickType::LastOption,
         TickType::CustOptionComputation,
     ] {
+        // TickType is not Copy: render the label BEFORE `field` moves into computation().
+        let label = format!("{field:?}");
         assert!(
             option_quote_greeks(&computation(field)).is_none(),
-            "{field:?} is a per-side computation, not the model greeks row"
+            "{label} is a per-side computation, not the model greeks row"
         );
     }
 }
