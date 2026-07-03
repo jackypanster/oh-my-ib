@@ -349,3 +349,24 @@ final journal entry committed and pushed to main.
 On reject: name the offending behavior; attempts++ (=2) and card 01 -> todo (or blocked at >=3);
 route pipeline-impl or pipeline-hunt per CONTRACT.
 <<< END
+
+## seq=8 · 2026-07-03T11:44:28Z · merge-confirm→done · completed · by=claude-fable-5
+done:   operator confirmed ("合并"); PR #14 squash-merged -> main b164565
+        (2026-07-03T11:43:32Z, feat branch deleted); trunk post-merge verified: cargo build
+        clean, cargo test 98/98, clippy clean. Card 01 done (attempts=1 — the live-wedge
+        round-trip), stage=done. FEATURE DONE. Order-lifecycle triad closed.
+        Notable: first full exercise of the reject->rework edge — live acceptance caught the
+        CompletedOrdersEnd wedge pre-review; ADR 0016 bounded drain; wedge confirmed
+        intermittent (bounded build passed 2.8s/188ms on the same gateway session).
+        Open items: reqPnLSingle + completed-orders row-content on first active trading day;
+        gateway build 2026-06-25 dossier now has TWO endpoint wedges (reqPnL first-slot,
+        reqCompletedOrders intermittent no-answer) — consider build upgrade or IB report;
+        ADR 0013 errata fold-in (standing).
+output: main b164565 (squash), .pipeline/completed-orders/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+No next stage — feature completed-orders is DONE (PR #14 merged, trunk green 98/98).
+Next feature starts with pipeline-prd on a fresh run (one feature in flight at a time).
+Team paradigm (KB note 41.100): roles rotate across SOTA models; this round was
+Fable5=orchestration, GLM-5.2(pi)=impl x2 rounds, GPT-5.5(codex)=review.
+<<< END
