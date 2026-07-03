@@ -297,3 +297,30 @@ documented in review-01.md.
 On reject: name the offending behavior; attempts++ (→1); card 01 → todo; journal status=failed;
 route pipeline-impl (or pipeline-task if the spec itself is wrong — name the spec target).
 <<< END
+
+## seq=6 · 2026-07-03T03:29:46Z · review→done · completed · by=claude-fable-5(claude-code)
+done:   FEATURE DONE. Merge-gate sequence completed in order: (1) operator restarted the gateway
+        (:4001) — cleared the polluted reqPnL channel; (2) clean re-acceptance from the PR-head
+        worktree: `omi --live brief` → exit 0 in 3.3s, all 8 keys, numeric pnl (no wedge, no
+        sentinel), values consistent with the first acceptance and the account/positions/orders/
+        executions/pnl-by-position cross-checks (account ids/balances REDACTED — public repo);
+        (3) operator explicitly authorized ("合并"). Squash-merged PR #10 → main bf7b572,
+        feat/brief-command deleted. Card 01 → done; current.json.stage=done. Trunk suite GREEN
+        post-merge (64 passed / 0 failed). Two independent APPROVE reviews on record (review-01
+        this session incl. adversarial subagent + live acceptance; review-02 cold-session
+        recertification of freeze/build/test/clippy gates).
+        OPEN ITEMS handed to the operator (not blockers of this feature):
+        (a) `read-timeouts` follow-up — ADR 0007's next_timeout trigger FIRED live (standalone
+            `omi --live pnl` wedge, evidence in review-01.md §Live acceptance); recommended NEW
+            pipeline feature via pipeline-prd to apply the fallback to all take-first reads.
+        (b) reqPnLSingle still live-unexercised (account flat again — zero pnl_single calls);
+            first trading day WITH positions: run `omi --live pnl-by-position` and
+            `omi --live brief` once each, note qty==0 closed-today rows (pnl-by-position D6).
+output: main bf7b572 (squash-merge of PR #10); tasks/01.md (done); .pipeline/current.json (stage=done)
+--- handoff ---
+Feature brief-command is COMPLETE — no next stage. omi now has 11 read-only subcommands.
+Daily use: `omi --live brief` (live :4001) or `omi brief` (paper :4002) — one connection, one JSON.
+Known gateway hazard (this gateway build): standalone `omi --live pnl` can wedge on a blocking read;
+a gateway restart clears it; the fix path is the read-timeouts feature above (operator decides when).
+Optional next feature: `read-timeouts` via pipeline-prd (recommended) — or operator's choice.
+<<< END
