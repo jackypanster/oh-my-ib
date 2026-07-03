@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "stk-orders",
-  "stage": "task",
+  "stage": "impl",
   "pr": "https://github.com/jackypanster/oh-my-ib/pull/15",
   "full-verify": [
     "cargo build",

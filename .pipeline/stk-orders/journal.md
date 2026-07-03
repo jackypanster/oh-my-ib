@@ -259,3 +259,68 @@ Feature gotchas: ONE LINE change — nothing else; no retry logic; never touch t
 containment rule stands. Done when: PR updated, all green, gate empty, seq=6 pushed.
 On success: run pipeline-review (codex cli). On failure: attempts++ (=2); >=3 => blocked => hunt.
 <<< END
+
+## seq=6 · 2026-07-03T12:38:32Z · impl→impl · completed · by=interactive-π/glm-5.2
+done:   ROUND 2 one-line fix landed on feat/stk-orders (PR #15 updated): replaced
+        client.next_valid_order_id()? (unbounded subscription.next() on RequestIds — this
+        gateway's 3rd wedge, first PAPER sighting) with client.next_order_id() — the
+        handshake-seeded local allocator (non-blocking, returns id_manager's next id, ADR 0018).
+        Allocation line only; everything else (gate, ordering invariant, bounded ack, no-retry,
+        UNKNOWN-state envelope naming the allocated id, containment) unchanged. 114/114 + clippy
+        clean; frozen spec untouched (freeze-gate diff empty); containment + no-retry grep clean.
+output: feat/stk-orders tip ee9291f (PR #15 updated), src/ib/trade.rs
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/stk-orders pr=https://github.com/jackypanster/oh-my-ib/pull/15
+Model: frontier SOTA required — HIGHEST-STAKES review to date (first write path); operator assigns (this run: codex cli).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (amended red-line: writes now gated, Phase 2)
+  - .pipeline/stk-orders/tasks/01.md (status=review, attempts=1) — card scope + §Round 2
+  - .pipeline/stk-orders/arch.md — §Component design + §Docs amendment + §Amendment (round 2: next_order_id)
+  - .pipeline/stk-orders/docs/adr/0017-write-path-safety.md — the safety architecture (binding)
+  - .pipeline/stk-orders/docs/adr/0018-local-order-id-allocator.md — the paper-wedge fix (amends 0017's allocation claim)
+  - .pipeline/stk-orders/PRD.md + CONTEXT.md — criteria 1-11 + glossary
+  - src/ib/trade.rs — the ONLY write-call module (review surface)
+  - PR #15 diff (gh pr diff 15) — full review surface (round 1 + round 2 commits)
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff 3692c71bc11e873b2be8f3c9448a2a8d4f4d9e8f <review-tip> -- tests/stk_orders_command.rs
+     must be EMPTY. Non-empty ⇒ reject (attempts++, route impl; >=3 ⇒ hunt).
+  2. Full-suite gate: checkout feat/stk-orders, run current.json.full-verify
+     (["cargo build","cargo test"]) — must be GREEN (114/114 expected).
+  3. Semantic review (by reading) of the FULL PR #15 diff (round 1 + round 2) vs arch.md
+     §Component design + §Amendment + §Docs amendment + card freeze coverage. ALL polarity-
+     flipped checks from seq=4 stand (containment/double-gate/ordering/bounded-ack/no-retry/
+     seams/docs), PLUS the round-2 allocation fix:
+     - Order id comes from client.next_order_id() (the handshake-seeded local allocator,
+       non-blocking, returns id_manager's next id), NOT client.next_valid_order_id() (which was
+       an unbounded subscription.next() that wedged on this gateway's RequestIds — ADR 0018).
+     - The allocator returns i32 (not Result), so there is no fallible map_err on it.
+     - The ordering invariant still holds: validation → gate → connect → allocate id →
+       build → place → bounded first-ack. usage < config < connection.
+  4. READ-ONLY polarity preserved: reads unchanged; write symbols ONLY in trade.rs.
+  5. If all pass: operator live acceptance on PAPER (PRD criterion 11, merge gate): far-LMT buy
+     → omi orders shows working → cancel → omi completed-orders shows Cancelled → omi positions
+     unchanged. Operator MUST log gateway into PAPER. Then human-confirm + squash-merge.
+  6. After human-confirm + merge: card 01 status review->done, current.json stage=done (drop pr?),
+     append journal seq=7, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Round 2 swapped next_valid_order_id()? -> next_order_id() (ADR 0018). The two are NOT
+    interchangeable: next_valid_order_id is an unbounded gateway round-trip (wedges on this
+    gateway); next_order_id is the local handshake-seeded allocator (non-blocking). Do NOT flag
+    the absence of next_valid_order_id or its map_err as a regression.
+  - HIGHEST-STAKES review: first write path. The polarity flips — the normal \"no write code\" rule
+    is REPLACED by \"write code ONLY in src/ib/trade.rs, unreachable from reads\".
+  - Freeze gate is the deterministic two-commit diff over tests/stk_orders_command.rs — empty = pass.
+  - The gate MUST precede connect (frozen tests assert usage < config < connection ordering).
+  - Timeout envelope MUST name the allocated order id and forbid blind retry (UNKNOWN-state posture).
+  - CancelOrder has only the OrderStatus variant — cancel uses a single .next(), NOT a loop.
+  - CLAUDE.md < 900 bytes is frozen (tests/claude_md.rs).
+  - Reuses TAKE_FIRST_TIMEOUT (pub in src/ib/mod.rs) — no new consts, no new error codes.
+  - The metadata commit is already on MAIN (this entry rides it); the code diff is on feat/stk-orders.
+  - Public repo: scan the PR diff for account ids/tokens/balances before merge.
+Done when: PR #15 squash-merged after freeze gate empty + full-suite green + ALL polarity-flipped
+semantic checks pass + operator PAPER live acceptance (criterion 11); card=done, journal seq=7 pushed.
+On failure: attempts++ (=2); >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
