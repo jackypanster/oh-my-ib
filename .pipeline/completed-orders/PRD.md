@@ -94,3 +94,14 @@ shape conventions, disconnect.
 - Offline: frozen spec — pure row-shaping seam (arch to define, mirroring shape_* pattern) +
   CLI contract (help/dead-port/zero-state); card-scoped runner.
 - Live (operator): criterion 8.
+
+## Amendment (2026-07-03) — criterion 8 wording (evidence: live wedge, ADR 0016)
+
+Live acceptance exposed a known gateway issue: reqCompletedOrders may never answer
+(CompletedOrdersEnd absent ⇒ pre-fix hang; 2× local repro + upstream reports, ADR 0016).
+Criterion 8 now reads: **PASS = either** (a) exit 0 with the `{"completed_orders": [...]}`
+shape (gateway answered — `[]` fine on a no-trade day), **or** (b) the bounded exit-6
+`timeout` envelope naming the known issue, delivered in ~10s (gateway exhibiting the issue —
+the bound working IS the acceptance of the failure path). Fresh-session retry recommended at
+the next gateway restart; row-content verification rides the first active trading day on an
+answering gateway.

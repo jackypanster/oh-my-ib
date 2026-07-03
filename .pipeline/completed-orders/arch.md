@@ -102,3 +102,32 @@ pass-through), simpler shape. Review checks semantics parity, not code-shape ide
 - `average_fill_price` lives on `Orders::OrderStatus`, NOT on OrderData — deliberately out
   (executions carries fill prices); recorded so impl doesn't chase it.
 - Rollback: additive subcommand.
+
+## Amendment (2026-07-03, post live-wedge) — bounded drain (ADR 0016)
+
+Live acceptance hung twice on a healthy gateway (`CompletedOrdersEnd` never arrived — known
+upstream class, see ADR 0016). §Component design's drain loop is REPLACED by:
+
+```rust
+let mut rows = Vec::new();
+let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
+loop {
+    let waited = std::time::Instant::now();
+    match items.next() {
+        Some(Ok(Orders::OrderData(d))) => { /* filter-when-set + row push, unchanged */ }
+        Some(Ok(_)) => {}   // OrderStatus variants skipped (unchanged posture)
+        Some(Err(e)) => return Err(AppError::data(format!("completed orders stream: {e}"), "completed-orders")),
+        None if waited.elapsed() >= super::TAKE_FIRST_TIMEOUT => {
+            return Err(AppError::timeout(
+                format!("no CompletedOrdersEnd within {}s — gateway did not answer reqCompletedOrders (known gateway issue; a restart may or may not cure it)",
+                    super::TAKE_FIRST_TIMEOUT.as_secs()),
+                "completed-orders",
+            ))
+        }
+        None => break,   // instant None = stream self-ended on CompletedOrdersEnd => success
+    }
+}
+```
+
+Freeze coverage delta: none (spec-paths untouched — the seam/CLI contract don't cover the
+drain). Review-by-reading gains: the timing-classified None arms + the per-item window.

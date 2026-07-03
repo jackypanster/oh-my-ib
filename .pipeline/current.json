@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "completed-orders",
-  "stage": "impl",
+  "stage": "task",
   "pr": "https://github.com/jackypanster/oh-my-ib/pull/14",
   "full-verify": [
     "cargo build",

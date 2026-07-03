@@ -194,3 +194,42 @@ Done when: PR #14 squash-merged after freeze gate empty + full-suite green + sem
 + READ-ONLY grep clean + operator live acceptance (criterion 8); card=done, journal seq=5 pushed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-03T11:28:38Z · impl→impl · failed · by=claude-fable-5
+done:   LIVE ACCEPTANCE FAILED (pre-review): omi --live completed-orders hung 2x on a healthy
+        gateway (>2.5min, >45s; health OK between; first run of the session — no pollution).
+        CompletedOrdersEnd never arrived = known upstream class (ib_insync #224; twsapi
+        groups.io reports). NOT an impl bug (round 1 implemented ADR 0015 verbatim) — arch
+        drain posture gap. Routed: ADR 0016 (bounded per-item drain, timing-classified None,
+        reuses TAKE_FIRST_TIMEOUT + timeout/exit-6 — all operator-locked decisions), arch.md
+        Amendment, PRD criterion-8 amendment, card 01 review->todo attempts=1 with Round 2
+        scope. Frozen spec UNCHANGED (no re-freeze; drain is review-by-reading).
+output: docs/adr/0016-bounded-drain-completed-orders.md, arch.md §Amendment,
+        PRD.md §Amendment, tasks/01.md Round 2
+--- handoff ---
+>>> NEXT
+Run pipeline-impl ROUND 2 on the SAME branch (feat/completed-orders, PR #14 open).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/14
+Model: capable-local OK (impl only) — operator assigns the bot (interactive pi/omp).
+First: git pull --rebase on main (get ADR 0016 + amendments), then git checkout feat/completed-orders.
+Read for context (before acting):
+  - .pipeline/completed-orders/tasks/01.md §Round 2 — YOUR scope (drain loop ONLY)
+  - .pipeline/completed-orders/arch.md §Amendment — the verbatim replacement loop
+  - .pipeline/completed-orders/docs/adr/0016-*.md — why + the timing-classification rule
+Your task (concrete, numbered):
+  1. git pull --rebase (main); git checkout feat/completed-orders.
+  2. Replace ONLY the drain loop in src/ib/completed_orders.rs per arch.md §Amendment
+     (timeout_iter_data(TAKE_FIRST_TIMEOUT) + Instant-classified None arms). Nothing else.
+  3. Verify: cargo build && cargo test --test completed_orders_command && cargo test &&
+     cargo clippy --all-targets -- -D warnings.
+  4. Freeze gate self-check: git diff aff35991c759a0bbfd44dd03ea1d67fac0241dbf HEAD --
+     tests/completed_orders_command.rs must be EMPTY.
+  5. Commit on the branch ("fix(completed-orders): bound the drain per ADR 0016"), push
+     (updates PR #14).
+  6. Metadata commit on MAIN: card 01 todo->review (attempts stays 1), current.json
+     stage=impl, journal seq=6, push main.
+Feature gotchas: READ-ONLY red line unchanged; never touch tests/; no repo-wide fmt;
+TAKE_FIRST_TIMEOUT is pub in src/ib/mod.rs (reuse, do NOT redefine); public repo no secrets.
+Done when: PR #14 updated, all verify green, freeze gate empty, card=review, seq=6 pushed.
+On success: run pipeline-review (codex cli). On failure: attempts++ (=2); >=3 => blocked => hunt.
+<<< END
