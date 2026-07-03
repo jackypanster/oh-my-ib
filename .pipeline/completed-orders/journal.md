@@ -233,3 +233,72 @@ TAKE_FIRST_TIMEOUT is pub in src/ib/mod.rs (reuse, do NOT redefine); public repo
 Done when: PR #14 updated, all verify green, freeze gate empty, card=review, seq=6 pushed.
 On success: run pipeline-review (codex cli). On failure: attempts++ (=2); >=3 => blocked => hunt.
 <<< END
+
+## seq=6 · 2026-07-03T11:32:16Z · impl→impl · completed · by=interactive-π/glm-5.2
+done:   ROUND 2 drain fix landed on feat/completed-orders (PR #14 updated): replaced the bare
+        iter_data() drain in src/ib/completed_orders.rs with timeout_iter_data(TAKE_FIRST_TIMEOUT)
+        + timing-classified None arms per arch.md §Amendment (Instant per .next(); elapsed >=
+        window => timeout error exit 6; instant None => stream self-ended on CompletedOrdersEnd
+        => success break). Drain loop ONLY — field mapping, filter-when-set, wrapper unchanged.
+        Reused pub TAKE_FIRST_TIMEOUT from src/ib/mod.rs (not redefined). Frozen spec untouched
+        (freeze-gate diff empty); 98/98 + clippy clean. READ-ONLY grep clean.
+output: feat/completed-orders tip 46a12b0 (PR #14 updated), src/ib/completed_orders.rs
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/completed-orders pr=https://github.com/jackypanster/oh-my-ib/pull/14
+Model: frontier SOTA required — operator assigns the bot (this run: codex cli, rotation kept per PRD D2).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, READ-ONLY, agent-first docs)
+  - .pipeline/completed-orders/tasks/01.md (status=review, attempts=1) — card scope incl. §Round 2
+  - .pipeline/completed-orders/arch.md — §Component design (round 1) + §Amendment (round 2 drain)
+  - .pipeline/completed-orders/docs/adr/0015-completed-orders-drain.md — original design
+  - .pipeline/completed-orders/docs/adr/0016-bounded-drain-completed-orders.md — the live-wedge fix (amends 0015)
+  - src/ib/orders.rs — sibling whose filter SEMANTICS impl mirrors
+  - PR #14 diff (gh pr diff 14) — the review surface (round 1 + round 2 commits)
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff aff35991c759a0bbfd44dd03ea1d67fac0241dbf <review-tip> -- tests/completed_orders_command.rs
+     must be EMPTY. Non-empty ⇒ reject (attempts++, route impl; >=3 ⇒ hunt).
+  2. Full-suite gate: checkout feat/completed-orders, run current.json.full-verify
+     (["cargo build","cargo test"]) — must be GREEN. Red attributable to card 01 ⇒ flip
+     review→todo, attempts++; cross-card with no single owner ⇒ reviews/integration-NN.md
+     + route pipeline-hunt.
+  3. Semantic review (by reading) of the FULL PR #14 diff (round 1 + round 2) vs arch.md
+     §Component design + §Amendment + card freeze coverage:
+     - Round 1 (unchanged): completed_orders(false) hardcoded, OrderData-only arm, filter-when-set
+       parity with orders.rs, {"completed_orders": …} wrapper, contexts "completed-orders", exact
+       14-key field mapping (Debug-render action/tif/status; symbol via newtype .to_string();
+       limit_price/aux_price raw Option None→null).
+     - Round 2 (the drain fix, ADR 0016): timeout_iter_data(TAKE_FIRST_TIMEOUT), Instant before
+       each .next(), four arms — Some(Ok(OrderData)) filter+push / Some(Ok(_)) skip /
+       Some(Err) data envelope / None classified by waited.elapsed() vs TAKE_FIRST_TIMEOUT
+       (>= window ⇒ timeout exit 6; instant None ⇒ break success). TAKE_FIRST_TIMEOUT reused
+       from src/ib/mod.rs (not redefined). output.rs/error.rs/brief.rs/orders.rs untouched.
+  4. READ-ONLY red line grep: grep the full PR diff for place/modify/cancel order API calls
+     (.place_order/.what_if_order/.modify_order/.cancel_order/.reqGlobalCancel/ etc.) — must be
+     ABSENT. (Doc comments mentioning \"cancelled\" as an order state are NOT code paths.)
+  5. If all pass: operator live acceptance (PRD criterion 8, AMENDED per ADR 0016): on a gateway
+     that answers, omi --live completed-orders exits 0 with the wrapper shape ([] on a no-trade
+     day is a PASS); on a gateway exhibiting the known no-CompletedOrdersEnd wedge, the bounded
+     exit-6 timeout IS the acceptance PASS for the failure path. Then human-confirm + squash-merge
+     PR #14 (the only merge).
+  6. After human-confirm + merge: card 01 status review->done, current.json stage=done (drop pr?),
+     append journal seq=7, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Freeze gate is the deterministic two-commit diff over tests/completed_orders_command.rs — empty = pass.
+  - READ-ONLY red line: the diff contains request/drain/emit only — no place/modify/cancel code paths.
+  - Round 2 drain is bounded per ADR 0016: a None that starved TAKE_FIRST_TIMEOUT (10s) is the
+    TIMEOUT error path (exit 6); an instant None is the SUCCESS path (CompletedOrdersEnd arrived).
+    Do NOT flag the timeout wrapping as contradicting ADR 0015 — ADR 0016 amends 0015 precisely
+    because the live-wedge evidence arrived (the boundary ADR 0012 drew).
+  - The timing classification is sound: the deadline-loop None cannot return before the window
+    expires (sync.rs:226-236); the stream-ended None returns in microseconds (sync.rs:223-225).
+  - TAKE_FIRST_TIMEOUT is pub in src/ib/mod.rs (reused, NOT redefined in completed_orders.rs).
+  - api_only=false HARDCODED (no flag); filter-when-set (orders parity); average_fill_price excluded.
+  - The metadata commit is already on MAIN (this entry rides it); the code diff is on feat/completed-orders.
+  - Public repo: scan the PR diff for account ids/tokens/balances before merge.
+Done when: PR #14 squash-merged after freeze gate empty + full-suite green + semantic review pass
++ READ-ONLY grep clean + operator live acceptance (criterion 8 amended); card=done, journal seq=7 pushed.
+On failure: attempts++ (=2); >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
