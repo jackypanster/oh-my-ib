@@ -363,3 +363,27 @@ Feature gotchas:
 Done when: PR #15 squash-merged after human confirm, card=done, current.json stage=done, final journal
 entry committed and pushed. On any regression: reject per CONTRACT (attempts++ to 2; >=3 => hunt).
 <<< END
+
+## seq=8 · 2026-07-03T12:55:30Z · merge-confirm→done · completed · by=claude-fable-5
+done:   operator confirmed ("合并"); PR #15 squash-merged -> main a1b1590
+        (2026-07-03T12:54:32Z, feat branch deleted); trunk post-merge: cargo build clean,
+        cargo test 114/114, clippy clean. Card 01 done (attempts=1 — the next_valid_order_id
+        wedge round-trip), stage=done. FEATURE DONE. **PHASE 2 IS LIVE**: omi is now a trading
+        CLI (paper ungated, live double-gated via --live + OMI_ALLOW_LIVE=1).
+        Historic: first order ever placed by this codebase (paper AAPL 1@50 LMT, order_id 1,
+        PreSubmitted 4.1s -> Cancelled 1.2s, full lifecycle verified).
+        Dossier additions: RequestIds no-answer (3rd gateway wedge, first PAPER sighting);
+        order-ids are client-id-namespaced (cancel must use the placing client-id; 10147
+        envelope handled correctly).
+        Open items: first LIVE trade awaits operator (double gate is their key); modify /
+        notional-cap / dry-run = v2 candidates (deliberately deselected); reqPnLSingle +
+        completed-orders row-content on first active trading day; gateway build upgrade or
+        IB report (3 wedges now); ADR 0013 errata fold-in (standing).
+output: main a1b1590 (squash), .pipeline/stk-orders/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+No next stage — feature stk-orders is DONE (PR #15 merged, trunk green 114/114). PHASE 2 OPEN.
+Next feature starts with pipeline-prd on a fresh run. Natural Phase-2 successors (operator
+decides): modify/replace; notional cap + --dry-run (whatIf); options data reads (option_chain)
+as the road to options trading. Team paradigm: KB note 41.100 (roles rotate, SOTA per stage).
+<<< END
