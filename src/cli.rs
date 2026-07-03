@@ -76,8 +76,9 @@ pub enum Command {
 
 #[derive(Args, Debug)]
 pub struct QuoteArgs {
-    /// Ticker symbol, e.g. AAPL
-    pub symbol: String,
+    /// Ticker symbol(s), e.g. AAPL MSFT
+    #[arg(required = true, value_name = "SYMBOL")]
+    pub symbols: Vec<String>,
     /// Security type (Phase 1: STK only)
     #[arg(long, default_value = "STK")]
     pub sec_type: String,

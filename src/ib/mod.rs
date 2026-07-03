@@ -32,7 +32,7 @@ pub use orders::orders;
 pub use pnl::{pnl, pnl_number};
 pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
 pub use positions::positions;
-pub use quote::{quote, quote_price_tick};
+pub use quote::{quote, quote_price_tick, shape_quotes};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
