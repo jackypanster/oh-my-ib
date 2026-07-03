@@ -167,3 +167,41 @@ Done when: card 02 verify green, clippy --all-targets clean, full suite green, c
 journal seq=5 pushed. On success: run pipeline-review (human confirms merge of PR #16).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-03T17:12:59Z · impl(card 02 blocked)→task(re-freeze)→impl · completed · by=claude-fable-5
+done:   RE-FREEZE (CONTRACT §Test ownership): glm-5.2 correctly STOPPED on a real spec defect
+        instead of editing the frozen test — tests/option_quote_command.rs:81-92 used {field:?}
+        AFTER the value moved into computation() and ibapi TickType is NOT Copy (E0382,
+        orchestrator-verified). Task-authoring bug (the pre-freeze scratch check reconstructed
+        the fixtures instead of compiling the file verbatim — it missed the assert-message
+        pattern). Fix: render the label before the move; semantics identical. New single
+        freeze commit 7c8bcaf5 = the feature's shared spec-rev; BOTH cards updated, statuses
+        preserved (01 review / 02 todo); verbatim-compile verified via temp stubs this time.
+        SKILL-PROPOSAL: pipeline-task — the pre-freeze red check must compile each spec file
+        VERBATIM (stub the not-yet-existing target symbols), not re-typed constructions.
+output: tests/option_quote_command.rs (spec-rev 7c8bcaf5), .pipeline/options-read/tasks/01.md,
+        .pipeline/options-read/tasks/02.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl (CONTINUE card 02) on the omp session or a FRESH one (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/options-read pr=https://github.com/jackypanster/oh-my-ib/pull/16
+Model: capable-local OK (impl).
+First: git pull --rebase on main; then REBASE feat/options-read ONTO main and force-push (CONTRACT §Reconcile:
+trunk's spec advanced under your branch — the sanctioned own-branch force-push; trunk itself is never force-pushed).
+Read for context (before acting):
+  - .pipeline/options-read/tasks/02.md — the card (spec-rev now 7c8bcaf5)
+  - .pipeline/options-read/arch.md §Component design — option_quote.rs verbatim design
+  - tests/option_quote_command.rs AT 7c8bcaf5 — the FIXED frozen spec (the E0382 is gone)
+Your task (concrete, numbered):
+  1. git fetch && git rebase origin/main (on feat/options-read) && git push --force-with-lease.
+  2. Card 02 status: in-progress (metadata commit to main). Your existing option_quote impl commit survives the rebase.
+  3. Green loop: cargo build && cargo test --test option_quote_command. NEVER touch tests/ (gate now diffs 7c8bcaf5..tip).
+  4. Pre-PR: cargo clippy --all-targets -- -D warnings; full cargo test — with both cards on the branch the WHOLE suite must be GREEN.
+  5. Push; card 02 → review; journal seq=6; push metadata to main. Report in-pane with PR URL.
+Feature gotchas:
+  - The re-freeze changed ONLY tests/option_quote_command.rs lines 81-93 (label-before-move); your impl semantics are unaffected.
+  - greeks BEST-EFFORT (ADR 0019 D3); validation BEFORE connect (usage < connection ordering).
+  - No repo-wide cargo fmt; quote.rs untouchable; public repo — no account ids.
+Done when: whole suite green on feat/options-read, clippy clean, freeze gate (7c8bcaf5) empty, both cards at review, seq=6 pushed. On success: run pipeline-review.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
