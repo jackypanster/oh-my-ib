@@ -73,5 +73,6 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::Contract(args) => ib::contract(&config, args),
         Command::History(args) => ib::history(&config, args),
         Command::Search(args) => ib::search(&config, args),
+        Command::CompletedOrders => ib::completed_orders(&config),
     }
 }

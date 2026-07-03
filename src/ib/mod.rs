@@ -13,6 +13,7 @@ use crate::error::AppError;
 mod account;
 mod brief;
 mod client;
+mod completed_orders;
 mod contract;
 mod executions;
 mod history;
@@ -35,6 +36,7 @@ pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
 pub use positions::positions;
 pub use quote::{quote, quote_price_tick, shape_quotes};
 pub use search::{search, shape_search, SearchRow};
+pub use completed_orders::{completed_orders, shape_completed_orders, CompletedOrderRow};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
