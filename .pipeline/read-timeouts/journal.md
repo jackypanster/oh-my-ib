@@ -219,3 +219,24 @@ Feature gotchas: none new — do not touch tests/; public repo redaction rules a
 pasted live output.
 Done when: PR merged, trunk green, journal seq=6 pushed.
 <<< END
+
+## seq=6 · 2026-07-03T08:12:00Z · merge-confirm→done · completed · by=claude-fable-5
+done:   brief first-slot live PASS obtained (4.2s, fresh gateway session, PR-head binary) —
+        criterion 8 direct for both commands; operator confirmed ("PASS 后合并"); PR #11
+        squash-merged -> main c98bb76 (2026-07-03T08:07:33Z, feat branch deleted); trunk
+        post-merge verified: cargo build clean, cargo test 71/71, clippy clean. Card 01 done,
+        stage=done. FEATURE DONE.
+        Open items (operator decides, future): (a) reqPnLSingle first-trading-day observation
+        stands (pnl-by-position D6) — with read-timeouts merged, a wedged sweep now exits
+        bounded; (b) gateway build 2026-06-25 "first reqPnL per session only" behavior (9 data
+        points) — consider gateway upgrade or IB report; operational guidance: run
+        `omi --live brief` first after gateway login.
+output: main c98bb76 (squash), .pipeline/read-timeouts/reviews/review-01.md (+ addendum)
+--- handoff ---
+>>> NEXT
+No next stage — feature read-timeouts is DONE (PR #11 merged, trunk green 71/71).
+Next feature starts with pipeline-prd on a fresh run (one feature in flight at a time).
+Candidates recorded for the operator: reqPnLSingle first-trading-day observation (not a
+feature, just a live run); gateway first-slot investigation (evidence in
+.pipeline/read-timeouts/reviews/review-01.md §Side-finding).
+<<< END

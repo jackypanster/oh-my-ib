@@ -87,3 +87,12 @@ feature owns that posture); single data point, recorded for evidence only.
 - Recommended follow-ups (operator decides, NOT this PR): (a) the standing reqPnLSingle
   first-trading-day observation (pnl-by-position D6); (b) consider reporting/investigating the
   first-slot-only reqPnL behavior of gateway build 2026-06-25 (upgrade path or IB report).
+
+## Addendum (post-verdict, pre-merge) — brief first-slot healthy PASS obtained
+
+Operator restarted the gateway (3rd session, 2026-07-03 ~08:07 UTC); `omi --live brief` run as
+the session's FIRST reqPnL consumer on the PR-head binary: **PASS — exit 0, 4.2s**, all 8
+top-level keys, `as_of` matching server time, numeric pnl, `[]` array sections (flat account).
+Criterion 8 is now satisfied DIRECTLY for both commands (no transitive argument needed). Also
+the 9th consistent data point for the first-slot-only wedge characterization. Merge confirmed
+by operator ("PASS 后合并") and executed.
