@@ -74,6 +74,8 @@ pub enum Command {
     History(HistoryArgs),
     /// Fuzzy symbol/company search
     Search(SearchArgs),
+    /// Today's completed orders (filled/cancelled) with status
+    CompletedOrders,
 }
 
 #[derive(Args, Debug)]
