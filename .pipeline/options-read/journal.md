@@ -379,3 +379,32 @@ Done when: paper acceptance is recorded, human confirms, PR #16 is squash-merged
 current.json stage=done, and the final journal entry is pushed. On failure: route the specific evidence
 back through pipeline-impl/task/hunt as appropriate.
 <<< END
+
+## seq=10 · 2026-07-03T17:48:10Z · review→done · completed · by=claude-fable-5
+done:   MERGED — operator-confirmed squash-merge of PR #16 (trunk 1332693); cards 01+02 done;
+        trunk full-verify GREEN post-merge (21/21 test targets). omi gains option-chain +
+        option-quote (Phase 2 step 2). Paper acceptance (criterion 8) outcomes:
+        (a) option-chain LIVE-PROVEN on paper :4002 — 20 exchanges x 24 expirations x 119
+        strikes, sorted, End-bounded drain clean; OBSERVATION: SMART server-side filter
+        returns an EMPTY set on this gateway while the full dump ("" filter) contains a SMART
+        row — escape hatch works; v1.1 candidate: better default ergonomics (client-side SMART
+        pick or default ""). (b) option-quote code path proven (validation, gateway-accepted
+        contract build, fail-fast data envelope, no hang) but ticks/greeks UNOBSERVABLE:
+        error 10091 API market-data entitlement missing for options on this paper account
+        (delayed AND frozen md-types) — environmental, journaled, not a code defect.
+        (c) Tiger :4001 was closed tonight — reqSecDefOptParams support on Tiger AND
+        option-quote ticks on a real-entitlement session remain OPEN observations for the
+        next trading session (probe: omi --live option-chain AAPL; omi --live option-quote).
+output: PR https://github.com/jackypanster/oh-my-ib/pull/16 (merged, squash 1332693);
+        .pipeline/options-read/reviews/review-01.md + review-02.md
+--- handoff ---
+>>> NEXT
+Feature options-read is DONE. No pipeline stage is queued. Next session options (operator picks):
+  1. Live observations sweep (first open-gateway session): omi --live option-chain AAPL (Tiger
+     reqSecDefOptParams support?); omi --live option-quote --symbol AAPL --expiry <near> --strike <ATM>
+     --right C (real-entitlement ticks/greeks?); plus the standing stk-orders observations
+     (reqPnLSingle rows with positions; executions commission join on a fill day).
+  2. v1.1 ergonomics card via pipeline-prd/task: option-chain default-exchange behavior (this
+     gateway returns empty for SMART server-side filter — consider default "" + client-side pick).
+  3. Phase 2 step 3: single-leg option ORDERS (extends trade.rs; stricter review bar; new PRD).
+<<< END
