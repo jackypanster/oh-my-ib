@@ -48,3 +48,50 @@ Done when: arch.md + CONTEXT.md + docs/adr/0017-*.md committed (stage=arch, jour
 one commit, pushed). On success: run pipeline-task.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-03T12:14:37Z · arch→task · completed · by=claude-fable-5
+done:   arch complete: write-path safety architecture (ADR 0017 — containment in trade.rs,
+        effective-port double gate pre-connect, order-id-first bounded ack via ADR 0016
+        pattern, no-retry UNKNOWN-state posture); pure seams build_stk_order (ibapi Order
+        fields, frozen) + shape_order_ack (6-key); gate matrix fully offline-frozen; docs
+        amendment text pinned verbatim; ibapi write calls source-verified
+        (place_order/cancel_order subscriptions, PlaceOrder/CancelOrder enums,
+        next_valid_order_id).
+output: .pipeline/stk-orders/arch.md, CONTEXT.md, docs/adr/0017-write-path-safety.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — highest-stakes freeze so far.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md; .pipeline/stk-orders/{PRD.md,arch.md,docs/adr/0017-*.md,CONTEXT.md}
+  - tests/quote_ticks.rs — precedent: frozen tests MAY use ibapi types (dev-dependency)
+  - tests/completed_orders_command.rs — freshest house freeze style
+Your task (concrete, numbered):
+  1. FREEZE COMMIT: write tests/stk_orders_command.rs per arch.md §Freeze coverage —
+     build_stk_order LMT/MKT x buy/sell (assert ibapi Order fields: action, total_quantity,
+     order_type, limit_price, tif Day + Contract symbol/STK); shape_order_ack 6-key exact +
+     MKT null limit; GATE MATRIX offline (3 verbs x: --live no-env => config; --port 4001
+     no-env => config; --live + OMI_ALLOW_LIVE=1 + dead port => connection; paper default +
+     dead port => connection) using assert_cmd .env()/.env_remove(); validation (qty<=0,
+     --limit<=0, missing args => usage); --help lists buy/sell/cancel. ONE commit touching
+     ONLY that file; house-red via use oh_my_ib::ib::{build_stk_order, shape_order_ack}.
+     Hash = spec-rev.
+  2. RECORD COMMIT: tasks/01.md (todo, attempts 0,
+     verify=["cargo build","cargo test --test stk_orders_command"],
+     spec-paths=[tests/stk_orders_command.rs],
+     impl-paths=[src/cli.rs, src/ib/trade.rs, src/ib/mod.rs, src/main.rs, AGENTS.md, CLAUDE.md],
+     spec-rev=<freeze hash>); card body: scope + hard constraints + freeze coverage per
+     arch.md (incl. the docs-amendment-verbatim rule and the containment grep); current.json
+     stage=task + full-verify; journal seq=3.
+Feature gotchas:
+  - Gate check precedes connect — the env-based tests are fully offline; use .env_remove to
+    guarantee a clean env per test.
+  - Frozen tests construct ibapi Order/Contract types directly (quote_ticks precedent).
+  - impl-paths includes AGENTS.md/CLAUDE.md (docs amendment) — unusual but arch-pinned.
+  - NEVER repo-wide cargo fmt; public repo: no secrets.
+Done when: both commits pushed, card 01 todo, journal seq=3 appended.
+On success: run pipeline-impl (operator hands to interactive pi/omp; codex reviews after).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
