@@ -78,3 +78,53 @@ Done when: both commits pushed, card 01 todo, journal seq=3 appended.
 On success: run pipeline-impl (operator hands to interactive pi/omp — rotation kept per PRD D2).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T11:10:39Z · task→impl · completed · by=claude-fable-5
+done:   spec frozen: tests/completed_orders_command.rs (9 tests, house-red via unresolved
+        shape_completed_orders/CompletedOrderRow imports) @ spec-rev
+        aff35991c759a0bbfd44dd03ea1d67fac0241dbf (freeze commit, spec-paths only); card 01
+        recorded (todo, card-scoped verify, spec/impl disjoint, main.rs in impl-paths).
+output: tests/completed_orders_command.rs, .pipeline/completed-orders/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot (this run: interactive pi/omp,
+rotation kept per PRD D2).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions
+  - .pipeline/completed-orders/tasks/01.md — YOUR card (scope, hard constraints, freeze coverage)
+  - .pipeline/completed-orders/arch.md — §Component design is the verbatim implementation
+  - .pipeline/completed-orders/docs/adr/0015-*.md + PRD.md + CONTEXT.md
+  - src/ib/orders.rs — the sibling whose drain/filter semantics you mirror
+  - tests/completed_orders_command.rs — the FROZEN spec to turn green (read-only for you!)
+Your task (concrete, numbered):
+  1. git checkout -b feat/completed-orders (cut from current trunk main).
+  2. Implement EXACTLY the card's impl-paths: src/cli.rs (CompletedOrders variant),
+     src/ib/completed_orders.rs NEW (CompletedOrderRow + shape_completed_orders + drain fn),
+     src/ib/mod.rs (mod + re-export), src/main.rs (dispatch arm).
+  3. Verify: cargo build && cargo test --test completed_orders_command (red->green), then
+     cargo test (full suite green) and cargo clippy --all-targets -- -D warnings.
+  4. Freeze-gate self-check BEFORE committing:
+     git diff aff35991c759a0bbfd44dd03ea1d67fac0241dbf HEAD -- tests/completed_orders_command.rs
+     must print NOTHING; git status must show no tests/ changes.
+  5. Commit, push branch, open PR: gh pr create --base main --head feat/completed-orders
+     --title "feat(completed-orders): omi completed-orders — terminal order states (ADR 0015)"
+     --body pointing at .pipeline/completed-orders/{PRD.md,arch.md,docs/adr/0015-*.md} + card 01.
+  6. Metadata commit on MAIN (not the branch): card 01 todo->review, current.json stage=impl
+     + pr URL, append journal seq=4, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - READ-ONLY red line: no place/modify/cancel code anywhere (public repo, trading gated).
+  - NEVER touch tests/ (frozen). NEVER repo-wide cargo fmt — fmt src/** only or skip.
+  - api_only=false HARDCODED (no flag). Filter rows ONLY when cfg.account set (orders parity).
+  - Orders::OrderData arm only; drain self-terminates on CompletedOrdersEnd — no explicit
+    break, no TAKE_FIRST_TIMEOUT.
+  - Debug-render action/tif/status (format!("{:?}")); limit/aux prices raw Option (None->null,
+    NOT pnl_number).
+  - brief.rs/orders.rs untouched. Metadata commit on MAIN; code diff on feat/completed-orders.
+  - Public repo: no account ids/tokens/balances anywhere.
+Done when: PR open, card verify + full suite + clippy green, freeze-gate diff empty,
+card=review, journal seq=4 pushed. On success: run pipeline-review (operator hands to codex cli).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END

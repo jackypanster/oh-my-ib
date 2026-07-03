@@ -2,5 +2,9 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "completed-orders",
-  "stage": "arch"
+  "stage": "task",
+  "full-verify": [
+    "cargo build",
+    "cargo test"
+  ]
 }
