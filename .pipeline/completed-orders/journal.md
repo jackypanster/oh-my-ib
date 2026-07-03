@@ -39,3 +39,42 @@ Done when: arch.md + CONTEXT.md + docs/adr/0015-*.md committed (stage=arch, jour
 one commit, pushed). On success: run pipeline-task.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-03T11:09:11Z · arch→task · completed · by=claude-fable-5
+done:   arch complete: 4-file diff (cli CompletedOrders variant, NEW src/ib/completed_orders.rs
+        with CompletedOrderRow + shape_completed_orders + drain fn, mod/main wiring); ADR 0015
+        (drain-to-End, api_only=false hardcoded, 14-key row = open-orders 10-key parity + 4
+        completion keys, avg_fill_price deliberately excluded, filter-when-set inline).
+        Freeze coverage pinned. ibapi claims source-verified.
+output: .pipeline/completed-orders/arch.md, .pipeline/completed-orders/CONTEXT.md,
+        .pipeline/completed-orders/docs/adr/0015-completed-orders-drain.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md; .pipeline/completed-orders/{PRD.md,arch.md,docs/adr/0015-*.md}
+  - tests/search_command.rs — freshest house freeze pattern (plain-row fixtures + house-red)
+Your task (concrete, numbered):
+  1. FREEZE COMMIT: write tests/completed_orders_command.rs per arch.md §Freeze coverage —
+     shape_completed_orders (exact 14-key row; gateway order; None limit/aux -> null; ""
+     completed_time pass-through; zero rows => json!([])); CLI (--help lists completed-orders;
+     completed-orders --help ok; dead port => code="connection"). ONE commit touching ONLY
+     that file; house-red via use oh_my_ib::ib::{shape_completed_orders, CompletedOrderRow}.
+     Hash = spec-rev.
+  2. RECORD COMMIT: tasks/01.md (todo, attempts 0,
+     verify=["cargo build","cargo test --test completed_orders_command"],
+     spec-paths=[tests/completed_orders_command.rs],
+     impl-paths=[src/cli.rs, src/ib/completed_orders.rs, src/ib/mod.rs, src/main.rs],
+     spec-rev=<freeze hash>); current.json stage=task + full-verify; journal seq=3.
+Feature gotchas:
+  - READ-ONLY red line; NEVER repo-wide cargo fmt; public repo no secrets.
+  - The 14 keys and their order-of-definition are in arch.md §Component design — freeze the
+    KEY SET (sorted assert), not serialization order (serde_json = BTreeMap).
+  - No TAKE_FIRST_TIMEOUT anywhere near this drain.
+Done when: both commits pushed, card 01 todo, journal seq=3 appended.
+On success: run pipeline-impl (operator hands to interactive pi/omp — rotation kept per PRD D2).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
