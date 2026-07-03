@@ -192,3 +192,30 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: PR #11 squash-merged into main after human confirm, card=done, journal seq=5 pushed.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-03T08:05:00Z · review→merge-confirm · completed · by=claude-fable-5
+done:   pipeline-review APPROVE (review-01.md): freeze gate EMPTY; full suite 71/71 + clippy
+        clean on detached worktree @ e125825; semantic pass verbatim vs arch.md; adversarial
+        subagent 6/6 CONFIRMED; live: pnl PASS 2.9s (happy path un-slowed), timeout path proven
+        LIVE 4x against a real wedge (bounded 10.2-10.3s, exit 6, exact envelope — pre-PR this
+        hung forever). Side-finding: wedge strengthened to "first reqPnL per gateway session
+        only" (8 data points, no kill needed); operational guidance = run brief first after
+        gateway login. Optional non-blocking: brief first-slot healthy PASS at next restart.
+output: .pipeline/read-timeouts/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+AWAITING OPERATOR: explicit merge confirmation for PR #11 (CONTRACT: only pipeline-review
+merges, human-confirmed). On confirm, pipeline-review (any session) does:
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/11
+Model: frontier SOTA required — operator assigns the bot.
+  1. Verify PR head still e125825 (gh pr view 11 --json headRefOid); if moved, re-run review gates.
+  2. gh pr merge 11 --squash --delete-branch
+  3. Verify trunk post-merge: cargo build && cargo test (expect 71/71) on updated main.
+  4. Card 01 status review->done; current.json stage=done, pr stays for the record.
+  5. Append journal seq=6 (feature DONE + open items: optional brief first-slot run;
+     reqPnLSingle first-trading-day observation; gateway first-slot-only investigation).
+  6. Single metadata commit on main, push.
+Feature gotchas: none new — do not touch tests/; public repo redaction rules apply to any
+pasted live output.
+Done when: PR merged, trunk green, journal seq=6 pushed.
+<<< END
