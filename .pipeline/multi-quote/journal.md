@@ -139,3 +139,56 @@ Done when: PR open, card verify + full suite + clippy green, freeze-gate diff em
 card=review, journal seq=4 pushed. On success: run pipeline-review.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03T08:32:05Z · task→impl · completed · by=interactive-π/glm-5.2
+done:   impl landed on feat/multi-quote (PR #12): cli.rs symbols:Vec<String> (required),
+        quote.rs quote_one + shape_quotes + batched quote(), mod.rs re-export. 3-file diff,
+        +56 -9. Frozen spec untouched (freeze-gate diff empty); N=1 byte-identity via quote_one
+        emitting today's json! literal + shape_quotes returning it bare; drains stay
+        SnapshotEnd-bounded (NOT ADR 0012 take-first).
+output: PR #12 (https://github.com/jackypanster/oh-my-ib/pull/12), feat/multi-quote tip 5437831
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/multi-quote pr=https://github.com/jackypanster/oh-my-ib/pull/12
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, read-only, agent-first docs)
+  - .pipeline/multi-quote/tasks/01.md — the card (status=review): scope, hard constraints, freeze coverage
+  - .pipeline/multi-quote/arch.md — §Component design is what impl followed verbatim
+  - .pipeline/multi-quote/docs/adr/0013-batch-snapshots-one-session.md — binding decisions
+  - .pipeline/multi-quote/PRD.md + CONTEXT.md — criteria + glossary
+  - PR #12 diff (gh pr diff 12) — the review surface
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff 828348aa1124bd15d0ed39d26fe29097fea19aea <review-tip> -- tests/multi_quote.rs
+     must be EMPTY. Non-empty ⇒ reject (attempts++, route impl; >=3 ⇒ hunt).
+  2. Full-suite gate: checkout feat/multi-quote, run current.json.full-verify
+     (["cargo build","cargo test"]) — must be GREEN. Red attributable to card 01 ⇒ flip
+     review→todo, attempts++; cross-card with no single owner ⇒ reviews/integration-NN.md
+     + route pipeline-hunt.
+  3. Semantic review (by reading) of the impl diff vs arch.md §Component design + card freeze
+     coverage: one connect, ONE switch_market_data_type, ordered loop, fail-fast ?, quote/<symbol>
+     contexts, quote_one json! literal byte-identical to pre-variadic, shape_quotes pure (1 ⇒ bare
+     object, 2+ ⇒ bare array, 0 ⇒ []), drains NOT wrapped in TAKE_FIRST_TIMEOUT. main.rs/output.rs/
+     error.rs untouched. No secrets.
+  4. If all three pass: squash-merge PR #12 (the only merge), then operator live acceptance
+     (PRD criterion 9): omi --live quote AAPL (single object) + omi --live quote AAPL MSFT NVDA
+     (array, input order) on the Tiger gateway — single row shape matches a batch row.
+  5. After human-confirm + merge: card 01 status review→done, current.json stage=done (drop pr?),
+     append journal seq=5, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Freeze gate is the deterministic two-commit diff over tests/multi_quote.rs — empty = pass.
+  - N=1 byte-identity is the red line: quote_one emits the pre-variadic json! literal exactly;
+    shape_quotes returns it bare (no wrapper, no added keys).
+  - Snapshot drains are SnapshotEnd-BOUNDED — do NOT flag the absence of ADR 0012 take-first
+    wrapping as a bug (ADR 0013 records the distinction; PRD D4).
+  - Accepted failure-path-only delta: error CONTEXT strings gained the symbol (quote → quote/AAPL).
+    Codes/messages/success output unchanged; frozen tests assert code, not context.
+  - main.rs/output.rs/error.rs are OUT of impl-paths by design — dispatch, renderer, envelope untouched.
+  - The metadata commit is already on MAIN (this entry rides it); the code diff is on feat/multi-quote.
+  - Public repo: scan the PR diff for account ids/tokens/balances before merge.
+Done when: PR #12 squash-merged after freeze gate empty + full-suite green + semantic review pass
++ operator live acceptance (criterion 9); card=done, journal seq=5 pushed.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
