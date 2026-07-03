@@ -95,3 +95,54 @@ Done when: both commits pushed, card 01 todo, journal seq=3 appended.
 On success: run pipeline-impl (operator hands to interactive pi/omp; codex reviews after).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T12:16:53Z · task→impl · completed · by=claude-fable-5
+done:   spec frozen: tests/stk_orders_command.rs (16 tests, house-red via unresolved
+        build_stk_order/shape_order_ack imports; gate matrix fully offline via
+        .env_remove/.env) @ spec-rev 3692c71bc11e873b2be8f3c9448a2a8d4f4d9e8f (freeze commit,
+        spec-paths only); card 01 recorded (todo; impl-paths includes AGENTS.md/CLAUDE.md for
+        the red-line amendment — arch-pinned verbatim).
+output: tests/stk_orders_command.rs, .pipeline/stk-orders/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns (this run: interactive pi/omp).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — you will AMEND their red-line bullet (arch.md §Docs amendment,
+    VERBATIM, nothing else in those files)
+  - .pipeline/stk-orders/tasks/01.md — YOUR card (scope/constraints/freeze coverage, exact)
+  - .pipeline/stk-orders/arch.md — §Component design + §Docs amendment are the verbatim impl
+  - .pipeline/stk-orders/docs/adr/0017-write-path-safety.md + PRD.md + CONTEXT.md
+  - src/ib/completed_orders.rs — the ADR 0016 bounded-loop pattern you replicate
+  - tests/stk_orders_command.rs — the FROZEN spec (read-only for you!)
+Your task (concrete, numbered):
+  1. git checkout -b feat/stk-orders (cut from current trunk main).
+  2. Implement EXACTLY the card's impl-paths (cli.rs 3 variants, NEW src/ib/trade.rs with the
+     two pure seams + gate + three gateway fns, mod.rs re-exports, main.rs arms,
+     AGENTS.md/CLAUDE.md verbatim amendment).
+  3. Ordering invariant the frozen tests assert: usage validation FIRST, then gate (config),
+     then connect (connection). Gate = effective-port rule (cfg.port == LIVE_PORT).
+  4. Verify: cargo build && cargo test --test stk_orders_command (16 red->green), then cargo
+     test (full suite) and cargo clippy --all-targets -- -D warnings.
+  5. Freeze-gate self-check: git diff 3692c71bc11e873b2be8f3c9448a2a8d4f4d9e8f HEAD --
+     tests/stk_orders_command.rs must print NOTHING.
+  6. Commit, push branch, open PR: gh pr create --base main --head feat/stk-orders
+     --title "feat(stk-orders): buy/sell/cancel — Phase 2 write path (ADR 0017)"
+     --body pointing at .pipeline/stk-orders artifacts + card; body MUST note the red-line
+     docs amendment.
+  7. Metadata commit on MAIN: card todo->review, current.json stage=impl + pr URL, journal
+     seq=4, push main.
+Feature gotchas (traps the next node MUST know):
+  - Write calls ONLY in trade.rs (review greps place_order/submit_order/encode_place_order/
+    cancel_order — zero hits elsewhere).
+  - NO retry logic anywhere; timeout message MUST name the allocated order id and forbid
+    blind retry.
+  - Reuse TAKE_FIRST_TIMEOUT (pub in src/ib/mod.rs) — no new consts.
+  - AGENTS.md/CLAUDE.md: ONLY the red-line paragraph per arch.md §Docs amendment.
+  - NEVER touch tests/; never repo-wide cargo fmt; public repo: no secrets.
+Done when: PR open, 16/16 + full suite + clippy green, freeze gate empty, card=review,
+seq=4 pushed. On success: run pipeline-review (codex cli, YOLO).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
