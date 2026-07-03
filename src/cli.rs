@@ -76,6 +76,29 @@ pub enum Command {
     Search(SearchArgs),
     /// Today's completed orders (filled/cancelled) with status
     CompletedOrders,
+    /// Place a BUY order (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
+    Buy(OrderArgs),
+    /// Place a SELL order (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
+    Sell(OrderArgs),
+    /// Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
+    Cancel(CancelArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct OrderArgs {
+    /// Ticker symbol, e.g. AAPL
+    pub symbol: String,
+    /// Quantity (positive)
+    pub quantity: f64,
+    /// Limit price (omit for MKT; positive for LMT)
+    #[arg(long)]
+    pub limit: Option<f64>,
+}
+
+#[derive(Args, Debug)]
+pub struct CancelArgs {
+    /// Order id to cancel
+    pub order_id: i32,
 }
 
 #[derive(Args, Debug)]
