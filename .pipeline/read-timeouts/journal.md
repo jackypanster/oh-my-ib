@@ -42,3 +42,47 @@ Done when: arch.md + CONTEXT.md + docs/adr/0012-*.md committed (stage=arch, jour
 one commit, pushed). On success: run pipeline-task.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-03T06:40:00Z · arch→task · completed · by=claude-fable-5
+done:   arch complete: 4-file diff pinned (error.rs Timeout/6, TAKE_FIRST_TIMEOUT const in
+        ib/mod.rs, two seam swaps with verbatim diffs); ADR 0012 (timeout twin, None-collapse,
+        per-item window); freeze-coverage split pinned for task. All ibapi claims source-verified.
+output: .pipeline/read-timeouts/arch.md, .pipeline/read-timeouts/CONTEXT.md,
+        .pipeline/read-timeouts/docs/adr/0012-take-first-timeout-twin.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (CONTRACT step 2: nothing to load).
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions
+  - .pipeline/read-timeouts/PRD.md — criteria 1-8, decisions D1-D5
+  - .pipeline/read-timeouts/arch.md — the 4-file diff + §Freeze coverage (YOUR spec, pre-pinned)
+  - .pipeline/read-timeouts/docs/adr/0012-take-first-timeout-twin.md — binding mechanism
+  - tests/pnl_by_position_command.rs — the house freeze pattern to mirror (incl. house-red via
+    unresolved imports; doc-comment style)
+Your task (concrete, numbered):
+  1. FREEZE COMMIT: write tests/read_timeouts.rs per arch.md §Freeze coverage — frozen surface:
+     AppError::timeout code/exit/Display; full code<->exit table regression; TAKE_FIRST_TIMEOUT
+     == 10s; omi --help surface unchanged; omi pnl dead-port still code=connection. ONE commit
+     touching ONLY that file; must compile-fail (house-red: imports unresolved) => suite RED.
+     Its hash = spec-rev.
+  2. RECORD COMMIT: tasks/01.md frontmatter (status todo, attempts 0,
+     verify=["cargo build","cargo test --test read_timeouts"],
+     spec-paths=[tests/read_timeouts.rs],
+     impl-paths=[src/error.rs, src/ib/mod.rs, src/ib/pnl.rs, src/ib/pnl_by_position.rs],
+     spec-rev=<freeze hash>), card body pointing at arch.md verbatim diffs, ## Freeze coverage
+     section (frozen vs review-by-reading vs live per arch.md), current.json stage=task +
+     full-verify=["cargo build","cargo test"], journal seq=3. Metadata only — spec-paths
+     untouched.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Single card, single freeze commit (CONTRACT double-commit protocol) — spec-rev is commit #1's hash.
+  - spec-paths ∩ impl-paths = ∅ — brief.rs/cli.rs/main.rs are NOT impl-paths (untouched by design).
+  - NEVER run repo-wide cargo fmt (rewrites frozen tests/) — fmt src/** only.
+  - Public repo: no account ids/tokens/balances anywhere.
+  - Trunk goes RED at the freeze commit and stays red until impl merges — expected (no CI gate).
+Done when: both commits pushed, card 01 status=todo, journal seq=3 appended.
+On success: run pipeline-impl (operator will hand it to the oh-my-pi coding agent).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
