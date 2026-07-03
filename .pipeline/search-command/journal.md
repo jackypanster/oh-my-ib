@@ -184,3 +184,41 @@ Done when: PR #13 squash-merged after freeze gate empty + full-suite green + sem
 + operator live acceptance (criterion 8); card=done, journal seq=5 pushed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-03T09:20:01Z · impl→review · completed · by=codex-gpt-5(codex-cli)
+done:   Review verdict APPROVE written for PR #13 at a4d6fa87baedc89fb1ef427372a7816d94e59f8b.
+        Freeze gate empty, whole tests tree untouched, scope exact to 4 impl-paths, isolated
+        full-verify green (`cargo build`, `cargo test` = 89/89), clippy clean, semantic review
+        clean against arch.md + card Freeze coverage. Operator live evidence read from /tmp:
+        apple array length 31 with AAPL conid 265598; tencent array length 17 with 700 SEHK HKD first.
+output: .pipeline/search-command/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review merge disposition on a FRESH session after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/13
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, read-only, agent-first docs)
+  - .pipeline/search-command/tasks/01.md — card 01 should still be status=review
+  - .pipeline/search-command/arch.md + docs/adr/0014-search-plain-bounded-call.md
+  - .pipeline/search-command/reviews/review-01.md — APPROVE verdict and evidence
+Your task (concrete, numbered):
+  1. Proceed only after the operator explicitly says merge/go.
+  2. Re-read PR #13 and confirm head is still a4d6fa87baedc89fb1ef427372a7816d94e59f8b.
+     If moved, rerun freeze gate, scope check, full-verify, clippy, semantic review, and live-evidence check.
+  3. Confirm card 01 remains status=review and current.json feature=search-command stage=review.
+  4. Squash-merge PR #13 via the GitHub forge adapter and delete feat/search-command.
+  5. On main, set card 01 status=done, set current.json stage=done, append final review→done
+     journal entry, commit once, and push main.
+Feature gotchas:
+  - Do NOT merge without explicit human confirmation.
+  - Do NOT author product code in review/merge disposition.
+  - Search is ADR 0014 plain-bounded-call: no STK guard, account resolution, md-type switch,
+    TAKE_FIRST_TIMEOUT, drain loop, or sorting. Absence of those is intended.
+  - Public repo: keep live output/account-sensitive data redacted if adding any notes.
+Done when: PR #13 squash-merged after explicit confirm, card 01 done, current.json stage=done,
+final journal entry committed and pushed to main.
+On reject: name the offending behavior; attempts++ and card 01 -> todo (or blocked at >=3);
+route pipeline-impl or pipeline-hunt per CONTRACT.
+<<< END
