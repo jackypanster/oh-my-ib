@@ -146,3 +146,84 @@ Done when: PR open, 16/16 + full suite + clippy green, freeze gate empty, card=r
 seq=4 pushed. On success: run pipeline-review (codex cli, YOLO).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03T12:27:56Z · task→impl · completed · by=interactive-π/glm-5.2
+done:   PHASE 2 WRITE PATH landed on feat/stk-orders (PR #15): cli.rs Buy/Sell/Cancel variants
+        + OrderArgs/CancelArgs, NEW trade.rs (build_stk_order + shape_order_ack pure seams +
+        require_live_write_gate effective-port double gate + buy/sell/cancel gateway fns with
+        bounded first-ack loops reusing TAKE_FIRST_TIMEOUT), mod.rs re-exports, main.rs arms,
+        AGENTS.md + CLAUDE.md red-line amendment (verbatim per arch §Docs). 6-file diff, +241 -3.
+        Containment grep clean (write calls ONLY in trade.rs); no-retry grep clean; ordering
+        invariant usage<config<connection; timeout envelope names allocated order id + forbids
+        blind retry. Frozen spec untouched (freeze-gate diff empty). CLAUDE.md kept < 900 bytes
+        (consolidated two redundant bullets into the single amendment — passes claude_md.rs).
+output: PR #15 (https://github.com/jackypanster/oh-my-ib/pull/15), feat/stk-orders tip 8ae9527
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/stk-orders pr=https://github.com/jackypanster/oh-my-ib/pull/15
+Model: frontier SOTA required — HIGHEST-STAKES review to date (first write path); operator assigns (this run: codex cli).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (amended red-line: writes now gated, Phase 2)
+  - .pipeline/stk-orders/tasks/01.md (status=review) — card scope + hard constraints + freeze coverage
+  - .pipeline/stk-orders/arch.md — §Component design + §Docs amendment (verbatim impl source)
+  - .pipeline/stk-orders/docs/adr/0017-write-path-safety.md — the safety architecture (binding)
+  - .pipeline/stk-orders/PRD.md + CONTEXT.md — criteria 1-11 + glossary
+  - src/ib/trade.rs — the ONLY write-call module (review surface)
+  - PR #15 diff (gh pr diff 15) — full review surface
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff 3692c71bc11e873b2be8f3c9448a2a8d4f4d9e8f <review-tip> -- tests/stk_orders_command.rs
+     must be EMPTY. Non-empty ⇒ reject (attempts++, route impl; >=3 ⇒ hunt).
+  2. Full-suite gate: checkout feat/stk-orders, run current.json.full-verify
+     (["cargo build","cargo test"]) — must be GREEN (114/114 expected). Red attributable to
+     card 01 ⇒ flip review→todo, attempts++; cross-card ⇒ reviews/integration-NN.md + hunt.
+  3. Semantic review (by reading) of the PR #15 diff vs arch.md §Component design + card freeze
+     coverage. THE POLARITY-FLIPPED CHECKS (write-path-specific, all required):
+     a. CONTAINMENT: grep src/ for place_order/submit_order/encode_place_order/cancel_order —
+        ZERO hits outside src/ib/trade.rs. No read command imports trade's gateway fns.
+     b. DOUBLE GATE: require_live_write_gate gates on cfg.port == LIVE_PORT (effective port,
+        catches --live AND hand-set --port 4001); OMI_ALLOW_LIVE=1 required; returns
+        AppError::config (code=\"config\") BEFORE connect. Paper (:4002) ungated.
+     c. ORDERING INVARIANT: in buy/sell (the place fn): local validation (usage) → gate (config)
+        → connect (connection) → next_valid_order_id → build_stk_order → place_order → bounded
+        first-ack. usage < config < connection (frozen tests depend on this).
+     d. BOUNDED ACK: timeout_iter_data(TAKE_FIRST_TIMEOUT) + Instant-classified None; first
+        OrderStatus OR OpenOrder is the ack; skip ExecutionData/CommissionReport; cancel uses a
+        single .next() (CancelOrder has one variant). Timeout ⇒ AppError::timeout naming the
+        ALLOCATED order id + \"may have been SUBMITTED\" + \"verify with omi orders\" +
+        \"do NOT retry blindly\".
+     e. NO RETRY: grep trade.rs for retry/re_place/re-submit — zero hits. A timeout is an
+        UNKNOWN state, never a re-placement.
+     f. PURE SEAMS: build_stk_order (exact ibapi Order fields: action/total_quantity/order_type
+        LMT|MKR/limit_price/tif Day + Contract symbol/STK); shape_order_ack (exact 6-key object,
+        MKT ⇒ limit_price null).
+     g. DOCS AMENDMENT: AGENTS.md + CLAUDE.md red-line bullet replaced VERBATIM with arch.md
+        §Docs amendment text. CLAUDE.md stays < 900 bytes (tests/claude_md.rs).
+  4. READ-ONLY polarity preserved: reads unchanged (orders.rs/brief.rs/etc. untouched); the
+     only write symbols anywhere are in trade.rs.
+  5. If all pass: operator live acceptance on PAPER (PRD criterion 11, merge gate): far-LMT buy
+     → omi orders shows working → cancel → omi completed-orders shows Cancelled → omi positions
+     unchanged. Operator MUST log gateway into PAPER. Live trading is NEVER exercised by the
+     pipeline; the double gate is the operator's own key. Then human-confirm + squash-merge.
+  6. After human-confirm + merge: card 01 status review->done, current.json stage=done (drop pr?),
+     append journal seq=5, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - HIGHEST-STAKES review: this is the repo's first write path. The polarity flips — the normal
+    \"no write code\" rule is REPLACED by \"write code ONLY in src/ib/trade.rs, unreachable from reads\".
+  - Freeze gate is the deterministic two-commit diff over tests/stk_orders_command.rs — empty = pass.
+  - The gate MUST precede connect (frozen tests assert usage < config < connection ordering).
+  - Timeout envelope MUST name the allocated order id and forbid blind retry — this is the
+    UNKNOWN-state posture (ADR 0017 §3-4). A timeout is NOT a re-placement trigger.
+  - CancelOrder has only the OrderStatus variant (no events to skip) — cancel uses a single
+    .next(), NOT a loop. clippy::never_loop enforced this.
+  - CLAUDE.md < 900 bytes is frozen (tests/claude_md.rs); the amendment consolidated two
+    redundant bullets into one to stay under.
+  - Reuses TAKE_FIRST_TIMEOUT (pub in src/ib/mod.rs) — no new consts, no new error codes.
+  - The metadata commit is already on MAIN (this entry rides it); the code diff is on feat/stk-orders.
+  - Public repo: scan the PR diff for account ids/tokens/balances before merge.
+Done when: PR #15 squash-merged after freeze gate empty + full-suite green + ALL polarity-flipped
+semantic checks (containment/double-gate/ordering/bounded-ack/no-retry/seams/docs) pass +
+operator PAPER live acceptance (criterion 11); card=done, journal seq=5 pushed.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
