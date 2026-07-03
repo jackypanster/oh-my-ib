@@ -302,3 +302,50 @@ Done when: PR #14 squash-merged after freeze gate empty + full-suite green + sem
 + READ-ONLY grep clean + operator live acceptance (criterion 8 amended); card=done, journal seq=7 pushed.
 On failure: attempts++ (=2); >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-07-03T11:40:34Z · impl→review · completed · by=codex-gpt-5(codex-cli)
+done:   Review verdict APPROVE written for PR #14 at 46a12b054cf99cdf244c58d8ff1555a961acef2e.
+        Covered both impl rounds: round 1 additive completed-orders command and round 2 ADR 0016
+        bounded drain after live wedge. Freeze gate empty, whole tests tree untouched, scope exact
+        to 4 impl-paths, isolated full-verify green (`cargo build`, `cargo test` = 98/98), clippy
+        clean, semantic review clean against arch.md §Component design + §Amendment + ADR 0015/0016.
+        Read-only API grep clean. Operator live evidence read from /tmp: co3/co4 both
+        {"completed_orders":[]} with reported exit 0 (2.8s, 188ms), satisfying amended criterion 8
+        path (a); wedge history retained as ADR 0016 defense.
+output: .pipeline/completed-orders/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review merge disposition on a FRESH session after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/14
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, READ-ONLY, agent-first docs)
+  - .pipeline/completed-orders/tasks/01.md — card 01 should still be status=review, attempts=1
+  - .pipeline/completed-orders/arch.md — Component design + Amendment
+  - .pipeline/completed-orders/docs/adr/0015-completed-orders-drain.md
+  - .pipeline/completed-orders/docs/adr/0016-bounded-drain-completed-orders.md
+  - .pipeline/completed-orders/reviews/review-01.md — APPROVE verdict and evidence
+Your task (concrete, numbered):
+  1. Proceed only after the operator explicitly says merge/go.
+  2. Re-read PR #14 and confirm head is still 46a12b054cf99cdf244c58d8ff1555a961acef2e.
+     If moved, rerun freeze gate, scope check, full-verify, clippy, semantic review, read-only grep,
+     and live-evidence check.
+  3. Confirm card 01 remains status=review and current.json feature=completed-orders stage=review.
+  4. Squash-merge PR #14 via the GitHub forge adapter and delete feat/completed-orders.
+  5. On main, set card 01 status=done, set current.json stage=done, append final review→done
+     journal entry, commit once, and push main.
+Feature gotchas:
+  - Do NOT merge without explicit human confirmation.
+  - Do NOT author product code in review/merge disposition.
+  - READ-ONLY red line: no place/modify/cancel/global-cancel code paths.
+  - ADR 0016 amends ADR 0015: completed-orders uses bounded drain with
+    timeout_iter_data(TAKE_FIRST_TIMEOUT) and elapsed-time None classification by design.
+  - api_only=false is hardcoded; --account filters only when explicitly set.
+  - Non-blocking advisory in review-01: module header still has an ADR 0015-era no-timeout
+    sentence, but function docs/code are correct. Do not edit product code during merge disposition.
+Done when: PR #14 squash-merged after explicit confirm, card 01 done, current.json stage=done,
+final journal entry committed and pushed to main.
+On reject: name the offending behavior; attempts++ (=2) and card 01 -> todo (or blocked at >=3);
+route pipeline-impl or pipeline-hunt per CONTRACT.
+<<< END
