@@ -3,33 +3,49 @@
 //! Mirrors `account.rs` (connect → request → first reading → JSON), but reads via `reqPnL`
 //! (`client.pnl`). KEY difference (ADR 0007): the PnL subscription is an UNBOUNDED real-time stream
 //! with NO `End` marker — so we take exactly ONE reading with `next_data()` and drop the subscription.
-//! A drain-to-end loop (the `account`/`quote` pattern) would block forever.
+//! A drain-to-end loop (the `account`/`quote` pattern) would block forever. The take-first read lives
+//! in `pnl_with_client` so `brief` (ADR 0010) shares the SAME logic on its own connection.
 
+use ibapi::accounts::types::AccountId;
+use ibapi::client::blocking::Client;
 use serde_json::{json, Value};
 
 use crate::config::Config;
 use crate::error::AppError;
 
-pub fn pnl(cfg: &Config) -> Result<Value, AppError> {
-    let client = super::connect(cfg)?;
-    let account = super::resolve_account(&client, cfg)?;
+/// The 3-key account-PnL payload (no `account` wrapper — hoisting lives in the callers).
+/// Shared by `pnl` (own connection) and `brief` (one-session fetch, ADR 0010).
+pub(crate) fn pnl_with_client(
+    client: &Client,
+    account: &AccountId,
+    ctx: &str,
+) -> Result<Value, AppError> {
     let subscription = client
-        .pnl(&account, None)
-        .map_err(|e| AppError::data(format!("pnl request failed: {e}"), "pnl"))?;
+        .pnl(account, None)
+        .map_err(|e| AppError::data(format!("pnl request failed: {e}"), ctx))?;
 
     // Take exactly one reading (ADR 0007 — reqPnL has no End marker; do NOT iterate).
     let reading = match subscription.next_data() {
         Some(Ok(p)) => p,
-        Some(Err(e)) => return Err(AppError::data(format!("pnl stream: {e}"), "pnl")),
-        None => return Err(AppError::data("no PnL reading", "pnl")),
+        Some(Err(e)) => return Err(AppError::data(format!("pnl stream: {e}"), ctx)),
+        None => return Err(AppError::data("no PnL reading", ctx)),
     };
 
     Ok(json!({
-        "account": account.0,
         "daily_pnl": pnl_number(Some(reading.daily_pnl)),
         "unrealized_pnl": pnl_number(reading.unrealized_pnl),
         "realized_pnl": pnl_number(reading.realized_pnl),
     }))
+}
+
+pub fn pnl(cfg: &Config) -> Result<Value, AppError> {
+    let client = super::connect(cfg)?;
+    let account = super::resolve_account(&client, cfg)?;
+    let mut out = pnl_with_client(&client, &account, "pnl")?;
+    if let Value::Object(map) = &mut out {
+        map.insert("account".to_string(), Value::from(account.0.clone()));
+    }
+    Ok(out)
 }
 
 /// Map an IB PnL value to clean JSON: a finite, real number stays a number; IBKR's "no value"
