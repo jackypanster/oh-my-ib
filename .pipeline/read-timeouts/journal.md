@@ -140,3 +140,55 @@ Done when: PR open, card verify + full suite + clippy green on the branch, freez
 empty, card=review, journal seq=4 pushed. On success: run pipeline-review.
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03T07:10:00Z · impl→review · completed · by=oh-my-pi/glm-5.2
+done:   impl landed on feat/read-timeouts (4 impl-paths: error.rs Timeout/6, ib/mod.rs const,
+        two seam swaps verbatim per arch.md); card verify RED->GREEN (7), full suite GREEN
+        (71), clippy clean; freeze-gate diff empty; PR #11 open.
+output: PR https://github.com/jackypanster/oh-my-ib/pull/11,
+        feat/read-timeouts commit e125825
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/11
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (CONTRACT step 2: nothing to load).
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, read-only, agent-first docs)
+  - .pipeline/read-timeouts/PRD.md — criteria 1-8, decisions D1-D5
+  - .pipeline/read-timeouts/arch.md — §"Exact seam diffs" (the verbatim spec this impl followed)
+  - .pipeline/read-timeouts/docs/adr/0012-take-first-timeout-twin.md — binding mechanism
+  - .pipeline/read-timeouts/tasks/01.md — card 01 (status: review), §Freeze coverage
+  - tests/read_timeouts.rs — the frozen spec (FROZEN — do NOT edit)
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff 3b011a62aa9004c63c67cc0dc6c5b7c48103325c
+     feat/read-timeouts -- tests/read_timeouts.rs must be EMPTY. Non-empty => reject
+     (attempts++, route impl; >=3 => hunt).
+  2. Full-suite gate on feat/read-timeouts HEAD: cargo build && cargo test (current.json
+     full-verify) must be GREEN. Red => attribute to a card or write
+     reviews/integration-NN.md + route hunt.
+  3. Semantic review-by-reading (arch.md §Freeze coverage — NOT freezable offline, no fake IB
+     server): both seams use timeout_iter_data(TAKE_FIRST_TIMEOUT).next() exactly (not raw
+     next_timeout, not a local const); cure messages match arch.md verbatim (duration +
+     restart cure; sweep arm prefixes "pnl_single conid {conid}:"); Some(Err) arms and all
+     surrounding code byte-identical (PRD criterion 6 — healthy-path stdout unchanged); no
+     other read site modified (drain loops keep iter_data()); error.rs envelope contract
+     intact (code/exit table, Display shape); no new CLI/config surface; help text contains
+     no "timeout".
+  4. Operator live acceptance (PRD criterion 8, merge gate — NOT yours to run): omi --live pnl
+     + omi --live brief healthy-path PASS in seconds. Flag this for the operator before merge.
+  5. On all-green + human confirm: squash-merge PR #11 into main (only pipeline-review merges),
+     flip card 01 status: review -> done, set current.json stage=done, append journal seq=5
+     (metadata commit on main), push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/ (frozen). NEVER run repo-wide cargo fmt — it rewrites tests/ (repo
+    baseline is not fmt-clean).
+  - The PR diff is ONLY the 4 impl-paths (error.rs, ib/mod.rs, ib/pnl.rs, ib/pnl_by_position.rs);
+    metadata (card/journal/current.json) is on main, NOT in the PR.
+  - reqPnL/reqPnLSingle are MARKERLESS (ADR 0007/0009): take-first only; the drain loops in
+    account/positions/brief MUST keep iter_data() (this feature bounds ONLY the two take-first seams).
+  - Exit 6 was free (1,2,3,4,5,64 taken); now taken by Timeout.
+  - Public repo: no account ids/tokens/balances anywhere — recheck before merge.
+Done when: PR #11 squash-merged into main after human confirm, card=done, journal seq=5 pushed.
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
