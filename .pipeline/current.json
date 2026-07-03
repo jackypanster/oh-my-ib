@@ -1,11 +1,6 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "multi-quote",
-  "stage": "done",
-  "pr": "https://github.com/jackypanster/oh-my-ib/pull/12",
-  "full-verify": [
-    "cargo build",
-    "cargo test"
-  ]
+  "feature": "search-command",
+  "stage": "prd"
 }
