@@ -324,3 +324,42 @@ Done when: PR #15 squash-merged after freeze gate empty + full-suite green + ALL
 semantic checks pass + operator PAPER live acceptance (criterion 11); card=done, journal seq=7 pushed.
 On failure: attempts++ (=2); >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-07-03T12:47:43Z · impl→review · completed · by=codex-gpt-5
+done:   review verdict written: PR #15 APPROVED / merge-ready, NOT merged. Freeze gates empty,
+        scope exactly 6 impl-paths, isolated full suite green (cargo build + cargo test 114/114 +
+        clippy -D warnings) at ee9291f, semantic checks pass (containment, effective-port double
+        gate, validation→gate→connect ordering, bounded UNKNOWN ack, no retry, R2 local
+        next_order_id allocator, docs amendment). PAPER evidence recorded from /tmp/o1.json and
+        /tmp/o3.json plus operator lifecycle report; operational note recorded: order-id cancel is
+        client-id namespaced (cross-client-id cancel returns IB 10147).
+output: .pipeline/stk-orders/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review merge continuation on a FRESH session after the human explicitly confirms merge.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/15
+Model: frontier SOTA required — first write path; do not downgrade.
+First: git pull --rebase; no .env in this repo.
+Read for context:
+  - AGENTS.md + CLAUDE.md
+  - CONTRACT.md in jackypanster/pipeline
+  - .pipeline/stk-orders/{PRD.md,arch.md,CONTEXT.md,tasks/01.md,journal.md}
+  - .pipeline/stk-orders/docs/adr/0017-write-path-safety.md
+  - .pipeline/stk-orders/docs/adr/0018-local-order-id-allocator.md
+  - .pipeline/stk-orders/reviews/review-01.md
+Your task:
+  1. Confirm the human has explicitly authorized merge. Without that exact confirmation, STOP.
+  2. Re-check PR #15 head is still ee9291f95535e6c579976b48eb6959c9f6436be7 or rerun the review gates
+     against the new head if it moved.
+  3. If unchanged and human-confirmed, squash-merge PR #15 via the GitHub adapter. Do not local-merge.
+  4. After merge, on main: set card 01 status review->done, set current.json stage=done, append the
+     final review->done journal entry, commit once, push main.
+Feature gotchas:
+  - Do not merge without explicit human confirmation; this seq=7 is approval evidence, not merge auth.
+  - PR head reviewed was ee9291f95535e6c579976b48eb6959c9f6436be7.
+  - R2 allocator is client.next_order_id(), not next_valid_order_id().
+  - Order-id cancel is client-id namespaced; cross-client-id cancel returns structured IB 10147.
+  - If PR head moved, rerun freeze gates, scope gate, full suite, clippy, and semantic checks before merge.
+Done when: PR #15 squash-merged after human confirm, card=done, current.json stage=done, final journal
+entry committed and pushed. On any regression: reject per CONTRACT (attempts++ to 2; >=3 => hunt).
+<<< END
