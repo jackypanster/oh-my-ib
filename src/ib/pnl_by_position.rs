@@ -2,9 +2,10 @@
 //!
 //! Two-phase sweep (ADR 0009): discovery via the `account_updates` portfolio stream (the
 //! `positions.rs` pattern — drain to `End`, collect conid + symbol), then ONE `pnl_single`
-//! take-first read per conid (ADR 0007 — reqPnLSingle is markerless, a drain loop would hang
-//! forever). Fail-fast: any failed read aborts the whole command; a partial sweep is
-//! indistinguishable from a complete one to the consuming agent.
+//! take-first read per conid (ADR 0007/0012 — reqPnLSingle is markerless, a drain loop would
+//! hang forever; the take-first read is BOUNDED by ADR 0012's timeout twin so a wedged channel
+//! fails in seconds instead of hanging). Fail-fast: any failed read aborts the whole command;
+//! a partial sweep is indistinguishable from a complete one to the consuming agent.
 
 use ibapi::accounts::types::ContractId;
 use ibapi::accounts::AccountUpdate;
@@ -72,8 +73,8 @@ pub(crate) fn sweep_pnl_singles(
                     ctx,
                 )
             })?;
-        // Take exactly one reading (ADR 0007/0009 — markerless stream; do NOT iterate).
-        let reading = match sub.next_data() {
+        // Take exactly one reading, BOUNDED (ADR 0007/0009/0012 — markerless stream; do NOT iterate).
+        let reading = match sub.timeout_iter_data(super::TAKE_FIRST_TIMEOUT).next() {
             Some(Ok(p)) => p,
             Some(Err(e)) => {
                 return Err(AppError::data(
@@ -82,8 +83,11 @@ pub(crate) fn sweep_pnl_singles(
                 ))
             }
             None => {
-                return Err(AppError::data(
-                    format!("pnl_single conid {conid}: no PnL reading"),
+                return Err(AppError::timeout(
+                    format!(
+                        "pnl_single conid {conid}: no PnL reading within {}s — gateway PnL channel may be wedged; restart the gateway",
+                        super::TAKE_FIRST_TIMEOUT.as_secs()
+                    ),
                     ctx,
                 ))
             }

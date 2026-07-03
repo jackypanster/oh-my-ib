@@ -37,6 +37,12 @@ pub use quote::{quote, quote_price_tick};
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
 
+/// Shared bound for take-first reads on markerless streams (ADR 0012): `reqPnL` /
+/// `reqPnLSingle` have no `End` marker, so we read exactly one item within this window instead
+/// of blocking forever on a wedged PnL channel. Fixed (not configurable — PRD D3): the wedge
+/// is silent (emits nothing), so tunability buys nothing; a healthy first tick arrives <1s live.
+pub const TAKE_FIRST_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Whether a connection error is transient (worth a short retry) vs permanent. EAGAIN maps to
 /// `WouldBlock` — the error seen when two account-scoped commands reconnect back-to-back with the
 /// same client_id before the gateway has released the prior subscription.
