@@ -2,9 +2,10 @@
 //!
 //! Mirrors `account.rs` (connect → request → first reading → JSON), but reads via `reqPnL`
 //! (`client.pnl`). KEY difference (ADR 0007): the PnL subscription is an UNBOUNDED real-time stream
-//! with NO `End` marker — so we take exactly ONE reading with `next_data()` and drop the subscription.
-//! A drain-to-end loop (the `account`/`quote` pattern) would block forever. The take-first read lives
-//! in `pnl_with_client` so `brief` (ADR 0010) shares the SAME logic on its own connection.
+//! with NO `End` marker — so we take exactly ONE reading and drop the subscription. The take-first
+//! read is BOUNDED by ADR 0012: `timeout_iter_data(TAKE_FIRST_TIMEOUT).next()` replaces the unbounded
+//! `next_data()` so a wedged PnL channel fails in seconds instead of hanging forever. The read
+//! lives in `pnl_with_client` so `brief` (ADR 0010) shares the SAME logic on its own connection.
 
 use ibapi::accounts::types::AccountId;
 use ibapi::client::blocking::Client;
@@ -24,11 +25,17 @@ pub(crate) fn pnl_with_client(
         .pnl(account, None)
         .map_err(|e| AppError::data(format!("pnl request failed: {e}"), ctx))?;
 
-    // Take exactly one reading (ADR 0007 — reqPnL has no End marker; do NOT iterate).
-    let reading = match subscription.next_data() {
+    // Take exactly one reading, BOUNDED (ADR 0012 — reqPnL has no End marker; do NOT iterate).
+    let reading = match subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT).next() {
         Some(Ok(p)) => p,
         Some(Err(e)) => return Err(AppError::data(format!("pnl stream: {e}"), ctx)),
-        None => return Err(AppError::data("no PnL reading", ctx)),
+        None => return Err(AppError::timeout(
+            format!(
+                "no PnL reading within {}s — gateway PnL channel may be wedged; restart the gateway",
+                super::TAKE_FIRST_TIMEOUT.as_secs()
+            ),
+            ctx,
+        )),
     };
 
     Ok(json!({

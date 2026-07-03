@@ -7,6 +7,8 @@ use std::fmt;
 pub enum ErrorKind {
     /// Could not reach / handshake with the IB Gateway.
     Connection,
+    /// A bounded read produced no data in time — gateway-side wedge; the cure is a gateway restart.
+    Timeout,
     /// A requested entity (contract, account) does not exist.
     NotFound,
     /// The gateway accepted the request but returned an error/notice.
@@ -37,6 +39,9 @@ impl AppError {
     pub fn connection(message: impl Into<String>, context: impl Into<String>) -> Self {
         Self::new(ErrorKind::Connection, message, Some(context.into()))
     }
+    pub fn timeout(message: impl Into<String>, context: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Timeout, message, Some(context.into()))
+    }
     pub fn not_found(message: impl Into<String>, context: impl Into<String>) -> Self {
         Self::new(ErrorKind::NotFound, message, Some(context.into()))
     }
@@ -57,6 +62,7 @@ impl AppError {
     pub fn code(&self) -> &'static str {
         match self.kind {
             ErrorKind::Connection => "connection",
+            ErrorKind::Timeout => "timeout",
             ErrorKind::NotFound => "not_found",
             ErrorKind::Data => "data",
             ErrorKind::Config => "config",
@@ -69,6 +75,7 @@ impl AppError {
     pub fn exit_code(&self) -> i32 {
         match self.kind {
             ErrorKind::Connection => 2,
+            ErrorKind::Timeout => 6,
             ErrorKind::NotFound => 3,
             ErrorKind::Data => 4,
             ErrorKind::Config => 5,
