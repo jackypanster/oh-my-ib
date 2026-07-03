@@ -113,3 +113,50 @@ Done when: freeze commit + record commit pushed; card 01 todo with correct spec-
 only by tests/brief_command.rs. On success: run pipeline-impl.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T02:22:21Z · task→impl · completed · by=claude-fable-5(claude-code)
+done:   ONE card (single observable behavior: `omi brief` + its pure seam; sibling seam extractions
+        are internal to it — no independent red test possible for a behavior-preserving refactor).
+        FREEZE COMMIT f7cab5d884c3fc4ba9cc1256d9ddf54832f373a3 = spec-rev: tests/brief_command.rs
+        (7 tests: help lists brief; brief --help ok; dead-port → {"error":{"code":"connection"}}
+        non-zero; assemble_brief exact 8-key top level; account/as_of pass-through; six sections
+        pass through unmodified; [] sections stay []). Verified RED: exactly one E0432 (unresolved
+        `oh_my_ib::ib::assemble_brief`) — the intended failure, no spec syntax errors. RECORD
+        COMMIT: tasks/01.md (status=todo, attempts=0, card-scoped verify `cargo test --test
+        brief_command`, spec/impl paths disjoint, Freeze coverage per arch.md), current.json
+        stage=task + full-verify=["cargo build","cargo test"], this journal entry.
+output: tests/brief_command.rs (@f7cab5d), .pipeline/brief-command/tasks/01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (offline impl; config at ~/.config/oh-my-ib/config.toml).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions. Read FIRST.
+  - .pipeline/brief-command/tasks/01.md — THE card (scope, steps, freeze coverage; status=todo)
+  - .pipeline/brief-command/arch.md + CONTEXT.md + docs/adr/0010,0011 — binding decisions
+  - tests/brief_command.rs — the frozen spec you must turn green (READ-ONLY, never edit)
+  - src/ib/pnl_by_position.rs + src/ib/account.rs + src/ib/positions.rs — the modules you extract seams from
+Your task (concrete, numbered):
+  1. Flip card 01 → in-progress (commit metadata on main, push). Cut feat/brief-command from trunk.
+  2. On the branch: implement per the card's Scope — src/ib/brief.rs (assemble_brief pure seam +
+     brief(cfg) gateway fn, ADR 0010 fixed fetch order), the six sibling with-client/builder seam
+     extractions (behavior byte-identical), mod.rs re-exports, cli.rs Brief variant, main.rs dispatch.
+  3. Verify: card-scoped `cargo build` + `cargo test --test brief_command` GREEN; then run the whole
+     suite `cargo test` (must be GREEN — trunk red was ONLY tests/brief_command.rs) + `cargo clippy
+     --all-targets -- -D warnings`.
+  4. Push branch, open PR (gh pr create, base main, title "feat(brief-command): omi brief — ...").
+     Flip card 01 → review, journal seq=4 on main, push.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/brief_command.rs or any tests/* (freeze gate = two-commit diff over spec-paths).
+  - take-first (next_data) for pnl/pnl_single — a drain loop hangs forever (ADR 0007/0009);
+    drain-to-End for account_updates/all_open_orders/executions.
+  - ONE account_updates subscription per brief (ADR 0011) — drop it before the pnl request.
+  - as_of: name NO time-crate type; inherent accessors + u8::from(t.month()) only (ADR 0011 §3).
+  - orders section: filter by cfg.account ONLY when set — do NOT auto-filter to resolved account.
+  - The six public command fns must stay byte-identical in behavior — review rejects ANY sibling drift.
+  - Public repo: no account ids in code, tests, or PR text.
+Done when: verify green + full suite green + clippy clean on the branch; PR open; card 01 status=review;
+journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END

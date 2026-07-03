@@ -3,5 +3,6 @@
   "branch": "main",
   "pr": "none",
   "feature": "brief-command",
-  "stage": "arch"
+  "stage": "task",
+  "full-verify": ["cargo build", "cargo test"]
 }
