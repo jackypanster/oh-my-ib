@@ -343,3 +343,39 @@ Done when: both freeze gates empty, review-01 finding verified dead, semantic re
 full-suite green, human confirms, PR #16 squash-merged, cards → done, current.json.stage=done.
 On failure: flip offending card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=9 · 2026-07-03T17:38:44Z · review→review · completed · by=codex-reviewer
+done:   review-02 PASS written. Freeze gate stayed empty at spec-rev 7c8bcaf5; the only
+        product change since review-01 is the finite-positive strike guard in
+        src/ib/option_quote.rs; runtime probes confirm inf/NaN/-inf ⇒ usage and valid
+        strike 250 ⇒ connection on dead port. cargo build, cargo test, and clippy green.
+        No merge performed: awaiting operator paper acceptance + explicit human confirm.
+output: .pipeline/options-read/reviews/review-02.md
+--- handoff ---
+>>> NEXT
+Operator action before merge: run PRD criterion 8 paper acceptance for options-read, then explicitly
+confirm whether pipeline-review may squash-merge PR #16.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/options-read pr=https://github.com/jackypanster/oh-my-ib/pull/16
+Model: frontier SOTA required if another review/merge session is dispatched.
+First: git fetch origin; do not use stale local refs.
+Read for context:
+  - .pipeline/options-read/reviews/review-02.md — PASS evidence at branch tip 56a05da.
+  - .pipeline/options-read/reviews/review-01.md — prior rejection now fixed.
+  - .pipeline/options-read/journal.md tail — current state and acceptance/merge wait.
+  - .pipeline/options-read/PRD.md criterion 8 — paper acceptance scope.
+Your task:
+  1. Operator runs paper `:4002` acceptance: `omi option-chain AAPL` plausible expirations/strikes;
+     `omi option-quote` on a liquid near-month AAPL contract shows price ticks. Record greeks presence
+     as an observation either way; absence is not failure.
+  2. If acceptance passes and the operator explicitly confirms merge, run pipeline-review merge path:
+     re-check freeze gate and full verification on current PR head, then squash-merge PR #16.
+  3. Only after merge: set both cards done, set current.json stage=done, append final journal entry, commit
+     and push trunk metadata.
+Feature gotchas:
+  - Do NOT merge without explicit human confirmation after paper acceptance.
+  - Live Tiger `:4001` reqSecDefOptParams support is a journaled observation, not a merge blocker.
+  - Keep frozen specs untouched; quote.rs/trade.rs/Cargo.toml/Cargo.lock remain out of scope.
+Done when: paper acceptance is recorded, human confirms, PR #16 is squash-merged, cards are done,
+current.json stage=done, and the final journal entry is pushed. On failure: route the specific evidence
+back through pipeline-impl/task/hunt as appropriate.
+<<< END
