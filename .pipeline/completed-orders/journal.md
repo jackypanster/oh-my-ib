@@ -128,3 +128,69 @@ Done when: PR open, card verify + full suite + clippy green, freeze-gate diff em
 card=review, journal seq=4 pushed. On success: run pipeline-review (operator hands to codex cli).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03T11:18:26Z · task→impl · completed · by=interactive-π/glm-5.2
+done:   impl landed on feat/completed-orders (PR #14): cli.rs CompletedOrders variant, NEW
+        completed_orders.rs (CompletedOrderRow + shape_completed_orders pure seam + drain fn
+        mirroring orders.rs), mod.rs mod+re-export, main.rs dispatch arm. 4-file diff, +109.
+        Frozen spec untouched (freeze-gate diff empty). api_only=false hardcoded; --account
+        filter-when-set; OrderData-only arm; drain self-terminates on CompletedOrdersEnd (NOT
+        TAKE_FIRST_TIMEOUT); Debug-render action/tif/status; limit/aux raw Option (None->null).
+output: PR #14 (https://github.com/jackypanster/oh-my-ib/pull/14), feat/completed-orders tip a4d1fe6
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/completed-orders pr=https://github.com/jackypanster/oh-my-ib/pull/14
+Model: frontier SOTA required — operator assigns the bot (this run: codex cli, rotation kept per PRD D2).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, READ-ONLY, agent-first docs)
+  - .pipeline/completed-orders/tasks/01.md — the card (status=review): scope, hard constraints, freeze coverage
+  - .pipeline/completed-orders/arch.md — §Component design is what impl followed verbatim
+  - .pipeline/completed-orders/docs/adr/0015-completed-orders-drain.md — binding decisions
+  - .pipeline/completed-orders/PRD.md + CONTEXT.md — criteria + glossary
+  - src/ib/orders.rs — the sibling whose drain/filter SEMANTICS impl mirrors (drain shape differs: no _with_client seam; filter inline — same semantics, simpler shape, ADR 0015 records why)
+  - PR #14 diff (gh pr diff 14) — the review surface
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff aff35991c759a0bbfd44dd03ea1d67fac0241dbf <review-tip> -- tests/completed_orders_command.rs
+     must be EMPTY. Non-empty ⇒ reject (attempts++, route impl; >=3 ⇒ hunt).
+  2. Full-suite gate: checkout feat/completed-orders, run current.json.full-verify
+     (["cargo build","cargo test"]) — must be GREEN. Red attributable to card 01 ⇒ flip
+     review→todo, attempts++; cross-card with no single owner ⇒ reviews/integration-NN.md
+     + route pipeline-hunt.
+  3. Semantic review (by reading) of the impl diff vs arch.md §Component design + card freeze
+     coverage: completed_orders(false) hardcoded call, OrderData-only arm, drain self-terminates
+     on CompletedOrdersEnd (no explicit break, no TAKE_FIRST_TIMEOUT), filter-when-set parity
+     with orders.rs (cfg.account set ⇒ filter; unset ⇒ pass-through), {"completed_orders": …}
+     wrapper, contexts "completed-orders". Field mapping exact 14 keys: order_id/account/symbol
+     (newtype .to_string())/conid/action (Debug)/quantity/order_type/limit_price (raw Option,
+     None→null)/aux_price (raw Option)/tif (Debug)/status (Debug OrderStatusKind)/
+     filled_quantity/completed_time (String pass-through)/completed_status (String). output.rs/
+     error.rs/brief.rs/orders.rs untouched. No secrets.
+  4. READ-ONLY red line grep: grep the diff for place/modify/cancel order API calls
+     (.place_order/.what_if_order/.modify_order/.cancel_order/.reqGlobalCancel/ etc.) — must be
+     ABSENT. (Doc comments mentioning \"cancelled\" as an order state are NOT code paths.)
+  5. If all pass: operator live acceptance (PRD criterion 8): omi --live completed-orders exits 0
+     with the wrapper shape; [] on a no-trade day is a PASS (row content rides the first active
+     trading day). Then human-confirm + squash-merge PR #14 (the only merge).
+  6. After human-confirm + merge: card 01 status review->done, current.json stage=done (drop pr?),
+     append journal seq=5, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Freeze gate is the deterministic two-commit diff over tests/completed_orders_command.rs — empty = pass.
+  - READ-ONLY red line: the diff contains request/drain/emit only — no place/modify/cancel code paths.
+    Doc comments mentioning \"cancelled\"/\"cancels\" are adjective/verb in prose, NOT trading API calls.
+  - Drain self-terminates on CompletedOrdersEnd by design — do NOT flag the absence of TAKE_FIRST_TIMEOUT
+    or an explicit break as a bug (ADR 0015; CompletedOrdersEnd is the End marker, ADR 0012 boundary).
+  - api_only=false is HARDCODED with NO flag by design (operator trades via Tiger app; API-only view is
+    empty — ADR 0015 D4). Do NOT flag the missing flag as an absent option.
+  - Filter-when-set semantics: cfg.account set ⇒ filter; unset ⇒ pass-through (never auto-filter to
+    the resolved account, ADR 0011). The filter is inline (no _with_client seam) because completed-
+    orders has no brief consumer — review checks SEMANTICS parity with orders.rs, not code-shape identity.
+  - average_fill_price deliberately excluded (lives on Orders::OrderStatus, not OrderData; executions
+    carries fill prices). 14-key row = open-orders 10-key parity + 4 completion keys.
+  - The metadata commit is already on MAIN (this entry rides it); the code diff is on feat/completed-orders.
+  - Public repo: scan the PR diff for account ids/tokens/balances before merge.
+Done when: PR #14 squash-merged after freeze gate empty + full-suite green + semantic review pass
++ READ-ONLY grep clean + operator live acceptance (criterion 8); card=done, journal seq=5 pushed.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
