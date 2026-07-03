@@ -205,3 +205,59 @@ Feature gotchas:
 Done when: whole suite green on feat/options-read, clippy clean, freeze gate (7c8bcaf5) empty, both cards at review, seq=6 pushed. On success: run pipeline-review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-03 · impl(card 02)→review · completed · by=glm-5.2 (omp)
+done:   card 02 (option-quote) implemented + GREEN on feat/options-read (rebased onto re-freeze
+        7c8bcaf5 + force-pushed): src/ib/option_quote.rs (GreeksRow #[derive(Default)] 7×
+        Option<f64>; option_quote_greeks pure FROZEN seam — Some ONLY for ModelOption/
+        DelayedModelOption per ADR 0019 D3, all side/custom + non-computation ticks ⇒ None;
+        shape_option_quote pure FROZEN seam — 8-key contract echo, right normalize to C/P
+        [c/C/call/CALL/p/P/put/PUT], greeks key IFF Some with omit-None-fields, ticks
+        pass-through; gateway fn with pre-connect validation [right/strike>0/expiry 8-digit
+        y/m/d, usage < connection ordering], switch_market_data_type, OptionBuilder chain incl.
+        trading_class, BARE SnapshotEnd drain per ADR 0019 D2 reusing quote_price_tick via
+        super::, last-model-row-wins). clippy too_many_arguments on shape_option_quote resolved
+        with #[allow(clippy::too_many_arguments)] (brief.rs:27 precedent — the signature IS the
+        frozen contract). cargo test --test option_quote_command 17/17 green; clippy --all-targets
+        -D warnings clean; FULL cargo test 139/139 green (21 suites); freeze gates
+        7c8bcaf5..tip -- tests/option_chain_command.rs + tests/option_quote_command.rs BOTH empty.
+        Both cards now at review on PR #16.
+output: src/ib/option_quote.rs, PR https://github.com/jackypanster/oh-my-ib/pull/16
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/options-read pr=https://github.com/jackypanster/oh-my-ib/pull/16
+Model: frontier SOTA required — review is a reasoning stage; operator assigns the bot.
+First: git fetch origin; git checkout feat/options-read (both cards' impl landed: 0580dda card 02
+on top of 55950d1 card 01, rebased onto spec-rev 7c8bcaf5).
+Read for context (before acting):
+  - .pipeline/options-read/tasks/01.md + 02.md — both cards at review; spec-rev 7c8bcaf5
+  - .pipeline/options-read/arch.md — §Component design (review impl vs verbatim) + §Freeze coverage
+  - .pipeline/options-read/docs/adr/0019-*.md — D1-D4 binding decisions
+  - tests/option_chain_command.rs + tests/option_quote_command.rs — the frozen spec (DO NOT diff-edit)
+Your task (CONTRACT §Test ownership + §State authority):
+  1. Freeze gate FIRST (deterministic, before semantic review): for EACH card run
+     `git diff 7c8bcaf5 <review-tip> -- <spec-paths>`; non-empty ⇒ reject (attempts++, route impl).
+     Expected: BOTH empty (verified green at impl).
+  2. Semantic review: card 01 = chain gateway fn (conid FIRST-row ADR 0019 D4; timeout-wrapped
+     End-bounded drain ADR 0016; no writes; docs amendment verbatim); card 02 = quote gateway fn
+     (validation-before-connect ordering; OptionBuilder chain incl trading_class; BARE SnapshotEnd
+     drain ADR 0019 D2 [NOT timeout-wrapped]; last-model-row-wins; greeks best-effort; no writes).
+     Review polarity = NORMAL read-only (write symbols confined to trade.rs, untouched).
+  3. Full-suite gate: `cargo build && cargo test` on feat/options-read HEAD — must be ALL GREEN
+     (current.json.full-verify = ["cargo build","cargo test"]; 139 tests at impl). Red ⇒ attribute
+     to a card (flip that card todo + attempts++) or write reviews/integration-NN.md if cross-card.
+  4. Human confirm → squash-merge PR #16 (the only merge). Card statuses → done.
+  5. Live acceptance (operator, paper :4002, PRD criterion 8) is OUTSIDE review's gate — record
+     Tiger :4001 reqSecDefOptParams support as a journaled observation, never a merge blocker.
+Feature gotchas:
+  - greeks PRESENCE is NEVER a gate (best-effort ADR 0019 D3 — absence is valid success).
+  - quote.rs is byte-identity frozen (ADR 0013); option_quote.rs REUSES quote_price_tick via super::.
+  - shape_option_quote carries #[allow(clippy::too_many_arguments)] — the signature IS the frozen
+    contract (brief.rs:27 precedent); not a smell to refactor.
+  - Chain drain IS timeout-wrapped (ADR 0016 wedge posture); quote drain is deliberately NOT
+    (ADR 0019 D2, quote.rs class) — the asymmetry is the design.
+Done when: both freeze gates empty, semantic review clean, full-suite green, human confirms,
+PR #16 squash-merged, cards → done, current.json.stage=done. journal seq=7.
+On failure: flip offending card review→todo + attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
