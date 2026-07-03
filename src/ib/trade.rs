@@ -149,10 +149,11 @@ fn place(cfg: &Config, args: &OrderArgs, side: Action, ctx: &str) -> Result<Valu
     // 3. Connect (connection errors).
     let client = super::connect(cfg)?;
 
-    // 4. Allocate the order id FIRST so even a timeout error can NAME it.
-    let order_id = client
-        .next_valid_order_id()
-        .map_err(|e| AppError::data(format!("next_valid_order_id failed: {e}"), ctx))?;
+    // 4. Allocate the order id FIRST so even a timeout error can NAME it. Uses the
+    //    handshake-seeded local allocator (client.next_order_id, ADR 0018): non-blocking,
+    //    returns the id_manager's next id. The prior next_valid_order_id() was an unbounded
+    //    subscription.next() that this gateway never answers (paper wedge, ADR 0018).
+    let order_id = client.next_order_id();
 
     // 5. Build + place.
     let (contract, order) = build_stk_order(&args.symbol, side, args.quantity, args.limit);
