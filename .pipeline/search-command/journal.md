@@ -81,3 +81,50 @@ Done when: both commits pushed, card 01 todo, journal seq=3 appended.
 On success: run pipeline-impl (operator hands to interactive π/omp).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T09:02:08Z · task→impl · completed · by=claude-fable-5
+done:   spec frozen: tests/search_command.rs (10 tests, house-red via unresolved
+        shape_search/SearchRow imports) @ spec-rev db074c66d37f0dce8544cd9a84e6dadbf33f976d
+        (freeze commit, spec-paths only); card 01 recorded (todo, card-scoped verify,
+        spec/impl disjoint; NOTE main.rs IS in impl-paths this feature — new dispatch arm).
+output: tests/search_command.rs, .pipeline/search-command/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot (this run: interactive π/omp).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions
+  - .pipeline/search-command/tasks/01.md — YOUR card (scope, hard constraints, freeze coverage)
+  - .pipeline/search-command/arch.md — §Component design is the verbatim implementation
+  - .pipeline/search-command/docs/adr/0014-*.md + PRD.md + CONTEXT.md
+  - tests/search_command.rs — the FROZEN spec to turn green (read-only for you!)
+Your task (concrete, numbered):
+  1. git checkout -b feat/search-command (cut from current trunk main).
+  2. Implement EXACTLY the card's impl-paths: src/cli.rs (Search variant + SearchArgs),
+     src/ib/search.rs NEW (SearchRow + shape_search + search), src/ib/mod.rs (mod + re-export),
+     src/main.rs (dispatch arm).
+  3. Verify: cargo build && cargo test --test search_command (red->green), then cargo test
+     (full suite green) and cargo clippy --all-targets -- -D warnings.
+  4. Freeze-gate self-check BEFORE committing:
+     git diff db074c66d37f0dce8544cd9a84e6dadbf33f976d HEAD -- tests/search_command.rs
+     must print NOTHING; git status must show no tests/ changes.
+  5. Commit, push branch, open PR: gh pr create --base main --head feat/search-command
+     --title "feat(search-command): omi search — fuzzy symbol lookup (ADR 0014)"
+     --body pointing at .pipeline/search-command/{PRD.md,arch.md,docs/adr/0014-*.md} + card 01.
+  6. Metadata commit on MAIN (not the branch): card 01 todo->review, current.json stage=impl
+     + pr URL, append journal seq=4, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/ (frozen). NEVER repo-wide cargo fmt — fmt src/** only or skip.
+  - NO STK guard / account resolution / md-type switch / TAKE_FIRST_TIMEOUT in search
+    (ADR 0014 plain-bounded-call class; do NOT copy quote's preamble).
+  - Newtype wrappers (Symbol/Exchange/Currency/SecurityType) render via .to_string().
+  - Gateway order verbatim — no sorting. Strings pass through ("" stays "").
+  - Metadata commit on MAIN; code diff on feat/search-command. Two refs.
+  - Public repo: no account ids/tokens/balances anywhere.
+Done when: PR open, card verify + full suite + clippy green, freeze-gate diff empty,
+card=review, journal seq=4 pushed. On success: run pipeline-review (operator hands it to
+codex cli).
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
