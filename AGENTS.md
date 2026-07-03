@@ -6,7 +6,7 @@ Canonical agent-conventions for this repo. Read this first, then `CONTRACT.md` i
 ## What this is
 `omi` — a Rust CLI that reads an Interactive Brokers account over the TWS API (`ibapi`, sync client),
 driven by an LLM agent: user gives natural-language instructions → agent runs `omi` subcommands →
-parses JSON → reports. Read-only (no order-placement code). The operator runs a **Tiger Brokers
+parses JSON → reports. Reads everything; writes exist but are Phase-2 gated (see Hard safety rules). The operator runs a **Tiger Brokers
 gateway** (TWS-API-compatible) live on `:4001`; drive it with `omi --live`. No API keys — auth is the
 logged-in gateway. The gateway's `HKT` timezone is auto-registered, so no `IBAPI_TIMEZONE_ALIASES`
 env var is needed.
@@ -23,7 +23,7 @@ readability.** When unsure "is this for a human or an agent?", assume agent.
   stderr as `{"error":{"code","message","context"}}` with a non-zero exit code.
 
 ## Hard safety rules
-- **Writes are gated** — Phase 2 (2026-07-03) added `buy`/`sell`/`cancel` (STK, LMT/MKT, DAY). Paper (`:4002`, the default) is ungated; **live orders require BOTH `--live` AND `OMI_ALLOW_LIVE=1`**. All other commands remain read-only; no modify, no options, no combos yet. Write code lives ONLY in `src/ib/trade.rs`.
+- **Writes are gated** — Phase 2 (2026-07-03) added `buy`/`sell`/`cancel` (STK, LMT/MKT, DAY). Paper (`:4002`, the default) is ungated; **live orders require BOTH `--live` AND `OMI_ALLOW_LIVE=1`**. All other commands remain read-only; no modify, no option ORDERS, no combos yet (options DATA is readable: `option-chain`/`option-quote`). Write code lives ONLY in `src/ib/trade.rs`.
 - **Public repo**: never commit account ids, tokens, or any credential. Real config lives at
   `~/.config/oh-my-ib/config.toml` (outside the repo).
 - **Live gate**: paper (`:4002`) is the default; live (`:4001`) requires an explicit `--live` flag;

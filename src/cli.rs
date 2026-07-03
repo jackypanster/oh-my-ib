@@ -82,6 +82,8 @@ pub enum Command {
     Sell(OrderArgs),
     /// Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
     Cancel(CancelArgs),
+    /// Option chain (expirations × strikes) for an underlying
+    OptionChain(OptionChainArgs),
 }
 
 #[derive(Args, Debug)]
@@ -142,4 +144,14 @@ pub struct HistoryArgs {
     /// Duration, e.g. 1M, 2W, 30D, 1Y
     #[arg(long, default_value = "1M")]
     pub duration: String,
+}
+
+/// omi option-chain AAPL [--exchange SMART]
+#[derive(Args, Debug)]
+pub struct OptionChainArgs {
+    /// Underlying ticker symbol, e.g. AAPL
+    pub symbol: String,
+    /// Exchange filter (server-side reqSecDefOptParams param); "" = all exchanges
+    #[arg(long, default_value = "SMART")]
+    pub exchange: String,
 }
