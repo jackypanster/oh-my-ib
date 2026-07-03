@@ -128,3 +128,59 @@ card=review, journal seq=4 pushed. On success: run pipeline-review (operator han
 codex cli).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03T09:11:41Z · task→impl · completed · by=interactive-π/glm-5.2
+done:   impl landed on feat/search-command (PR #13): cli.rs Search variant + SearchArgs,
+        NEW search.rs (SearchRow + shape_search pure seam + search gateway fn), mod.rs
+        mod+re-export, main.rs dispatch arm. 4-file diff, +87. Frozen spec untouched
+        (freeze-gate diff empty). Plain-bounded-call class (ADR 0014) — NO STK guard /
+        account resolution / md-type switch / TAKE_FIRST_TIMEOUT; newtypes via Display;
+        strings pass through; gateway order verbatim.
+output: PR #13 (https://github.com/jackypanster/oh-my-ib/pull/13), feat/search-command tip a4d6fa8
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/search-command pr=https://github.com/jackypanster/oh-my-ib/pull/13
+Model: frontier SOTA required — operator assigns the bot (this run: codex cli).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, read-only, agent-first docs)
+  - .pipeline/search-command/tasks/01.md — the card (status=review): scope, hard constraints, freeze coverage
+  - .pipeline/search-command/arch.md — §Component design is what impl followed verbatim
+  - .pipeline/search-command/docs/adr/0014-search-plain-bounded-call.md — binding decisions
+  - .pipeline/search-command/PRD.md + CONTEXT.md — criteria + glossary
+  - PR #13 diff (gh pr diff 13) — the review surface
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff db074c66d37f0dce8544cd9a84e6dadbf33f976d <review-tip> -- tests/search_command.rs
+     must be EMPTY. Non-empty ⇒ reject (attempts++, route impl; >=3 ⇒ hunt).
+  2. Full-suite gate: checkout feat/search-command, run current.json.full-verify
+     (["cargo build","cargo test"]) — must be GREEN. Red attributable to card 01 ⇒ flip
+     review→todo, attempts++; cross-card with no single owner ⇒ reviews/integration-NN.md
+     + route pipeline-hunt.
+  3. Semantic review (by reading) of the impl diff vs arch.md §Component design + card freeze
+     coverage: ONE matching_symbols call (plain bounded call class — NO subscription lifecycle),
+     field mapping exact (conid/symbol/sec_type/primary_exchange/currency/description/
+     derivative_sec_types via .to_string() on newtypes), data error context "search", NO STK
+     guard / account resolution / md-type switch / TAKE_FIRST_TIMEOUT, gateway order verbatim,
+     strings pass through ("" stays ""). output.rs/error.rs untouched. No secrets.
+  4. If all three pass: operator live acceptance (PRD criterion 8): omi --live search apple
+     non-empty with an AAPL row; one non-US pattern spot-checked (informational). Then human-
+     confirm + squash-merge PR #13 (the only merge).
+  5. After human-confirm + merge: card 01 status review->done, current.json stage=done (drop pr?),
+     append journal seq=5, push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Freeze gate is the deterministic two-commit diff over tests/search_command.rs — empty = pass.
+  - ADR 0014 plain-bounded-call class: there is NO drain loop and NO take-first timeout by design
+    — do NOT flag the absence of ADR 0012 wrapping or a SnapshotEnd drain as a bug. matching_symbols
+    returns Vec<ContractDescription> directly; our code is field mapping only.
+  - NO STK guard by design (search is metadata, not market-data; PRD D3) — do NOT flag the absence
+    of quote's sec-type guard as a missing check.
+  - Newtype wrappers render via Display: SecurityType::Stock -> "STK", Index -> "IND", etc. The
+    frozen test asserts these clean strings; contract.rs's format!("{:?}") is a different module's
+    choice and NOT applicable here.
+  - The metadata commit is already on MAIN (this entry rides it); the code diff is on feat/search-command.
+  - Public repo: scan the PR diff for account ids/tokens/balances before merge.
+Done when: PR #13 squash-merged after freeze gate empty + full-suite green + semantic review pass
++ operator live acceptance (criterion 8); card=done, journal seq=5 pushed.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END

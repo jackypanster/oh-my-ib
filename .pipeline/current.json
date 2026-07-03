@@ -2,7 +2,8 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "search-command",
-  "stage": "task",
+  "stage": "impl",
+  "pr": "https://github.com/jackypanster/oh-my-ib/pull/13",
   "full-verify": [
     "cargo build",
     "cargo test"
