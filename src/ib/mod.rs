@@ -11,6 +11,7 @@ use crate::config::Config;
 use crate::error::AppError;
 
 mod account;
+mod brief;
 mod client;
 mod contract;
 mod executions;
@@ -22,6 +23,7 @@ mod positions;
 mod quote;
 
 pub use account::account;
+pub use brief::{assemble_brief, brief};
 pub use client::health;
 pub use contract::contract;
 pub use executions::{executions, merge_executions, CommissionRow, ExecRow};

@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use ibapi::orders::{Executions, ExecutionFilter};
+use ibapi::orders::{ExecutionFilter, Executions};
 use serde_json::{json, Value};
 
 use crate::config::Config;
@@ -48,8 +48,7 @@ pub fn merge_executions(execs: Vec<ExecRow>, comms: Vec<CommissionRow>) -> Value
     let rows: Vec<Value> = execs
         .into_iter()
         .map(|e| {
-            let (commission, commission_currency, realized_pnl) = match by_exec_id.get(&e.exec_id)
-            {
+            let (commission, commission_currency, realized_pnl) = match by_exec_id.get(&e.exec_id) {
                 Some(c) => (
                     Value::from(c.commission),
                     Value::from(c.currency.clone()),
@@ -80,22 +79,26 @@ pub fn merge_executions(execs: Vec<ExecRow>, comms: Vec<CommissionRow>) -> Value
     Value::Array(rows)
 }
 
-pub fn executions(cfg: &Config) -> Result<Value, AppError> {
-    let client = super::connect(cfg)?;
-    let account = super::resolve_account(&client, cfg)?;
-
+/// The joined executions row array (no wrapper). Drain-to-End (ADR 0008) + the
+/// `merge_executions` join. Shared by `executions` (own connection) and `brief`
+/// (one-session fetch, ADR 0010).
+pub(crate) fn executions_with_client(
+    client: &ibapi::client::blocking::Client,
+    account: &ibapi::accounts::types::AccountId,
+    ctx: &str,
+) -> Result<Value, AppError> {
     let filter = ExecutionFilter {
         account_code: account.0.clone(),
         ..Default::default()
     };
     let subscription = client
         .executions(filter)
-        .map_err(|e| AppError::data(format!("executions request failed: {e}"), "executions"))?;
+        .map_err(|e| AppError::data(format!("executions request failed: {e}"), ctx))?;
 
     let mut execs = Vec::new();
     let mut comms = Vec::new();
     for item in subscription.iter_data() {
-        let item = item.map_err(|e| AppError::data(format!("executions stream: {e}"), "executions"))?;
+        let item = item.map_err(|e| AppError::data(format!("executions stream: {e}"), ctx))?;
         match item {
             Executions::ExecutionData(d) => {
                 execs.push(ExecRow {
@@ -124,5 +127,12 @@ pub fn executions(cfg: &Config) -> Result<Value, AppError> {
         }
     }
 
-    Ok(json!({ "account": account.0, "executions": merge_executions(execs, comms) }))
+    Ok(merge_executions(execs, comms))
+}
+
+pub fn executions(cfg: &Config) -> Result<Value, AppError> {
+    let client = super::connect(cfg)?;
+    let account = super::resolve_account(&client, cfg)?;
+    let rows = executions_with_client(&client, &account, "executions")?;
+    Ok(json!({ "account": account.0, "executions": rows }))
 }

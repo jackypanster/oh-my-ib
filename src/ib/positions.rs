@@ -3,13 +3,31 @@
 //! Uses `account_updates(account)` rather than `positions()`: the portfolio stream
 //! carries market value + unrealized PnL (which `positions()` does not) and is
 //! account-scoped, satisfying the documented `qty/avg_cost/market_value/unrealized_pnl`
-//! shape honestly (review-01 BLOCKER 3).
+//! shape honestly (review-01 BLOCKER 3). The row shape lives in `position_row` so
+//! `brief`'s consolidated drain (ADR 0011) emits the SAME rows — the positions shape
+//! cannot drift between `positions` and `brief`.
 
-use ibapi::accounts::AccountUpdate;
+use ibapi::accounts::{AccountPortfolioValue, AccountUpdate};
 use serde_json::{json, Value};
 
 use crate::config::Config;
 use crate::error::AppError;
+
+/// The exact 9-key positions row (incl. per-row `account`). Shared by `positions`
+/// (own drain) and `brief` (consolidated drain).
+pub(crate) fn position_row(p: &AccountPortfolioValue) -> Value {
+    json!({
+        "symbol": p.contract.symbol,
+        "conid": p.contract.contract_id,
+        "qty": p.position,
+        "avg_cost": p.average_cost,
+        "market_price": p.market_price,
+        "market_value": p.market_value,
+        "unrealized_pnl": p.unrealized_pnl,
+        "realized_pnl": p.realized_pnl,
+        "account": p.account,
+    })
+}
 
 pub fn positions(cfg: &Config) -> Result<Value, AppError> {
     let client = super::connect(cfg)?;
@@ -23,19 +41,7 @@ pub fn positions(cfg: &Config) -> Result<Value, AppError> {
         let update = update
             .map_err(|e| AppError::data(format!("account_updates stream: {e}"), "positions"))?;
         match update {
-            AccountUpdate::PortfolioValue(p) => {
-                out.push(json!({
-                    "symbol": p.contract.symbol,
-                    "conid": p.contract.contract_id,
-                    "qty": p.position,
-                    "avg_cost": p.average_cost,
-                    "market_price": p.market_price,
-                    "market_value": p.market_value,
-                    "unrealized_pnl": p.unrealized_pnl,
-                    "realized_pnl": p.realized_pnl,
-                    "account": p.account,
-                }));
-            }
+            AccountUpdate::PortfolioValue(p) => out.push(position_row(&p)),
             AccountUpdate::End => break,
             _ => {}
         }

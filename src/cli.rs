@@ -52,6 +52,8 @@ pub enum Format {
 pub enum Command {
     /// Check the gateway connection and report accounts
     Health,
+    /// Daily account snapshot: summary, PnL, positions, orders, executions (one connection)
+    Brief,
     /// Account summary (net liq, cash, buying power)
     Account,
     /// Account PnL (daily, unrealized, realized)

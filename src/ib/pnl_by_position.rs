@@ -49,6 +49,58 @@ pub fn shape_pnl_by_position(rows: Vec<PnlSingleRow>) -> Value {
     Value::Array(out)
 }
 
+/// Phase-2 sweep (ADR 0009): one take-first `pnl_single` read per `(conid, symbol)` target,
+/// in the given order, fail-fast naming the failing conid. Discovery is the CALLER's job —
+/// `pnl_by_position` drains its own portfolio stream; `brief` passes its consolidated drain's
+/// list (ADR 0011). Shared so the sweep semantics cannot drift.
+pub(crate) fn sweep_pnl_singles(
+    client: &ibapi::client::blocking::Client,
+    account: &ibapi::accounts::types::AccountId,
+    targets: &[(i32, String)],
+    ctx: &str,
+) -> Result<Vec<PnlSingleRow>, AppError> {
+    // `symbol` comes from discovery (PnLSingle carries no contract identity); position/value/PnL
+    // come from the reading (fresher than the portfolio snapshot).
+    let mut rows = Vec::with_capacity(targets.len());
+    for (conid, symbol) in targets {
+        let conid = *conid;
+        let sub = client
+            .pnl_single(account, ContractId::from(conid), None)
+            .map_err(|e| {
+                AppError::data(
+                    format!("pnl_single conid {conid}: request failed: {e}"),
+                    ctx,
+                )
+            })?;
+        // Take exactly one reading (ADR 0007/0009 — markerless stream; do NOT iterate).
+        let reading = match sub.next_data() {
+            Some(Ok(p)) => p,
+            Some(Err(e)) => {
+                return Err(AppError::data(
+                    format!("pnl_single conid {conid}: stream: {e}"),
+                    ctx,
+                ))
+            }
+            None => {
+                return Err(AppError::data(
+                    format!("pnl_single conid {conid}: no PnL reading"),
+                    ctx,
+                ))
+            }
+        };
+        rows.push(PnlSingleRow {
+            conid,
+            symbol: symbol.clone(),
+            position: reading.position,
+            daily_pnl: reading.daily_pnl,
+            unrealized_pnl: reading.unrealized_pnl,
+            realized_pnl: reading.realized_pnl,
+            value: reading.value,
+        });
+    }
+    Ok(rows)
+}
+
 pub fn pnl_by_position(cfg: &Config) -> Result<Value, AppError> {
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
@@ -74,45 +126,8 @@ pub fn pnl_by_position(cfg: &Config) -> Result<Value, AppError> {
     // Unsubscribe before the sweep (Drop sends the cancel; ADR 0009 phase boundary).
     drop(subscription);
 
-    // Phase 2 — sweep: one take-first read per conid, in discovery order (ADR 0009).
-    // `symbol` comes from discovery (PnLSingle carries no contract identity); position/value/PnL
-    // come from the reading (fresher than the portfolio snapshot).
-    let mut rows = Vec::with_capacity(contracts.len());
-    for (conid, symbol) in contracts {
-        let sub = client
-            .pnl_single(&account, ContractId::from(conid), None)
-            .map_err(|e| {
-                AppError::data(
-                    format!("pnl_single conid {conid}: request failed: {e}"),
-                    "pnl-by-position",
-                )
-            })?;
-        // Take exactly one reading (ADR 0007/0009 — markerless stream; do NOT iterate).
-        let reading = match sub.next_data() {
-            Some(Ok(p)) => p,
-            Some(Err(e)) => {
-                return Err(AppError::data(
-                    format!("pnl_single conid {conid}: stream: {e}"),
-                    "pnl-by-position",
-                ))
-            }
-            None => {
-                return Err(AppError::data(
-                    format!("pnl_single conid {conid}: no PnL reading"),
-                    "pnl-by-position",
-                ))
-            }
-        };
-        rows.push(PnlSingleRow {
-            conid,
-            symbol,
-            position: reading.position,
-            daily_pnl: reading.daily_pnl,
-            unrealized_pnl: reading.unrealized_pnl,
-            realized_pnl: reading.realized_pnl,
-            value: reading.value,
-        });
-    }
+    // Phase 2 — sweep (shared with brief; ADR 0009).
+    let rows = sweep_pnl_singles(&client, &account, &contracts, "pnl-by-position")?;
 
     Ok(json!({ "account": account.0, "by_position": shape_pnl_by_position(rows) }))
 }

@@ -62,6 +62,7 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
     let config = Config::load()?.merge_flags(&cli.global)?;
     match &cli.command {
         Command::Health => ib::health(&config),
+        Command::Brief => ib::brief(&config),
         Command::Account => ib::account(&config),
         Command::Pnl => ib::pnl(&config),
         Command::PnlByPosition => ib::pnl_by_position(&config),
