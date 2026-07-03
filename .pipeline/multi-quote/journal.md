@@ -192,3 +192,30 @@ Done when: PR #12 squash-merged after freeze gate empty + full-suite green + sem
 + operator live acceptance (criterion 9); card=done, journal seq=5 pushed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-03T08:50:00Z · review→merge-confirm · completed · by=claude-fable-5
+done:   pipeline-review APPROVE (review-01.md): freeze gate EMPTY; scope exact (3 impl-paths);
+        full suite 79/79 + clippy clean @ 5437831; semantic verbatim vs arch; adversarial 5/6
+        CONFIRMED + 1 doc-only errata (ADR 0013 "drop sends CancelMarketData" — ibapi skips
+        cancel after SnapshotEnd, sync.rs:78-82; conclusion holds stronger); N=1 byte-identity
+        proven EMPIRICALLY (main-vs-branch binary output compare); live criterion 9 PASS
+        (single object + batch array input-order + cross-check consistent; ~12s/symbol
+        delayed-snapshot latency is pre-existing gateway behavior, noted).
+output: .pipeline/multi-quote/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+AWAITING OPERATOR: explicit merge confirmation for PR #12 (CONTRACT: only pipeline-review
+merges, human-confirmed). On confirm, pipeline-review (any session) does:
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/12
+Model: frontier SOTA required — operator assigns the bot.
+  1. Verify PR head still 5437831 (gh pr view 12 --json headRefOid); if moved, re-run gates.
+  2. gh pr merge 12 --squash --delete-branch
+  3. Verify trunk post-merge: cargo build && cargo test (expect 79/79) on updated main.
+  4. Card 01 status review->done; current.json stage=done.
+  5. Append journal seq=6 (feature DONE + open items: ADR 0013 errata fold-in on next arch
+     touch; reqPnLSingle first-trading-day observation; delayed-snapshot latency is
+     gateway-inherent).
+  6. Single metadata commit on main, push.
+Feature gotchas: none new — do not touch tests/; public repo rules apply.
+Done when: PR merged, trunk green, journal seq=6 pushed.
+<<< END
