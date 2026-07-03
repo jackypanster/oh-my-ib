@@ -93,3 +93,49 @@ Done when: both commits pushed, card 01 status=todo, journal seq=3 appended.
 On success: run pipeline-impl (operator hands it to the interactive π/omp terminal).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T08:30:00Z · task→impl · completed · by=claude-fable-5
+done:   spec frozen: tests/multi_quote.rs (8 tests, house-red via unresolved shape_quotes
+        import) @ spec-rev 828348aa1124bd15d0ed39d26fe29097fea19aea (freeze commit, spec-paths
+        only); card 01 recorded (todo, card-scoped verify, spec/impl paths disjoint).
+output: tests/multi_quote.rs, .pipeline/multi-quote/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot (this run: interactive π/omp).
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, read-only, agent-first docs)
+  - .pipeline/multi-quote/tasks/01.md — YOUR card: scope, hard constraints, freeze coverage
+  - .pipeline/multi-quote/arch.md — §Component design is the verbatim implementation
+  - .pipeline/multi-quote/docs/adr/0013-batch-snapshots-one-session.md — binding decisions
+  - .pipeline/multi-quote/PRD.md + CONTEXT.md — criteria + glossary
+  - tests/multi_quote.rs — the FROZEN spec you must turn green (read-only for you!)
+Your task (concrete, numbered):
+  1. git checkout -b feat/multi-quote (cut from current trunk main).
+  2. Implement EXACTLY the card's impl-paths: src/cli.rs (QuoteArgs.symbols: Vec<String>,
+     required, help contains literal "symbol(s)"), src/ib/quote.rs (quote_one seam +
+     shape_quotes pure seam + batched quote()), src/ib/mod.rs (re-export shape_quotes).
+  3. Verify: cargo build && cargo test --test multi_quote (red->green), then cargo test (full
+     suite green) and cargo clippy --all-targets -- -D warnings.
+  4. Freeze-gate self-check BEFORE committing:
+     git diff 828348aa1124bd15d0ed39d26fe29097fea19aea HEAD -- tests/multi_quote.rs
+     must print NOTHING; git status must show no tests/ changes.
+  5. Commit, push branch, open PR: gh pr create --base main --head feat/multi-quote
+     --title "feat(multi-quote): variadic omi quote — batch snapshots on one session (ADR 0013)"
+     --body pointing at .pipeline/multi-quote/{PRD.md,arch.md,docs/adr/0013-*.md} + card 01.
+  6. Metadata commit on MAIN (not the branch): card 01 status todo->review, current.json
+     stage=impl + pr URL, append journal seq=4 (append-only, one commit), push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/ (frozen). NEVER run repo-wide cargo fmt — fmt src/** only or skip.
+  - N=1 output byte-identity is the red line — quote_one emits today's exact json! literal;
+    shape_quotes returns it bare; NO new keys.
+  - Do NOT wrap snapshot drains in TAKE_FIRST_TIMEOUT (bounded SnapshotEnd class, ADR 0013).
+  - main.rs/output.rs/error.rs are OUT of impl-paths.
+  - The metadata commit goes on MAIN; the code diff on feat/multi-quote. Two refs.
+  - Public repo: no account ids/tokens/balances in code, comments, or the PR body.
+Done when: PR open, card verify + full suite + clippy green, freeze-gate diff empty,
+card=review, journal seq=4 pushed. On success: run pipeline-review.
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END
