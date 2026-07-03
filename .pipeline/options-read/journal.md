@@ -76,3 +76,44 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: two commits pushed (freeze then record), both new test targets RED, existing targets GREEN, cards at todo. On success: run pipeline-impl.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T16:43:10Z · task→impl · completed · by=claude-fable-5
+done:   spec FROZEN in the double-commit protocol: freeze commit b2eb7fa5 (= the feature's
+        single spec-rev) carries BOTH cards' red tests (tests/option_chain_command.rs 8 tests,
+        tests/option_quote_command.rs 15 tests; each target RED on unresolved oh_my_ib imports
+        ONLY — every ibapi-side fixture construction pre-verified compiling via a scratch
+        target, deleted before the commit; existing targets green: build + cli_contract
+        spot-checked). Cards 01 (option-chain) + 02 (option-quote) at todo/0, card-scoped
+        verify, shared spec-rev; full-verify recorded.
+output: .pipeline/options-read/tasks/01.md, .pipeline/options-read/tasks/02.md,
+        tests/option_chain_command.rs, tests/option_quote_command.rs (spec-rev b2eb7fa5)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (agent-first; hard safety rules)
+  - .pipeline/options-read/tasks/01.md — THE card (oldest todo): scope, hard constraints, freeze coverage
+  - .pipeline/options-read/arch.md — §Component design + §CLI + §Output shapes + §Docs amendment (copy VERBATIM)
+  - .pipeline/options-read/docs/adr/0019-options-read-bounded-drains.md — binding decisions
+  - .pipeline/options-read/CONTEXT.md — glossary
+  - src/ib/completed_orders.rs:83-128 — the drain skeleton card 01 copies; src/ib/contract.rs — conid resolve mirror; src/ib/quote.rs — READ-ONLY reference (never edit)
+Your task (concrete, numbered):
+  1. Pick the oldest todo card: tasks/01.md (option-chain). Set status: in-progress (metadata commit to main), then cut branch feat/options-read from trunk HEAD.
+  2. Implement per the card §Scope: src/ib/option_chain.rs (ChainRow + shape_option_chain + gateway fn), cli.rs variant, mod.rs re-exports, main.rs arm, AGENTS.md/CLAUDE.md amendments VERBATIM from arch.md §Docs amendment.
+  3. Green loop: cargo build && cargo test --test option_chain_command (the card's verify). NEVER touch tests/ (freeze gate: git diff b2eb7fa5 <tip> -- tests/option_chain_command.rs must stay EMPTY).
+  4. Pre-PR: cargo clippy --all-targets -- -D warnings clean; full cargo test — expected: ALL green EXCEPT tests/option_quote_command.rs (card 02 still red — do NOT fix it on this card).
+  5. Push feat/options-read, open PR (gh pr create — title "feat(options-read): option-chain — card 01", body cites card + spec-rev). Card status: review + journal seq=4 entry + push (metadata commits to main).
+  6. THEN (same session or relay): card 02 may follow the same loop on the SAME branch/PR once card 01 is at review — or stop after card 01 and hand off; the operator decides pacing.
+Feature gotchas (project-specific traps the next node MUST know):
+  - The card's impl-paths are the ONLY writable product files; tests/ is the frozen spec (edit ⇒ review auto-reject).
+  - option_chain drain: timeout_iter_data(super::TAKE_FIRST_TIMEOUT) + Instant-classified None arms (completed_orders.rs skeleton VERBATIM) — bare iter_data() would hang on a wedged gateway (ADR 0016 precedent).
+  - conid = FIRST contract_details row (ADR 0019 D4); empty ⇒ not_found envelope, context "option-chain".
+  - shape_option_chain sorting: expirations lexicographic ascending, strikes partial_cmp ascending, rows by (exchange, trading_class) — the frozen tests assert exact orders.
+  - Docs amendment = TWO edits (red-line sentence in AGENTS.md+CLAUDE.md; stale "Read-only (no order-placement code)." line in AGENTS.md §What this is) — verbatim from arch.md, nothing else in those files.
+  - No repo-wide cargo fmt; no new deps; no new error codes; public repo — no account ids.
+Done when: card 01 verify green on feat/options-read, clippy clean, freeze-gate diff empty, PR open, card at review, journal seq=4 pushed. On success: run pipeline-impl for card 02 (operator relays) or pipeline-review if both cards land.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
