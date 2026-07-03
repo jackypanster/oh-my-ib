@@ -23,6 +23,7 @@ mod pnl_by_position;
 mod positions;
 mod quote;
 mod search;
+mod trade;
 
 pub use account::account;
 pub use brief::{assemble_brief, brief};
@@ -37,6 +38,7 @@ pub use positions::positions;
 pub use quote::{quote, quote_price_tick, shape_quotes};
 pub use search::{search, shape_search, SearchRow};
 pub use completed_orders::{completed_orders, shape_completed_orders, CompletedOrderRow};
+pub use trade::{build_stk_order, cancel, buy, sell, shape_order_ack, require_live_write_gate};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
