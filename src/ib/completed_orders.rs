@@ -63,41 +63,67 @@ pub fn shape_completed_orders(rows: Vec<CompletedOrderRow>) -> Value {
     )
 }
 
-/// Read-only drain of today's completed orders: connect → `completed_orders(false)` →
-/// `iter_data()` to the natural End marker → shape. `Orders::OrderData` arm only
-/// (`OrderStatus` variants skipped, the `orders` posture). Rows are filtered to the explicit
-/// `--account` value ONLY when set (ADR 0011 / ADR 0015 D5: never auto-filter to the resolved
-/// account).
+/// Read-only drain of today's completed orders: connect → `completed_orders(false)` → bounded
+/// per-item drain → shape. `Orders::OrderData` arm only (`OrderStatus` variants skipped, the
+/// `orders` posture). Rows are filtered to the explicit `--account` value ONLY when set
+/// (ADR 0011 / ADR 0015 D5: never auto-filter to the resolved account).
+///
+/// ADR 0016 (amends ADR 0015's drain posture, live-proven wedge): the bare `iter_data()` is
+/// replaced by `timeout_iter_data(TAKE_FIRST_TIMEOUT)` with timing-classified `None` arms.
+/// Some gateway builds/states never send `CompletedOrdersEnd` (ib_insync #224); the per-item
+/// window bounds the wait so the command can never hang. A terminating `None` that starved the
+/// window is a `timeout` error (exit 6); an instant `None` is the stream self-ending on
+/// `CompletedOrdersEnd` ⇒ success.
 pub fn completed_orders(cfg: &Config) -> Result<Value, AppError> {
     let client = super::connect(cfg)?;
     let subscription = client
         .completed_orders(false)
         .map_err(|e| AppError::data(format!("completed_orders failed: {e}"), "completed-orders"))?;
     let mut rows = Vec::new();
-    for item in subscription.iter_data() {
-        let item = item.map_err(|e| AppError::data(format!("completed orders stream: {e}"), "completed-orders"))?;
-        if let Orders::OrderData(d) = item {
-            if let Some(acct) = cfg.account.as_deref() {
-                if d.order.account != acct {
-                    continue;
+    let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
+    loop {
+        let waited = std::time::Instant::now();
+        match items.next() {
+            Some(Ok(Orders::OrderData(d))) => {
+                if let Some(acct) = cfg.account.as_deref() {
+                    if d.order.account != acct {
+                        continue;
+                    }
                 }
+                rows.push(CompletedOrderRow {
+                    order_id: d.order_id,
+                    account: d.order.account,
+                    symbol: d.contract.symbol.to_string(),
+                    conid: d.contract.contract_id,
+                    action: format!("{:?}", d.order.action),
+                    quantity: d.order.total_quantity,
+                    order_type: d.order.order_type,
+                    limit_price: d.order.limit_price,
+                    aux_price: d.order.aux_price,
+                    tif: format!("{:?}", d.order.tif),
+                    status: format!("{:?}", d.order_state.status),
+                    filled_quantity: d.order.filled_quantity,
+                    completed_time: d.order_state.completed_time,
+                    completed_status: d.order_state.completed_status,
+                });
             }
-            rows.push(CompletedOrderRow {
-                order_id: d.order_id,
-                account: d.order.account,
-                symbol: d.contract.symbol.to_string(),
-                conid: d.contract.contract_id,
-                action: format!("{:?}", d.order.action),
-                quantity: d.order.total_quantity,
-                order_type: d.order.order_type,
-                limit_price: d.order.limit_price,
-                aux_price: d.order.aux_price,
-                tif: format!("{:?}", d.order.tif),
-                status: format!("{:?}", d.order_state.status),
-                filled_quantity: d.order.filled_quantity,
-                completed_time: d.order_state.completed_time,
-                completed_status: d.order_state.completed_status,
-            });
+            Some(Ok(_)) => {} // OrderStatus variants skipped (unchanged posture).
+            Some(Err(e)) => {
+                return Err(AppError::data(
+                    format!("completed orders stream: {e}"),
+                    "completed-orders",
+                ))
+            }
+            None if waited.elapsed() >= super::TAKE_FIRST_TIMEOUT => {
+                return Err(AppError::timeout(
+                    format!(
+                        "no CompletedOrdersEnd within {}s — gateway did not answer reqCompletedOrders (known gateway issue; a restart may or may not cure it)",
+                        super::TAKE_FIRST_TIMEOUT.as_secs()
+                    ),
+                    "completed-orders",
+                ))
+            }
+            None => break, // instant None = stream self-ended on CompletedOrdersEnd => success
         }
     }
     Ok(json!({ "completed_orders": shape_completed_orders(rows) }))
