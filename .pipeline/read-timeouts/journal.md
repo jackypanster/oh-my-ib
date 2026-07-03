@@ -86,3 +86,57 @@ Done when: both commits pushed, card 01 status=todo, journal seq=3 appended.
 On success: run pipeline-impl (operator will hand it to the oh-my-pi coding agent).
 On failure: attempts++; >=3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-03T06:52:00Z · task→impl · completed · by=claude-fable-5
+done:   spec frozen: tests/read_timeouts.rs (7 tests, house-red via unresolved imports) @
+        spec-rev 3b011a62aa9004c63c67cc0dc6c5b7c48103325c (freeze commit, spec-paths only);
+        card 01 recorded (todo, verify card-scoped, spec/impl paths disjoint); full-verify set.
+output: tests/read_timeouts.rs, .pipeline/read-timeouts/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (CONTRACT step 2: nothing to load).
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (public repo, read-only, agent-first docs)
+  - .pipeline/read-timeouts/tasks/01.md — YOUR card: scope, hard constraints, freeze coverage
+  - .pipeline/read-timeouts/arch.md — §"Exact seam diffs" is the verbatim implementation
+  - .pipeline/read-timeouts/docs/adr/0012-take-first-timeout-twin.md — binding mechanism + rationale
+  - .pipeline/read-timeouts/PRD.md + CONTEXT.md — criteria + glossary
+  - tests/read_timeouts.rs — the FROZEN spec you must turn green (read-only for you!)
+Your task (concrete, numbered):
+  1. git checkout -b feat/read-timeouts (cut from current trunk main).
+  2. Implement EXACTLY the card's impl-paths: src/error.rs (ErrorKind::Timeout, code "timeout",
+     exit 6, AppError::timeout constructor), src/ib/mod.rs (pub const TAKE_FIRST_TIMEOUT = 10s),
+     src/ib/pnl.rs + src/ib/pnl_by_position.rs (swap next_data() ->
+     timeout_iter_data(super::TAKE_FIRST_TIMEOUT).next(); None arm -> AppError::timeout with the
+     arch.md verbatim cure message; sweep arm keeps conid prefix). Follow arch.md §Exact seam
+     diffs verbatim.
+  3. Verify: cargo build && cargo test --test read_timeouts (card verify, must go green), then
+     cargo test (full suite — single card, must be fully green) and
+     cargo clippy --all-targets -- -D warnings.
+  4. Self-check the freeze gate BEFORE committing:
+     git diff 3b011a62aa9004c63c67cc0dc6c5b7c48103325c HEAD -- tests/read_timeouts.rs
+     must print NOTHING (also: git status must show no tests/ changes).
+  5. Commit the impl (conventional message, e.g. "feat(read-timeouts): bound take-first PnL
+     reads with timeout twin (ADR 0012)"), push the branch, open the PR:
+     gh pr create --base main --head feat/read-timeouts --title "feat(read-timeouts): bounded
+     take-first reads (timeout twin, ADR 0012)" --body pointing at
+     .pipeline/read-timeouts/{PRD.md,arch.md,docs/adr/0012-*.md} and card 01.
+  6. Flip card 01 status: todo -> review (that one frontmatter line is in your write-set),
+     set current.json stage=impl, append journal seq=4 (this file, append-only, one metadata
+     commit on MAIN — not the feature branch), push main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/ (frozen). NEVER run repo-wide cargo fmt — it rewrites tests/ (repo
+    baseline is not fmt-clean). fmt src/** only, or skip fmt.
+  - The metadata commit (card status + current.json + journal) goes on MAIN; the code diff goes
+    on feat/read-timeouts. Two different commits on two different refs.
+  - Do NOT add a timeout flag/config key (help text must not contain "timeout" — frozen test).
+  - Do NOT touch src/ib/brief.rs / src/cli.rs / src/main.rs / src/output.rs (out of impl-paths).
+  - use super::TAKE_FIRST_TIMEOUT inside the seams (both files are ib/ submodules).
+  - Public repo: no account ids/tokens/balances in code, comments, or the PR body.
+Done when: PR open, card verify + full suite + clippy green on the branch, freeze-gate diff
+empty, card=review, journal seq=4 pushed. On success: run pipeline-review.
+On failure: attempts++; >=3 => blocked => run pipeline-hunt.
+<<< END

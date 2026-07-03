@@ -2,5 +2,6 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "read-timeouts",
-  "stage": "arch"
+  "stage": "task",
+  "full-verify": ["cargo build", "cargo test"]
 }
