@@ -131,3 +131,15 @@ consts):
   drives the frozen matrix deterministically.
 - Wedge dossier: order-id routing domain is new territory on this gateway — every wait
   bounded; worst case is the UNKNOWN-state envelope, never a hang, never a blind retry.
+
+## Amendment (2026-07-03, post paper-wedge) — local order-id allocator (ADR 0018)
+
+PAPER acceptance hung in `next_valid_order_id()` (unbounded `next()` inside the crate,
+orders/sync.rs:197; gateway never answers RequestIds — no order reached the gateway,
+verified via empty orders/completed-orders). §Component design's allocation step is REPLACED:
+
+- `let order_id = client.next_order_id();`  // local, non-blocking, handshake-seeded
+  (client/sync.rs:121 seeds from connection_metadata.next_order_id; id_generator.rs:86)
+- everything else (gate ordering, place_order, bounded ack, UNKNOWN-state message) unchanged.
+
+Freeze coverage delta: none (allocation is inside the review-by-reading gateway fns).

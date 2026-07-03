@@ -227,3 +227,35 @@ semantic checks (containment/double-gate/ordering/bounded-ack/no-retry/seams/doc
 operator PAPER live acceptance (criterion 11); card=done, journal seq=5 pushed.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-03T12:36:24Z · impl→impl · failed · by=claude-fable-5
+done:   PAPER ACCEPTANCE FAILED (pre-review): omi buy hung >3min BEFORE any order reached the
+        gateway (orders + completed-orders empty post-kill — safe kill, nothing placed).
+        Root cause source-pinned: next_valid_order_id() = unbounded subscription.next()
+        (orders/sync.rs:197) on a RequestIds shared request this gateway never answers (3rd
+        dossier wedge; first PAPER sighting). ADR 0017's "bounded, crate-managed" claim was
+        WRONG — arch gap, not impl (round 1 was verbatim). Routed: ADR 0018 (handshake-seeded
+        local allocator client.next_order_id(), source-verified non-blocking), arch.md
+        Amendment, card round 2 (attempts=1). Frozen spec unchanged.
+output: docs/adr/0018-local-order-id-allocator.md, arch.md §Amendment, tasks/01.md Round 2
+--- handoff ---
+>>> NEXT
+Run pipeline-impl ROUND 2 on the SAME branch (feat/stk-orders, PR #15 open).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/15
+Model: capable-local OK — operator assigns (interactive pi/omp).
+First: git pull --rebase (main, get ADR 0018 + amendments); git checkout feat/stk-orders.
+Your task (concrete, numbered):
+  1. In src/ib/trade.rs replace the order-id allocation ONLY:
+     client.next_valid_order_id()? -> client.next_order_id()  (per arch.md §Amendment).
+  2. Verify: cargo build && cargo test --test stk_orders_command && cargo test && cargo
+     clippy --all-targets -- -D warnings.
+  3. Freeze gate: git diff 3692c71bc11e873b2be8f3c9448a2a8d4f4d9e8f HEAD --
+     tests/stk_orders_command.rs must be EMPTY.
+  4. Commit on branch ("fix(stk-orders): local handshake-seeded order-id allocator, ADR 0018"),
+     push (updates PR #15).
+  5. Metadata on MAIN: card todo->review (attempts stays 1), current.json stage=impl,
+     journal seq=6, push.
+Feature gotchas: ONE LINE change — nothing else; no retry logic; never touch tests/;
+containment rule stands. Done when: PR updated, all green, gate empty, seq=6 pushed.
+On success: run pipeline-review (codex cli). On failure: attempts++ (=2); >=3 => blocked => hunt.
+<<< END
