@@ -117,3 +117,53 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: card 01 verify green on feat/options-read, clippy clean, freeze-gate diff empty, PR open, card at review, journal seq=4 pushed. On success: run pipeline-impl for card 02 (operator relays) or pipeline-review if both cards land.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03 · impl(card 01)→review · completed · by=glm-5.2 (omp)
+done:   card 01 (option-chain) implemented on feat/options-read: src/ib/option_chain.rs
+        (ChainRow + shape_option_chain pure FROZEN seam: expirations lexicographic ascending,
+        strikes partial_cmp ascending, rows by (exchange, trading_class); timeout-wrapped
+        End-bounded reqSecDefOptParams drain per ADR 0016 Instant-classified pattern; conid =
+        contract_details FIRST row per ADR 0019 D4, empty ⇒ not_found), cli OptionChain variant +
+        OptionChainArgs, mod.rs re-exports, main.rs arm, AGENTS.md+CLAUDE.md docs amendment
+        (verbatim from arch §Docs amendment). cargo test --test option_chain_command 8/8 green;
+        clippy --lib --bins -D warnings clean (--all-targets red ONLY on card 02's expected-red
+        option_quote_command, which rides this same branch next); freeze-gate diff
+        b2eb7fa5..tip -- tests/option_chain_command.rs EMPTY. PR #16 open. Card 02 (option-quote)
+        follows on the SAME branch/PR.
+output: src/ib/option_chain.rs, PR https://github.com/jackypanster/oh-my-ib/pull/16
+--- handoff ---
+>>> NEXT
+Card 02 (option-quote) lands on the SAME feat/options-read branch + SAME PR #16 — same session,
+operator relays or this bot continues. Then pipeline-review.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/options-read pr=https://github.com/jackypanster/oh-my-ib/pull/16
+Model: capable-local OK (impl) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; git checkout feat/options-read; no .env in this repo.
+Read for context (before acting):
+  - .pipeline/options-read/tasks/02.md — THE card: scope, hard constraints, freeze coverage
+  - .pipeline/options-read/arch.md — §Component design (option_quote.rs seams + gateway fn) + §CLI + §Output shapes
+  - .pipeline/options-read/docs/adr/0019-*.md — D2 (bare SnapshotEnd drain) + D3 (model-only best-effort greeks)
+  - src/ib/quote.rs — quote_one snapshot drain + quote_price_tick (REUSE via super::, never edit)
+  - tests/option_quote_command.rs — the frozen spec (15 tests; DO NOT EDIT)
+Your task (concrete, numbered):
+  1. On feat/options-read (already carries card 01): implement src/ib/option_quote.rs
+     (GreeksRow #[derive(Default)] + option_quote_greeks pure seam [Some ONLY for
+     ModelOption/DelayedModelOption] + shape_option_quote pure seam [8-key contract echo,
+     right normalize to C/P, greeks-iff, omit-None-fields, ticks pass-through] + gateway fn with
+     pre-connect validation [right/strike>0/expiry 8-digit y/m/d] + bare SnapshotEnd drain +
+     last-model-row-wins), cli OptionQuote variant + OptionQuoteArgs, mod.rs re-exports, main.rs arm.
+  2. Green loop: cargo build && cargo test --test option_quote_command. Freeze gate:
+     git diff b2eb7fa5..tip -- tests/option_quote_command.rs EMPTY.
+  3. Pre-merge: cargo clippy --all-targets -- -D warnings clean (whole suite GREEN now) + cargo test.
+  4. Commit on feat/options-read, push. Card 02 → review + journal seq=5 + push metadata to main.
+Feature gotchas:
+  - shape_option_quote signature (per card 02 §Scope): decoupled from clap struct —
+    (symbol, expiry, strike, right, exchange, currency, trading_class: Option<&str>, delayed: bool,
+    ticks: serde_json::Map<String,Value>, greeks: Option<GreeksRow>) -> Value. The test is the contract.
+  - Validation BEFORE connect (frozen tests depend on ordering: usage < connection).
+  - Greeks BEST-EFFORT (ADR 0019 D3): absent model row ⇒ NO greeks key, success — never an error.
+  - Quote drain is BARE iter_data() to SnapshotEnd (ADR 0019 D2) — NOT timeout-wrapped, matches quote.rs.
+  - right normalization: accept c/C/call/CALL/p/P/put/PUT → "C"/"P" (clap passes raw; validate then normalize).
+Done when: card 02 verify green, clippy --all-targets clean, full suite green, card at review,
+journal seq=5 pushed. On success: run pipeline-review (human confirms merge of PR #16).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END

@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "options-read",
-  "stage": "task",
+  "stage": "impl",
   "full-verify": [
     "cargo build",
     "cargo test"
