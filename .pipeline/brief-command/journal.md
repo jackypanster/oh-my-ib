@@ -160,3 +160,59 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: verify green + full suite green + clippy clean on the branch; PR open; card 01 status=review;
 journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-03T02:31:08Z · impl→review · completed · by=claude-fable-5(claude-code)
+done:   Card 01 implemented on feat/brief-command @ 6808d09, PR #10 open. src/ib/brief.rs
+        (assemble_brief pure seam + brief(cfg) per ADR 0010 order) + behavior-preserving seam
+        extractions (SummaryAccumulator in account.rs w/ white-box tests; position_row in
+        positions.rs; pnl_with_client; sweep_pnl_singles; open_orders_with_client;
+        executions_with_client — all ctx-parameterized so brief errors read brief/<section>) +
+        mod/cli/main wiring. Verify: card-scoped cargo test --test brief_command 7/7 GREEN;
+        FULL suite GREEN (trunk red resolved); clippy -D warnings clean. INCIDENT AVERTED &
+        note for review: a repo-wide `cargo fmt` reformatted frozen spec files under tests/
+        (repo baseline is not fmt-clean; fmt is NOT in the verify gate) — reverted via
+        `git checkout -- tests/` BEFORE committing; freeze-gate diff f7cab5d..6808d09 over
+        spec-paths verified EMPTY (0 lines). Lesson: never run repo-wide cargo fmt in this
+        repo; fmt only src/**. NOTE: roles.yaml impl slot names `goal-driven-impl-claude`
+        but the installed skill is `goal-driven-implementation` (the Claude /goal twin it
+        describes) — proceeded with it, non-silently. SKILL-PROPOSAL: roles.yaml — update the
+        impl slot value to the installed skill's real name (one-line fix, operator decides).
+output: feat/brief-command @ 6808d09; https://github.com/jackypanster/oh-my-ib/pull/10;
+        tasks/01.md (review); .pipeline/current.json (stage=impl, pr set)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/10
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env (gh is already authenticated on this repo's remote).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md — repo conventions. Read FIRST.
+  - .pipeline/brief-command/PRD.md + arch.md + CONTEXT.md + docs/adr/0010,0011 — the spec universe
+  - .pipeline/brief-command/tasks/01.md — the card (status=review; Freeze coverage = what to read)
+  - .pipeline/brief-command/journal.md tail — this entry (note the cargo-fmt incident: verify the
+    freeze gate yourself, deterministically)
+Your task (concrete, numbered):
+  1. FREEZE GATE (deterministic, FIRST): git diff f7cab5d884c3fc4ba9cc1256d9ddf54832f373a3 <PR-head> --
+     tests/brief_command.rs — non-empty ⇒ REJECT (attempts++, card→todo, route impl). Also check no
+     other tests/* changed vs main.
+  2. FULL-SUITE GATE: on a detached worktree at the PR head run current.json.full-verify exactly:
+     cargo build && cargo test (whole suite, unfiltered) + cargo clippy --all-targets -- -D warnings.
+  3. SEMANTIC REVIEW (card Freeze coverage names the read-targets): brief(cfg) fetch order matches
+     ADR 0010; consolidated drain matches ADR 0011 (ONE account_updates subscription; drop before pnl);
+     take-first for pnl/pnl_single vs drain-to-End for account_updates/all_open_orders/executions;
+     sibling behavior byte-identical (diff account/positions/pnl/pnl_by_position/orders/executions
+     public fns against their pre-refactor logic); orders filter only when cfg.account set; as_of
+     accessor formatting; no sentinel leak paths; error contexts brief/<section>; public repo hygiene.
+  4. Verdict → reviews/review-01.md. APPROVE ⇒ STOP at the human gate: PRD criterion 10 live
+     acceptance (omi --live brief + same-session cross-check) + explicit operator merge authorization.
+     Only after BOTH: squash-merge PR #10 via gh, delete branch, card→done, stage=done, journal seq=5.
+     REJECT ⇒ attempts++ (→1), card→todo, journal status=failed, route pipeline-impl with findings.
+Feature gotchas (project-specific traps the next node MUST know):
+  - The fmt incident above — tests/ in the PR diff MUST be empty; if you see tests/ churn, REJECT.
+  - Trunk was red f7cab5d..pre-merge by design (frozen spec) — full suite green only at the PR head.
+  - Gateway on the operator's NEW machine (M1 MBP, IB Gateway just downloaded) may not be up yet —
+    live acceptance may WAIT; do not merge without it (criterion 10 is a merge gate, not advisory).
+  - Public repo: REDACT account ids/balances from any live-acceptance evidence you journal.
+Done when: review-01.md written; if human-confirmed+live-accepted: PR #10 squash-merged, card done,
+stage=done, seq=5 pushed. On reject: card→todo/attempts=1, route pipeline-impl.
+<<< END
