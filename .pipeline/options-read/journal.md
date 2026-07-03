@@ -296,3 +296,50 @@ Feature gotchas:
 Done when: card 02 verify + full suite + clippy are green, freeze gate is empty, card 02 is review again,
 journal seq=8 is pushed, and PR #16 is updated. On failure: attempts++; attempts >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=8 · 2026-07-03 · impl(card 02 r2)→review · completed · by=glm-5.2 (omp)
+done:   card 02 review-01 fix landed on feat/options-read (56a05da): tightened pre-connect strike
+        validation from `strike <= 0.0` to `!args.strike.is_finite() || args.strike <= 0.0` — clap's
+        f64 parser accepts NaN/inf, which bypassed the >0 check (inf passes; NaN compares false to
+        everything) and reached connect, returning `connection` on a dead port instead of `usage`.
+        Manual dead-port verify: --strike inf/NaN/-inf all ⇒ code=usage (was connection); valid
+        strike 250 ⇒ connection (no over-rejection). cargo test --test option_quote_command 17/17
+        green; clippy --all-targets -D warnings clean; FULL cargo test 139/139 green; freeze gates
+        7c8bcaf5..tip -- tests/option_chain_command.rs + tests/option_quote_command.rs BOTH empty.
+        Card 02 → review (attempts stays 1). Card 01 unchanged at review.
+output: src/ib/option_quote.rs (56a05da), PR https://github.com/jackypanster/oh-my-ib/pull/16
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/options-read pr=https://github.com/jackypanster/oh-my-ib/pull/16
+Model: frontier SOTA required — review is a reasoning stage; operator assigns the bot.
+First: git fetch origin; git checkout feat/options-read (tip now 56a05da — the one-line strike fix
+atop 0580dda card 02 atop 55950d1 card 01, all on spec-rev 7c8bcaf5).
+Read for context (before acting):
+  - .pipeline/options-read/tasks/01.md + 02.md — both at review; card 02 attempts=1; spec-rev 7c8bcaf5
+  - .pipeline/options-read/reviews/review-01.md — the prior rejection (finding now fixed); cite review-02
+  - .pipeline/options-read/arch.md — §Component design + §Freeze coverage
+  - .pipeline/options-read/docs/adr/0019-*.md — D1-D4 binding decisions
+  - tests/option_chain_command.rs + tests/option_quote_command.rs — the frozen spec (DO NOT diff-edit)
+Your task (CONTRACT §Test ownership + §State authority):
+  1. Freeze gate FIRST for EACH card: `git diff 7c8bcaf5 <review-tip> -- <spec-paths>`; non-empty ⇒ reject.
+     Expected: BOTH empty (verified green at impl).
+  2. Confirm review-01 finding is dead: the strike validation at src/ib/option_quote.rs now reads
+     `!args.strike.is_finite() || args.strike <= 0.0` BEFORE super::connect — re-run the dead-port
+     probes (--strike inf/NaN/-inf ⇒ code=usage; valid strike ⇒ connection) if you want runtime proof.
+  3. Semantic re-review: re-check the validation-before-connect ordering (right/strike/expiry all
+     precede connect), OptionBuilder chain, bare SnapshotEnd drain (ADR 0019 D2), last-model-row-wins,
+     greeks best-effort, no writes (normal read-only polarity; trade.rs untouched).
+  4. Full-suite gate: `cargo build && cargo test` on feat/options-read HEAD — must be ALL GREEN
+     (current.json.full-verify; 139 tests at impl). clippy --all-targets -D warnings clean.
+  5. Human confirm → squash-merge PR #16 (the only merge). Card statuses → done.
+Feature gotchas:
+  - The fix is finite-positive strike validation; nothing else in card 02 changed (diff is 4 lines).
+  - greeks PRESENCE is NEVER a gate (best-effort ADR 0019 D3 — absence is valid success).
+  - quote.rs byte-identity frozen (ADR 0013); trade.rs/Cargo.toml/Cargo.lock untouched.
+  - shape_option_quote carries #[allow(clippy::too_many_arguments)] — frozen signature (brief.rs:27).
+  - Chain drain IS timeout-wrapped (ADR 0016); quote drain is NOT (ADR 0019 D2) — asymmetry by design.
+Done when: both freeze gates empty, review-01 finding verified dead, semantic review clean,
+full-suite green, human confirms, PR #16 squash-merged, cards → done, current.json.stage=done.
+On failure: flip offending card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
