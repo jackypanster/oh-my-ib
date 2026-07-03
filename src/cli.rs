@@ -72,6 +72,14 @@ pub enum Command {
     Contract(ContractArgs),
     /// Historical bars for a symbol
     History(HistoryArgs),
+    /// Fuzzy symbol/company search
+    Search(SearchArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct SearchArgs {
+    /// Search text, e.g. apple or "hong kong"
+    pub pattern: String,
 }
 
 #[derive(Args, Debug)]
