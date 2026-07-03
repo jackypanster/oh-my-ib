@@ -159,9 +159,11 @@ pub fn option_quote(cfg: &Config, args: &OptionQuoteArgs) -> Result<Value, AppEr
             "option-quote",
         )
     })?;
-    if args.strike <= 0.0 {
+    // Finite-positive: clap's f64 parser accepts NaN/inf, which are not valid option strikes
+    // and must be rejected here (before connect) — NaN also fails `> 0.0`, but `inf` passes it.
+    if !args.strike.is_finite() || args.strike <= 0.0 {
         return Err(AppError::usage(
-            format!("--strike must be > 0 (got {})", args.strike),
+            format!("--strike must be a finite positive number (got {})", args.strike),
             "option-quote",
         ));
     }
