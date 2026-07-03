@@ -36,3 +36,43 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: arch.md + CONTEXT.md + docs/adr/0019-*.md committed (+ journal seq=2 + current.json stage=arch) and PUSHED. On success: run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-03T16:16:50Z · arch→task · completed · by=claude-fable-5
+done:   arch decision-complete, every ibapi claim source-verified (crate ibapi-3.1.0 local):
+        two new modules (option_chain.rs timeout-wrapped End-bounded drain; option_quote.rs
+        SnapshotEnd bare drain reusing quote_price_tick), pure seams pinned (shape_option_chain
+        sorted-deterministic; option_quote_greeks model-rows-only; shape_option_quote greeks-key
+        -iff-present), CLI arg structs verbatim, docs amendment verbatim (incl. stk-orders
+        leftover "Read-only" line in AGENTS.md §What this is), freeze coverage pinned.
+        ADR 0019 = drain classes + model-only best-effort greeks + first-row conid.
+output: .pipeline/options-read/arch.md, .pipeline/options-read/CONTEXT.md,
+        .pipeline/options-read/docs/adr/0019-options-read-bounded-drains.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions (agent-first authoring)
+  - .pipeline/options-read/PRD.md — criteria 1-8, D1-D8, non-scope
+  - .pipeline/options-read/arch.md — component design impl follows VERBATIM (CLI structs, seams, output shapes, docs amendment text, freeze coverage §)
+  - .pipeline/options-read/docs/adr/0019-*.md — binding drain/greeks/conid decisions
+  - .pipeline/options-read/CONTEXT.md — glossary
+  - .pipeline/stk-orders/tasks/*.md — card frontmatter house format (status/attempts/verify/spec-paths/impl-paths/spec-rev + Freeze coverage section)
+  - tests/pnl_by_position_command.rs — frozen-spec house style: import not-yet-existing lib symbols (compile-fail of the card's OWN test target = RED; separate tests/*.rs files are independent compile units, so siblings aren't blocked)
+Your task (concrete, numbered):
+  1. Two cards: 01 = option-chain (spec tests/option_chain_command.rs; impl-paths src/ib/option_chain.rs + shared wiring), 02 = option-quote (spec tests/option_quote_command.rs; impl-paths src/ib/option_quote.rs + shared wiring). Both independently mergeable (PRD D8). Shared wiring files (src/cli.rs, src/ib/mod.rs, src/main.rs) appear in BOTH cards' impl-paths — allowed (impl-paths need not be disjoint across cards; only spec ∩ impl = ∅ per card matters).
+  2. Write the red tests per arch.md §Freeze coverage: card 01 = shape_option_chain sorting/envelope/empty + --help lists option-chain + dead-port envelope; card 02 = option_quote_greeks model-row matrix + shape_option_quote (greeks-iff, 8-key echo, right normalization) + validation matrix (right/strike/expiry, pre-connect) + --help + dead-port. Tests import oh_my_ib::ib::{ChainRow, shape_option_chain, GreeksRow, option_quote_greeks, shape_option_quote} (won't resolve yet = RED). OptionComputation fixtures: construct ibapi::contracts::OptionComputation directly (pub fields; quote_ticks.rs precedent).
+  3. FREEZE COMMIT (commit 1): BOTH cards' red tests in ONE commit touching ONLY tests/option_chain_command.rs + tests/option_quote_command.rs. Verify each new test target fails RED (cargo test --test option_chain_command ⇒ compile fail = red; existing suite still compiles/passes). Record its sha = the feature's single spec-rev.
+  4. RECORD COMMIT (commit 2): tasks/01.md + tasks/02.md (status: todo, attempts: 0, card-scoped verify = cargo test --test <file> [+ cargo build], spec-paths/impl-paths exact, shared spec-rev, Freeze coverage section per arch) + current.json (stage=task, full-verify=["cargo build","cargo test"]) + journal seq=3. Touches metadata ONLY, never spec-paths.
+  5. Push. Print handoff to pipeline-impl (Model: capable-local OK) — impl picks oldest todo (card 01 first).
+Feature gotchas (project-specific traps the next node MUST know):
+  - spec-paths ∩ impl-paths = ∅ per card: spec = the tests/ file ONLY; docs amendment (AGENTS.md/CLAUDE.md) goes in impl-paths of card 01 (arch §Docs amendment; tests/agents_md.rs markers verified safe).
+  - Do NOT write any src/ code — the red tests + cards only.
+  - Card verify must be card-scoped (--test <file>), NEVER bare cargo test (trunk is red across both cards until merges — CONTRACT §Multi-card).
+  - greeks are BEST-EFFORT (ADR 0019 D3): no frozen test may assert greeks PRESENCE from the gateway; only the pure seams are frozen.
+  - quote.rs is untouchable (ADR 0013 byte-identity) — no spec may diff its behavior.
+Done when: two commits pushed (freeze then record), both new test targets RED, existing targets GREEN, cards at todo. On success: run pipeline-impl.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
