@@ -82,6 +82,10 @@ pub enum Command {
     Sell(OrderArgs),
     /// Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
     Cancel(CancelArgs),
+    /// Option chain (expirations × strikes) for an underlying
+    OptionChain(OptionChainArgs),
+    /// Snapshot quote + greeks for one option contract
+    OptionQuote(OptionQuoteArgs),
 }
 
 #[derive(Args, Debug)]
@@ -142,4 +146,40 @@ pub struct HistoryArgs {
     /// Duration, e.g. 1M, 2W, 30D, 1Y
     #[arg(long, default_value = "1M")]
     pub duration: String,
+}
+
+/// omi option-chain AAPL [--exchange SMART]
+#[derive(Args, Debug)]
+pub struct OptionChainArgs {
+    /// Underlying ticker symbol, e.g. AAPL
+    pub symbol: String,
+    /// Exchange filter (server-side reqSecDefOptParams param); "" = all exchanges
+    #[arg(long, default_value = "SMART")]
+    pub exchange: String,
+}
+
+/// omi option-quote --symbol AAPL --expiry 20260918 --strike 250 --right C
+#[derive(Args, Debug)]
+pub struct OptionQuoteArgs {
+    /// Underlying ticker symbol, e.g. AAPL
+    #[arg(long)]
+    pub symbol: String,
+    /// Expiry date, 8-digit YYYYMMDD, e.g. 20260918
+    #[arg(long)]
+    pub expiry: String,
+    /// Strike price (> 0)
+    #[arg(long)]
+    pub strike: f64,
+    /// Right: C|CALL or P|PUT (case-insensitive)
+    #[arg(long)]
+    pub right: String,
+    /// Exchange
+    #[arg(long, default_value = "SMART")]
+    pub exchange: String,
+    /// Currency
+    #[arg(long, default_value = "USD")]
+    pub currency: String,
+    /// Trading class, e.g. SPXW (optional; gateway resolves when absent)
+    #[arg(long)]
+    pub trading_class: Option<String>,
 }
