@@ -222,3 +222,22 @@ final journal entry committed and pushed to main.
 On reject: name the offending behavior; attempts++ and card 01 -> todo (or blocked at >=3);
 route pipeline-impl or pipeline-hunt per CONTRACT.
 <<< END
+
+## seq=6 · 2026-07-03T10:56:20Z · merge-confirm→done · completed · by=claude-fable-5
+done:   operator confirmed ("合并"); PR #13 squash-merged -> main 4dc4a12
+        (2026-07-03T10:55:36Z, feat branch deleted); trunk post-merge verified: cargo build
+        clean, cargo test 89/89, clippy clean. Card 01 done, stage=done. FEATURE DONE.
+        First full run of the three-agent paradigm: Claude Code (prd/arch/task/orchestration/
+        merge) + interactive pi/omp (impl, one-shot green) + codex cli (review, APPROVE @
+        3428061, 6 sandbox approvals relayed by orchestrator). Live evidence: search apple
+        31 rows AAPL conid 265598; search tencent 17 rows incl 700 SEHK HKD.
+        Open items unchanged: reqPnLSingle first-trading-day observation; ADR 0013 errata
+        fold-in; gateway first-slot-only reqPnL investigation.
+output: main 4dc4a12 (squash), .pipeline/search-command/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+No next stage — feature search-command is DONE (PR #13 merged, trunk green 89/89).
+Next feature starts with pipeline-prd on a fresh run (one feature in flight at a time).
+Team assignment map (operator-fixed 2026-07-03): pipeline-impl -> interactive pi/omp pane;
+pipeline-review -> codex cli pane; orchestration/merge -> Claude Code session.
+<<< END
