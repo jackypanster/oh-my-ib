@@ -219,3 +219,22 @@ Model: frontier SOTA required — operator assigns the bot.
 Feature gotchas: none new — do not touch tests/; public repo rules apply.
 Done when: PR merged, trunk green, journal seq=6 pushed.
 <<< END
+
+## seq=6 · 2026-07-03T08:55:00Z · merge-confirm→done · completed · by=claude-fable-5
+done:   operator confirmed ("合并"); PR #12 squash-merged -> main 259d393
+        (2026-07-03T08:45:19Z, feat branch deleted); trunk post-merge verified: cargo build
+        clean, cargo test 79/79, clippy clean. Card 01 done, stage=done. FEATURE DONE.
+        Open items (operator decides, future): (a) fold review-01 claim-4 errata into ADR 0013
+        on next arch touch ("drop sends CancelMarketData" -> ibapi skips cancel after
+        SnapshotEnd, subscriptions/sync.rs:78-82); (b) standing reqPnLSingle first-trading-day
+        observation; (c) delayed-snapshot latency (~12s/symbol) is gateway-inherent — faster
+        batches would be a new evidence-first feature.
+output: main 259d393 (squash), .pipeline/multi-quote/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+No next stage — feature multi-quote is DONE (PR #12 merged, trunk green 79/79).
+Next feature starts with pipeline-prd on a fresh run (one feature in flight at a time).
+Standing items for the operator: reqPnLSingle first-trading-day live observation
+(pnl-by-position D6); ADR 0013 errata fold-in; gateway build 2026-06-25 first-slot-only reqPnL
+investigation (evidence: .pipeline/read-timeouts/reviews/review-01.md §Side-finding).
+<<< END
