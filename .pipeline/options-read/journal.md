@@ -261,3 +261,38 @@ Done when: both freeze gates empty, semantic review clean, full-suite green, hum
 PR #16 squash-merged, cards → done, current.json.stage=done. journal seq=7.
 On failure: flip offending card review→todo + attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-07-03T17:24:24Z · review→impl · failed · by=codex-reviewer
+done:   review verdict written: REJECT. Freeze gate PASS, full-suite PASS, clippy PASS,
+        semantic review found a card 02 pre-connect validation bug: `--strike NaN` and
+        `--strike inf` reach the connection path, violating the finite positive strike
+        contract. Card 02 attempts 0→1 and status review→todo. Card 01 remains review.
+output: .pipeline/options-read/reviews/review-01.md, .pipeline/options-read/tasks/02.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/options-read pr=https://github.com/jackypanster/oh-my-ib/pull/16
+Model: capable-local OK (impl) — operator assigns the bot; the pipeline can't verify the model.
+First: git fetch origin; work in your own tree. Rebase/update `feat/options-read` onto `origin/main`
+if needed, then push fixes with `--force-with-lease` only if you rebased the feature branch.
+Read for context (before acting):
+  - AGENTS.md + CLAUDE.md — repo conventions and write gates.
+  - .pipeline/options-read/tasks/02.md — card 02 is back to todo, attempts=1; includes review rejection note.
+  - .pipeline/options-read/reviews/review-01.md — exact rejection evidence and commands.
+  - .pipeline/options-read/arch.md + docs/adr/0019-options-read-bounded-drains.md — binding design.
+Your task (concrete, numbered):
+  1. Fix card 02 only: in `src/ib/option_quote.rs`, reject non-finite strikes before `super::connect(cfg)?`.
+     `--strike NaN` and `--strike inf` must return `usage`, not `connection`, on the dead-port probe.
+  2. Do NOT edit frozen spec paths: `tests/option_chain_command.rs` and `tests/option_quote_command.rs`.
+  3. Re-run card/full verification on `feat/options-read`: `cargo build`, `cargo test --test option_quote_command`,
+     `cargo test`, and `cargo clippy --all-targets -- -D warnings`.
+  4. Re-run freeze gate: `git diff 7c8bcaf5 origin/feat/options-read -- tests/option_chain_command.rs tests/option_quote_command.rs`
+     must be empty after pushing.
+  5. Push the feature branch, set card 02 back to `review`, append the next journal entry, and hand off to pipeline-review.
+Feature gotchas:
+  - The review failure is not about greeks presence, bare SnapshotEnd, OptionBuilder, or docs; those passed by reading.
+  - Keep `quote.rs`, `trade.rs`, `Cargo.toml`, and `Cargo.lock` untouched.
+  - Card 01 stays at review; only card 02 is the retry target.
+Done when: card 02 verify + full suite + clippy are green, freeze gate is empty, card 02 is review again,
+journal seq=8 is pushed, and PR #16 is updated. On failure: attempts++; attempts >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
