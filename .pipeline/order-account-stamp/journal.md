@@ -165,3 +165,18 @@ GREEN today — this feature needs no deferred lifecycle). On confirm: orchestra
 squash-merges, card 01 -> done, stage -> done, journal seq=6, push (if PR head moved from
 217db67, re-run review gates + paper probe first).
 <<< END
+
+## seq=6 · 2026-07-04T11:28:40Z · review->done · completed · by=claude (orchestrator)
+done:   operator confirm word (TG). Squash-merged PR #21 as 92a6de4 (head 217db67 verified
+        unmoved from review baseline); feat branch deleted. Trunk full-verify 220/220 green.
+        Card 01 done; stage=done. Audit finding #2 (cross-account anti-open-gate defeat)
+        CLOSED — every placed order now carries the resolved account; paper-probe-confirmed
+        Tiger accepts explicit Order.account (no fallback needed). Both 2026-07-04 audit
+        findings (#1 double-fire, #2 account routing) now fixed and on trunk.
+output: trunk 92a6de4 (PR #21), .pipeline/order-account-stamp/* (feature closed)
+--- handoff ---
+>>> NEXT
+Feature order-account-stamp DONE. No next stage; paper acceptance already GREEN (not deferred).
+Outstanding across the session: option-close fill-lifecycle + close-pending-guard refusal
+lifecycle deferred to the next US trading session (their journals carry the steps).
+<<< END
