@@ -14,6 +14,7 @@
 //! - **No retry, ever**: a placement timeout is an UNKNOWN state, not a failure to redo —
 //!   automatic re-placement is the classic double-order bug.
 
+use ibapi::accounts::types::AccountId;
 use ibapi::accounts::{AccountPortfolioValue, AccountUpdate};
 use ibapi::client::blocking::Client;
 use ibapi::contracts::{Contract, LegAction, OptionRight, SecurityType};
@@ -246,6 +247,14 @@ pub fn blocking_close_order_ids(
     ids
 }
 
+
+/// Pure, FROZEN seam (ADR 0024 §2): stamp the resolved account onto an order. Sets
+/// `order.account` (OVERWRITING any prior value — the resolved account is the ONLY
+/// authority) and touches nothing else. Called at the single placement choke point
+/// (`place_with_client`) so no current or future verb can skip it.
+pub fn stamp_order_account(order: &mut Order, account: &str) {
+    order.account = account.to_string();
+}
 // ---------------------------------------------------------------------------
 // Gateway fns (review-by-reading; NOT frozen — needs a live gateway)
 // ---------------------------------------------------------------------------
@@ -310,8 +319,15 @@ fn place_with_client(
     ctx: &str,
     contract: &Contract,
     order: &Order,
+    account: &AccountId,
     ack: impl Fn(i32, &str) -> Value,
 ) -> Result<Value, AppError> {
+    // Stamp the resolved account onto the order BEFORE placement (ADR 0024). Clone then
+    // stamp — every placement path funnels through this choke point, so no current or
+    // future verb can skip it. The builders' pure output (account="") is untouched.
+    let mut order = order.clone();
+    stamp_order_account(&mut order, &account.0);
+
     // Allocate the order id FIRST so even a timeout error can NAME it. Uses the
     // handshake-seeded local allocator (client.next_order_id, ADR 0018): non-blocking,
     // returns the id_manager's next id. The prior next_valid_order_id() was an unbounded
@@ -320,7 +336,7 @@ fn place_with_client(
 
     // Place.
     let subscription = client
-        .place_order(order_id, contract, order)
+        .place_order(order_id, contract, &order)
         .map_err(|e| AppError::data(format!("place_order failed: {e}"), ctx))?;
 
     // Bounded first-ack loop (ADR 0016 bounded-iterator pattern). Take the FIRST
@@ -371,7 +387,8 @@ fn place_core(
 ) -> Result<Value, AppError> {
     require_live_write_gate(cfg)?;
     let client = super::connect(cfg)?;
-    place_with_client(&client, ctx, contract, order, ack)
+    let account = super::resolve_account(&client, cfg)?;
+    place_with_client(&client, ctx, contract, order, &account, ack)
 }
 
 /// Stk placement: validation → build → place_core with the 6-key ack closure.
@@ -659,6 +676,10 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     // 3. Connect (connection errors).
     let client = super::connect(cfg)?;
 
+    // Resolve the account on the SAME client (single bounded read) — passed to the
+    // placement choke point so the order is stamped (ADR 0024).
+    let account = super::resolve_account(&client, cfg)?;
+
     // 4. Per-leg conid resolve (fail-fast, naming leg N). Each leg is an option contract
     //    resolved via contract_details FIRST row (ADR 0019 D4 parity).
     let exchange = &args.exchange;
@@ -702,7 +723,7 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
 
     let action_str = format!("{:?}", side);
     let legs_snapshot: Vec<(LegSpec, i32)> = resolved;
-    place_with_client(&client, ctx, &contract, &order, |id, status| {
+    place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
         let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
         shape_combo_order_ack(id, status, &underlying, &action_str, args.qty, args.limit, &leg_refs)
     })
@@ -950,7 +971,7 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
     //    the RESOLVED row identity; `action` is the DERIVED side.
     let action_str = format!("{:?}", side);
     let expiry_echo = raw_expiry.clone();
-    place_with_client(&client, ctx, &contract, &order, |id, status| {
+    place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
         shape_option_close_ack(
             id,
             status,
