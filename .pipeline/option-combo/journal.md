@@ -160,3 +160,22 @@ Done when: freeze gate empty, review-01 finding verified dead (single connect), 
 full-suite green, human confirms, PR #18 squash-merged, card→done, current.json.stage=done.
 On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-07-04T03:07:14Z · review(card 01 r2)→review · completed · by=codex-reviewer
+done:   review-02 PASS for PR #18 / feat/option-combo tip 5def158. Freeze gates are empty:
+        c0e72a3..tip -- tests/option_combo_command.rs and origin/main..tip -- tests/ both produce
+        no diff. Round-2 diff is scoped to src/ib/trade.rs only. The review-01 double-connect hazard
+        is fixed: place_with_client(&Client, ...) now owns next_order_id → place_order →
+        bounded-first-ack, place_core is a thin gate+connect wrapper for STK and single-leg option
+        paths, and option_combo uses one connected client end-to-end for contract_details resolution
+        then place_with_client(&client, ...). super::connect call sites in trade.rs are attributed
+        only to cancel, place_core, and option_combo. cargo build, cargo test (181/181), and
+        cargo clippy --all-targets -- -D warnings all passed in /tmp/omi-rev-oc2-branch.
+output: .pipeline/option-combo/reviews/review-02.md
+--- handoff ---
+>>> NEXT
+Operator paper-accept PR #18 for option-combo, then require explicit human confirmation before merge.
+Do not merge from review alone. Final merge step must re-run freeze/full-verify gates, squash-merge
+PR #18 only after confirmation, update card 01 to done, set current.json stage=done, and append the
+merge journal entry.
+<<< END
