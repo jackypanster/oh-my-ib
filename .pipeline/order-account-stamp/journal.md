@@ -66,3 +66,46 @@ Done when: freeze commit (= spec-rev, record the FULL rev-parse hash — do not 
 record commit pushed, journal seq=3.
 On success: run pipeline-impl (pi on omp pane). On failure: attempts++; >=3 blocked => pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-04T09:43:46Z · task->impl · completed · by=claude-fable-5
+done:   spec FROZEN: freeze commit 24a34dd (= spec-rev 24a34dd0c10135eb77981b882e55a1eb4ff1d74c) carries card 01 red test
+        (tests/order_account_stamp.rs, 5 tests; RED on unresolved oh_my_ib import only;
+        verbatim-compile stub pre-verified clean, deleted pre-commit). ONE card at todo/0.
+        NOTE: card + current.json rode record commit 24a34dd earlier (session interrupted);
+        this seq=3 journal entry is a follow-up append (trunk already pushed, no amend/
+        force-push) — the append-only journal is honored, the "one commit" ideal yields to
+        never-force-push-trunk. Pure-seam-only spec (choke-point wiring is review-by-reading).
+output: .pipeline/order-account-stamp/tasks/01.md, tests/order_account_stamp.rs (spec-rev 24a34dd)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl) — pi on the omp pane.
+First: git pull --rebase; no repo .env.
+Read for context (before acting):
+  - AGENTS.md — repo conventions + hard safety rules
+  - .pipeline/order-account-stamp/PRD.md + arch.md (SS Choke point VERBATIM) + docs/adr/0024
+  - .pipeline/order-account-stamp/tasks/01.md — the card
+Your task (concrete, numbered):
+  1. Branch feat/order-account-stamp from trunk HEAD.
+  2. Implement card 01 per its Do section: seam + place_with_client required &AccountId param
+     (clone+stamp) + place_core/option_combo resolve-after-connect + option_close passes its
+     existing account + mod.rs re-export + AGENTS.md phrase.
+  3. Verify: cargo test --test order_account_stamp green; regression cargo test --test
+     stk_orders_command --test option_orders_command --test option_combo_command --test
+     option_close_command --test positions_row --test close_pending_guard green; FULL cargo
+     test + cargo clippy --all-targets -- -D warnings clean.
+  4. ONE PR; flip card status->review + current.json stage=impl + journal seq=4 on main;
+     COMMIT AND PUSH the main metadata (do not stop at staged). Push all.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/order_account_stamp.rs (frozen; review diffs 24a34dd..tip) NOR any of
+    the five older frozen spec files.
+  - place_with_client gains a REQUIRED param — every caller must pass the resolved account;
+    exactly one .place_order( call site stays on the stamped path (no bypass).
+  - option_close must NOT add a second managed_accounts/resolve_account (it already has one).
+  - Frozen builders (build_stk_order/build_option_order/build_combo_order) signatures UNCHANGED.
+  - CLAUDE.md must NOT change (876/900 budget).
+Done when: card verify + regressions + full suite + clippy green; PR open; card at review;
+journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++; >=3 => blocked
+=> run pipeline-hunt.
+<<< END
