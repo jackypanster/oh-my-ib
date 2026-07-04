@@ -1,10 +1,6 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "close-pending-guard",
-  "stage": "done",
-  "full-verify": [
-    "cargo build",
-    "cargo test"
-  ]
+  "feature": "order-account-stamp",
+  "stage": "prd"
 }
