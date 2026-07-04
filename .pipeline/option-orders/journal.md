@@ -74,3 +74,68 @@ Gotchas: NEVER touch tests/**; freeze gate diffs 63f3232..tip over the spec; no 
 Done when: verify green + stk suite green + full suite green + clippy clean + PR open +
     card review + seq=4 pushed. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-04 · impl(card 01)→review · completed · by=glm-5.2 (omp)
+done:   card 01 (option-buy/option-sell) implemented on feat/option-orders (PR #17):
+        src/ib/trade.rs (build_option_order + shape_option_order_ack pure FROZEN seams;
+        place_core extraction D7 — gate→connect→allocate→place→bounded-first-ack extracted
+        contract-agnostic with ack-via-closure; stk place() + new place_option() both
+        delegate, stk byte-identical — 16/16 frozen stk tests green; option_buy/option_sell
+        gateway fns with pre-connect validation [right via normalize_right, expiry via
+        parse_expiry, strike finite>0, qty finite ∧ >=1 ∧ fract()==0, limit finite>0];
+        validation<gate<connect ordering frozen; LMT-ONLY no MKT arm; no retry; reuse
+        TAKE_FIRST_TIMEOUT). src/ib/option_quote.rs: EXACTLY two pub(crate) promotions
+        (normalize_right, parse_expiry) — nothing else. cli.rs OptionBuy/OptionSell variants
+        + OptionOrderArgs verbatim from arch §CLI. mod.rs re-exports. main.rs dispatch arms.
+        AGENTS.md+CLAUDE.md docs amendment verbatim (CLAUDE.md intro trimmed 36 bytes to
+        stay under the frozen 900-byte budget — arch §Docs amendment mis-verified the byte
+        budget as safe; the amendment sentence itself is verbatim, only the intro prose was
+        shortened). cargo test --test option_orders_command 21/21 green; stk regression
+        16/16 green; FULL cargo test 160/160 green (22 suites); clippy --all-targets
+        -D warnings clean. Freeze gates 63f3232..tip -- tests/option_orders_command.rs +
+        tests/stk_orders_command.rs BOTH empty. PR #17 open.
+output: src/ib/trade.rs, src/ib/option_quote.rs, PR https://github.com/jackypanster/oh-my-ib/pull/17
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-orders pr=https://github.com/jackypanster/oh-my-ib/pull/17
+Model: frontier SOTA required — review is a reasoning stage; operator assigns the bot.
+First: git fetch origin; git checkout feat/option-orders (tip 2589341 — card 01 impl).
+Read for context (before acting):
+  - .pipeline/option-orders/tasks/01.md — card 01 at review; spec-rev 63f3232
+  - .pipeline/option-orders/arch.md — §Component design + §Freeze coverage
+  - .pipeline/option-orders/docs/adr/0020-option-single-leg-orders.md — D1-D5 binding decisions
+  - tests/option_orders_command.rs + tests/stk_orders_command.rs — the frozen specs (DO NOT diff-edit)
+Your task (CONTRACT §Test ownership + §State authority):
+  1. Freeze gate FIRST for BOTH specs: `git diff 63f3232 <review-tip> -- tests/option_orders_command.rs
+     tests/stk_orders_command.rs`; non-empty ⇒ reject. Expected: BOTH empty.
+  2. Semantic review (WRITE polarity — highest scrutiny):
+     a. place_core extraction: stk byte-identity — diff the stk place() path carefully; the
+        16 frozen stk tests are the regression net (gate matrix, 6-key ack, validation).
+     b. Containment grep: write symbols (place_order/cancel_order) ONLY in src/ib/trade.rs.
+     c. option_quote.rs diff = EXACTLY two pub(crate) token additions, nothing else.
+     d. Validation ordering: usage (right/strike/expiry/qty/limit) < config (gate) < connection.
+     e. LMT-only: no MKT arm in build_option_order; no retry logic.
+     f. qty whole-contract (finite ∧ >=1 ∧ fract()==0); all numerics finite-checked.
+     g. OptionRight non-exhaustive wildcard: `_ => Put` (only Call/Put exist today).
+     h. Docs amendment verbatim vs arch §Docs amendment (CLAUDE.md intro trimmed to fit 900-byte
+        frozen budget — amendment sentence verbatim, intro prose shortened).
+  3. Full-suite gate: `cargo build && cargo test` on feat/option-orders HEAD — must be ALL
+     GREEN (current.json.full-verify; 160 tests at impl). clippy --all-targets -D warnings clean.
+  4. Human confirm → squash-merge PR #17 (the only merge). Card status → done.
+  5. Live acceptance (operator, paper :4002, PRD criterion 10, MERGE GATE): far-below-market
+     LMT option-buy → orders shows working → cancel → completed-orders Cancelled → positions
+     unchanged. Paper options-permission rejection = journaled observation, operator decides.
+Feature gotchas:
+  - Write-path feature: highest review scrutiny. Every safety invariant from ADR 0017/0018
+    must be preserved verbatim (double gate, bounded first-ack, no-retry, UNKNOWN-state timeout).
+  - The OptionRight wildcard arm (`_ => Put`) is a non_exhaustive enum workaround — only Call/Put
+    exist in ibapi today; the wildcard is unreachable but required by the compiler.
+  - CLAUDE.md is 893 bytes — under the frozen 900-byte budget by 7 bytes; the amendment sentence
+    is verbatim from arch, the intro prose was trimmed to compensate.
+  - place_core carries no #[allow] — it has 5 args; build_option_order + shape_option_order_ack
+    each carry #[allow(clippy::too_many_arguments)] (frozen signatures, brief.rs:27 precedent).
+Done when: both freeze gates empty, semantic review clean (esp. stk byte-identity + containment),
+full-suite green, human confirms, PR #17 squash-merged, card → done, current.json.stage=done.
+On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
