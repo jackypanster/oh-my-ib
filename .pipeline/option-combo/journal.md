@@ -179,3 +179,33 @@ Do not merge from review alone. Final merge step must re-run freeze/full-verify 
 PR #18 only after confirmation, update card 01 to done, set current.json stage=done, and append the
 merge journal entry.
 <<< END
+
+## seq=8 · 2026-07-04T03:16:53Z · review→done · completed · by=claude-fable-5
+done:   MERGED — operator-confirmed squash-merge of PR #18 (trunk ff3f788); card 01 done;
+        trunk full-verify GREEN post-merge. PHASE 2 LADDER COMPLETE (stk-orders →
+        options-read → option-orders → option-combo). PAPER ACCEPTANCE passed end-to-end:
+        BAG vertical (BUY 240C / SELL 250C 20260717, net 0.05) accepted PreSubmitted with
+        both leg conids resolved (832609423/832609572) -> orders shows BAG -> cancel
+        Cancelled -> completed-orders "Cancelled by Trader" -> positions unchanged.
+        OBSERVATIONS: (a) orders view shows the BAG as ONE row under the underlying with a
+        combo-container conid (28812380), legs NOT itemized — display-level, fine for
+        verify-by-cancel flows, a legs-expanded orders view is a v2 candidate; (b) review
+        arc: round-1 REJECT caught a REAL double-connect (same client_id session collision
+        on the write path) — the single-connect place_with_client refactor is the durable
+        fix; (c) monitoring note: codex review rounds finish in 3-5 min — orchestrator
+        grace-sleep before tui-idle wait must stay <=90s or the operator sees the verdict
+        first.
+output: PR https://github.com/jackypanster/oh-my-ib/pull/18 (merged, squash ff3f788);
+        reviews/review-01.md + review-02.md
+--- handoff ---
+>>> NEXT
+Phase 2 is COMPLETE. No pipeline stage queued. Backlog for the operator to pick from:
+  1. Live observations sweep (first open live-gateway session): Tiger :4001
+     reqSecDefOptParams; option-quote ticks under real entitlement; reqPnLSingle with
+     positions; executions commission join on a fill day.
+  2. v2 candidates parked across ADRs/journals: MKT single-leg option orders; option-chain
+     default-exchange ergonomics; variadic option-quote; legs-expanded orders view;
+     named-structure combo sugar (--vertical/--condor); NonGuaranteed cross-underlying
+     combos; modify/replace verbs.
+  3. New PRD via /pipeline-prd when the operator opens the next front.
+<<< END
