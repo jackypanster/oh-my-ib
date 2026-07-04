@@ -230,3 +230,21 @@ final journal entry committed and pushed to main.
 On reject: name the offending card, attempts++ and card review→todo (or blocked at >=3), then route
 pipeline-impl or pipeline-hunt per CONTRACT.
 <<< END
+
+## seq=6 · 2026-07-04T08:19:41Z · review→review · completed · by=claude-fable-5
+done:   PAPER ACCEPTANCE (partial, criterion 12): isolated worktree @ c7ae10e, paper :4002
+        (DUQ653733). LIVE-PROVEN: anti-open gate 3-way (conid 1 ⇒ not_found; REAL resolvable
+        conid 782247567 with working-order history but ZERO position ⇒ not_found; envelope
+        text exact); single-connect drain no-wedge; option-buy far-below (order 3
+        PreSubmitted) → orders → cancel Cancelled → positions unchanged (empty).
+        NOT RUNNABLE TODAY: fill-based close lifecycle (open→14-key OPT row→close-fill→flat)
+        — 2026-07-04 US market holiday, marketable orders cannot fill (PRD environmental
+        precondition). Worktree removed. OPERATOR DECISION PENDING: (a) waiver-merge now,
+        fill-lifecycle validated next trading session; (b) hold merge until then.
+output: (evidence in this entry; TG thread)
+--- handoff ---
+>>> NEXT
+Operator: reply the merge confirm word (waiver path) or "hold" (wait for fill-lifecycle).
+On confirm: orchestrator squash-merges PR #19, cards→done, stage→done, journal seq=7, push
+(review-01.md disposition applies: if PR head moved from c7ae10e, re-run review gates first).
+<<< END
