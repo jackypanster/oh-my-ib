@@ -38,3 +38,44 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: arch.md + CONTEXT.md + ADR 0022 on trunk (journal seq=2 riding the same commit).
 On success: run pipeline-task. On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-04T07:43:39Z · arch→task · completed · by=claude-fable-5
+done:   arch.md + CONTEXT.md + ADR 0022 landed. Grill findings: row shape NEVER frozen before
+        (position_row pub(crate) — card 01 is the FIRST freeze, NO existing-suite re-freeze;
+        refines PRD criterion 10); rebuild reuses build_option_order VERBATIM (zero new builder
+        code); SecurityType Display = wire code ("STK"/"OPT"; contract.rs Debug variant = legacy,
+        untouched); CLAUDE.md amendment computed 861+15=876B < 900 ✓.
+output: .pipeline/option-close/arch.md, CONTEXT.md, docs/adr/0022-option-close-by-conid.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no repo .env.
+Read for context (before acting):
+  - AGENTS.md — repo conventions
+  - .pipeline/option-close/PRD.md — what + D1-D8
+  - .pipeline/option-close/arch.md — §Freeze plan handed to task (advisory), exact seams/keys
+  - .pipeline/option-close/docs/adr/0022 — binding decisions
+  - tests/option_orders_command.rs + tests/option_combo_command.rs — freeze style precedent
+Your task (concrete, numbered):
+  1. Two cards: 01 positions identity enrichment (tests/positions_row.rs), 02 option-close verb
+     (tests/option_close_command.rs). spec-paths = the two test files; impl-paths per arch §files.
+  2. ONE freeze commit for the WHOLE feature (both cards' red tests, compiling, RED on missing
+     symbols only — verbatim-compile pre-verify via stub module, delete stub pre-commit), then
+     ONE record commit (cards + current.json stage=task + full-verify [cargo build, cargo test]).
+  3. Card verify card-scoped: cargo test --test positions_row / --test option_close_command.
+  4. Journal seq=3 rides the record commit; push both commits.
+Feature gotchas (project-specific traps the next node MUST know):
+  - Deliberate gate-pass omission in card 02 spec (env+live+dead-port test would REALLY order
+    if a live gateway is up — option-orders precedent; shared gate covered by stk twin tests).
+  - position_row promotion pub(crate)→pub is part of card 01 IMPL, so the spec test imports
+    oh_my_ib::ib::positions::position_row and is RED on visibility/missing keys until impl.
+  - derive_close/shape_option_close_ack live in trade.rs (write module) — spec imports must
+    match; ack echoes RESOLVED row identity, action is DERIVED side.
+  - Synthetic AccountPortfolioValue/Contract construction: all ibapi fields pub; SecurityType/
+    OptionRight non_exhaustive — use ..Default::default() spread, never exhaustive match.
+Done when: freeze commit (= spec-rev) + record commit on trunk, both pushed, journal seq=3.
+On success: run pipeline-impl (π on the omp pane, capable-local OK). On failure: attempts++;
+>=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
