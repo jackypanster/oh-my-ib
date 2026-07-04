@@ -182,3 +182,51 @@ On failure: per CONTRACT — flip the offending card review→todo (attempts++);
 pipeline-hunt. Cross-card integration failure with no single owner ⇒ feature-level
 reviews/integration-NN.md ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-04T08:13:51Z · impl→review · completed · by=gpt-5-codex
+done:   review-01 APPROVE written for PR #19 at c7ae10ebd402f0a6fa6b8211ac8130e20a336936.
+        Freeze gate ran FIRST and was empty against spec-rev 286eb6a over
+        tests/positions_row.rs + tests/option_close_command.rs. Detached worktree verification
+        passed: cargo build, cargo test (199 tests), cargo clippy --all-targets -- -D warnings,
+        cargo test --test positions_row, cargo test --test option_close_command. Semantic review
+        passed for single-connect option_close, anti-open before placement, conid assert before
+        place_with_client, bounded first-ack/no-retry, write-call containment, row null semantics,
+        brief parity, and AGENTS.md/CLAUDE.md docs amendment (CLAUDE.md 876B). Temporary worktree
+        removed. No merge performed.
+output: .pipeline/option-close/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review merge continuation on a FRESH session after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/19
+Model: frontier SOTA required — broker write path; do not downgrade.
+First: git pull --rebase; no repo .env. Keep the shared checkout on main; use an isolated
+worktree for any re-verification.
+Read for context:
+  - AGENTS.md + CLAUDE.md — repo conventions and write gates
+  - CONTRACT.md in jackypanster/pipeline
+  - .pipeline/option-close/{PRD.md,arch.md,CONTEXT.md,journal.md}
+  - .pipeline/option-close/docs/adr/0022-option-close-by-conid.md
+  - .pipeline/option-close/tasks/01.md + tasks/02.md — both should still be status=review
+  - .pipeline/option-close/reviews/review-01.md — APPROVE verdict and evidence
+Your task:
+  1. Proceed only after the operator explicitly confirms merge. If PR head moved from
+     c7ae10ebd402f0a6fa6b8211ac8130e20a336936, rerun freeze gate, isolated cargo build/test/clippy,
+     both card-scoped verifies, semantic review, and adversarial probes.
+  2. If PRD criterion 12 paper lifecycle acceptance has not been recorded, obtain operator paper
+     acceptance or an explicit operator waiver before merge.
+  3. Confirm current.json feature=option-close stage=review and both cards remain status=review.
+  4. Squash-merge PR #19 via GitHub forge adapter and delete feat/option-close.
+  5. On main after merge, flip both cards status=done, set current.json stage=done, append seq=6
+     review→done journal entry, commit once, and push main.
+Feature gotchas:
+  - Do NOT merge without explicit human confirmation.
+  - Do NOT author product code or edit frozen specs from review/merge continuation.
+  - option_close must stay single-connect: drain, contract_details assert, and place on one client.
+  - contract_details conid assert must remain before place_with_client.
+  - PRD criterion 12 needs real paper gateway state; absence of that environment is operational,
+    not an implementation change request.
+Done when: PR #19 squash-merged after explicit confirm, cards 01+02 done, current.json stage=done,
+final journal entry committed and pushed to main.
+On reject: name the offending card, attempts++ and card review→todo (or blocked at >=3), then route
+pipeline-impl or pipeline-hunt per CONTRACT.
+<<< END
