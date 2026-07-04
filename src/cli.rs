@@ -86,6 +86,10 @@ pub enum Command {
     OptionChain(OptionChainArgs),
     /// Snapshot quote + greeks for one option contract
     OptionQuote(OptionQuoteArgs),
+    /// Place a single-leg option BUY (LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    OptionBuy(OptionOrderArgs),
+    /// Place a single-leg option SELL (LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    OptionSell(OptionOrderArgs),
 }
 
 #[derive(Args, Debug)]
@@ -173,6 +177,38 @@ pub struct OptionQuoteArgs {
     /// Right: C|CALL or P|PUT (case-insensitive)
     #[arg(long)]
     pub right: String,
+    /// Exchange
+    #[arg(long, default_value = "SMART")]
+    pub exchange: String,
+    /// Currency
+    #[arg(long, default_value = "USD")]
+    pub currency: String,
+    /// Trading class, e.g. SPXW (optional; gateway resolves when absent)
+    #[arg(long)]
+    pub trading_class: Option<String>,
+}
+
+/// omi option-buy --symbol AAPL --expiry 20260918 --strike 250 --right C --qty 1 --limit 5.50
+#[derive(Args, Debug)]
+pub struct OptionOrderArgs {
+    /// Underlying ticker symbol, e.g. AAPL
+    #[arg(long)]
+    pub symbol: String,
+    /// Expiry date, 8-digit YYYYMMDD
+    #[arg(long)]
+    pub expiry: String,
+    /// Strike price (finite, > 0)
+    #[arg(long)]
+    pub strike: f64,
+    /// Right: C|CALL or P|PUT (case-insensitive)
+    #[arg(long)]
+    pub right: String,
+    /// Quantity in whole contracts (>= 1)
+    #[arg(long)]
+    pub qty: f64,
+    /// Limit price (REQUIRED — v1 is LMT-only, no MKT; finite, > 0)
+    #[arg(long)]
+    pub limit: f64,
     /// Exchange
     #[arg(long, default_value = "SMART")]
     pub exchange: String,

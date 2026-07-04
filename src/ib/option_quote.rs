@@ -124,7 +124,7 @@ pub fn shape_option_quote(
 
 /// Normalize a right token to the canonical `"C"`/`"P"`. Accepts c/C/call/CALL/p/P/put/PUT
 /// (case-insensitive). Returns `None` for anything else (caller emits a usage error).
-fn normalize_right(right: &str) -> Option<&'static str> {
+pub(crate) fn normalize_right(right: &str) -> Option<&'static str> {
     match right.to_ascii_lowercase().as_str() {
         "c" | "call" => Some("C"),
         "p" | "put" => Some("P"),
@@ -134,7 +134,7 @@ fn normalize_right(right: &str) -> Option<&'static str> {
 
 /// Parse an 8-digit YYYYMMDD expiry into (year, month, day) with m∈1..=12, d∈1..=31.
 /// Returns `None` for any non-conforming shape (validation precedes connection).
-fn parse_expiry(expiry: &str) -> Option<(u16, u8, u8)> {
+pub(crate) fn parse_expiry(expiry: &str) -> Option<(u16, u8, u8)> {
     let bytes = expiry.as_bytes();
     if bytes.len() != 8 || !bytes.iter().all(|b| b.is_ascii_digit()) {
         return None;
