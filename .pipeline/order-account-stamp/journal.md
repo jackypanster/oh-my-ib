@@ -144,3 +144,24 @@ Review gates:
      frozen builder signatures unchanged; AGENTS phrase present; CLAUDE.md untouched.
 Do not merge without human confirmation.
 <<< END
+
+## seq=5 · 2026-07-04T10:02:00Z · review->review · completed · by=claude (reviewer)
+done:   APPROVE, no blocking findings — did NOT merge (human-confirm gate). Freeze gate empty
+        over all 7 frozen specs + CLAUDE.md; isolated worktree @ 217db67 cargo build + FULL
+        cargo test 220/220 + clippy -D warnings clean. Semantic: single .place_order( sink on
+        the stamped path, place_with_client required &AccountId clone+stamp, place_core/
+        option_combo resolve-after-connect, option_close reuses its account (no dup
+        managed_accounts), frozen builders untouched. LIVE PAPER PROBE (criterion 7, runnable
+        today): option-buy on :4002 (DUQ653733) ⇒ PreSubmitted, `omi orders` row carried
+        account="DUQ653733", cancel ⇒ Cancelled — Tiger ACCEPTS an explicit Order.account;
+        ADR 0024 §5 fragile assumption REFUTED as a risk, fallback not needed.
+        ROLE ROTATION: π 429 mid-impl ⇒ impl handed to codex-gpt-5.5, review rotated to
+        Claude; writer≠reviewer invariant preserved.
+output: .pipeline/order-account-stamp/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Operator: reply the merge confirm word to squash-merge PR #21 (paper acceptance already
+GREEN today — this feature needs no deferred lifecycle). On confirm: orchestrator
+squash-merges, card 01 -> done, stage -> done, journal seq=6, push (if PR head moved from
+217db67, re-run review gates + paper probe first).
+<<< END
