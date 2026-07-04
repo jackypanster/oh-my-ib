@@ -109,3 +109,38 @@ Done when: card verify + regressions + full suite + clippy green; PR open; card 
 journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++; >=3 => blocked
 => run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-04T09:56:46Z · impl->review · completed · by=codex-gpt-5.5
+done:   Took over pipeline-impl from π 429 handoff with shared checkout already at
+        feat/order-account-stamp HEAD=217db67. Reviewed the card, arch Choke point,
+        frozen tests/order_account_stamp.rs, and git show 217db67. Pi implementation
+        required no follow-up product-code changes: stamp_order_account only writes
+        Order.account; place_with_client requires &AccountId, clone+stamps before the
+        single .place_order( call; place_core and option_combo resolve after connect;
+        option_close reuses its existing account and adds no second managed_accounts.
+        Frozen specs and CLAUDE.md unchanged (CLAUDE.md wc -c = 876).
+verify: cargo build; cargo test --test order_account_stamp; cargo test --test
+        stk_orders_command --test option_orders_command --test option_combo_command
+        --test option_close_command --test positions_row --test close_pending_guard;
+        cargo test; cargo clippy --all-targets -- -D warnings. All passed.
+output: PR #21 https://github.com/jackypanster/oh-my-ib/pull/21
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=21 feature-branch=feat/order-account-stamp
+First: git pull --rebase on main; no repo .env.
+Read for context: AGENTS.md, .pipeline/order-account-stamp/PRD.md, arch.md, docs/adr/0024,
+  .pipeline/order-account-stamp/tasks/01.md, and PR #21 diff.
+Review gates:
+  1. Freeze gate FIRST: git diff 24a34dd0c10135eb77981b882e55a1eb4ff1d74c <PR-tip> --
+     tests/order_account_stamp.rs tests/stk_orders_command.rs tests/option_orders_command.rs
+     tests/option_combo_command.rs tests/option_close_command.rs tests/positions_row.rs
+     tests/close_pending_guard.rs CLAUDE.md must be empty.
+  2. Isolated worktree checkout of PR head; run cargo build, cargo test --test order_account_stamp,
+     the six regression suites, FULL cargo test, and cargo clippy --all-targets -- -D warnings.
+  3. Semantic review: seam only mutates Order.account; place_with_client has required &AccountId
+     and clone+stamp before the single .place_order( call; place_core/option_combo resolve after
+     connect; option_close reuses its already resolved account with no duplicate managed_accounts;
+     frozen builder signatures unchanged; AGENTS phrase present; CLAUDE.md untouched.
+Do not merge without human confirmation.
+<<< END
