@@ -81,5 +81,6 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::OptionQuote(args) => ib::option_quote(&config, args),
         Command::OptionBuy(args) => ib::option_buy(&config, args),
         Command::OptionSell(args) => ib::option_sell(&config, args),
+        Command::OptionCombo(args) => ib::option_combo(&config, args),
     }
 }
