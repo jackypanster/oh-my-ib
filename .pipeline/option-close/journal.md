@@ -248,3 +248,20 @@ Operator: reply the merge confirm word (waiver path) or "hold" (wait for fill-li
 On confirm: orchestrator squash-merges PR #19, cards→done, stage→done, journal seq=7, push
 (review-01.md disposition applies: if PR head moved from c7ae10e, re-run review gates first).
 <<< END
+
+## seq=7 · 2026-07-04T08:27:32Z · review→done · completed · by=claude-fable-5
+done:   operator confirm word received (TG, waiver path: fill-lifecycle deferred to next
+        trading session). Squash-merged PR #19 as ed9683a (head c7ae10e verified unmoved
+        from review baseline); feat/option-close deleted. Trunk full-verify: 207/207 green.
+        Cards 01+02 status=done; stage=done. FOLLOW-UP (next trading session, operator or
+        orchestrator): PRD criterion 12 fill-lifecycle — marketable option-buy → positions
+        14-key OPT row (Tiger field content = PRD risk 1 observation) → option-close
+        far-off → cancel → option-close marketable → flat.
+output: trunk ed9683a (PR #19), .pipeline/option-close/* (feature closed)
+--- handoff ---
+>>> NEXT
+Feature option-close DONE. No next stage. Deferred acceptance: run the fill-lifecycle on the
+next US trading session (see seq=6/seq=7 done-notes); any anomaly ⇒ journal observation entry
++ operator decision (a defect would be a NEW feature/card via pipeline-task, never an
+out-of-band edit).
+<<< END
