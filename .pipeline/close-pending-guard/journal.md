@@ -70,3 +70,40 @@ Feature gotchas:
 Done when: freeze commit (= spec-rev) + record commit pushed, journal seq=3.
 On success: run pipeline-impl (π on omp pane). On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-04T09:01:44Z · task→impl · completed · by=claude-fable-5
+done:   spec FROZEN: freeze commit 61f17e8 (= spec-rev) carries card 01's red test
+        (tests/close_pending_guard.rs, 8 tests; RED on unresolved oh_my_ib import only;
+        verbatim-compile pre-verified via stub scratch, deleted pre-commit). ONE card at
+        todo/0. Pure-seam-only spec (no gate/CLI tests — frozen elsewhere).
+output: .pipeline/close-pending-guard/tasks/01.md, tests/close_pending_guard.rs (spec-rev 61f17e8)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl) — π on the omp pane.
+First: git pull --rebase; no repo .env.
+Read for context (before acting):
+  - AGENTS.md — repo conventions + hard safety rules
+  - .pipeline/close-pending-guard/PRD.md + arch.md (§Guard wiring VERBATIM) + docs/adr/0023
+  - .pipeline/close-pending-guard/tasks/01.md — the card
+Your task (concrete, numbered):
+  1. Branch feat/close-pending-guard from trunk HEAD.
+  2. Implement card 01 per its Do section: seam + guard wiring + re-export + AGENTS.md phrase.
+  3. Verify: cargo build && cargo test --test close_pending_guard green; regression
+     cargo test --test option_close_command --test positions_row --test stk_orders_command
+     --test option_orders_command --test option_combo_command green; FULL cargo test +
+     cargo clippy --all-targets -- -D warnings clean.
+  4. ONE PR; flip card status→review + current.json stage=impl + journal seq=4 on main; push all.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/close_pending_guard.rs (frozen; review diffs 61f17e8..tip — non-empty ⇒ reject)
+    NOR tests/option_close_command.rs NOR tests/positions_row.rs (older frozen specs).
+  - The guard drain reuses super::orders::open_orders_with_client(&client, None, ctx) on the
+    ALREADY-CONNECTED client — adding ANY second connect is an auto-reject (option-combo lesson).
+  - Malformed drain row ⇒ data error naming row index; never skip-and-continue (ADR 0023 §5).
+  - CLAUDE.md must NOT change (876/900 budget — do not spend it).
+  - derive_close/shape_option_close_ack signatures untouched.
+Done when: card verify + regressions + full suite + clippy green; PR open; card at review;
+journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++; >=3 ⇒ blocked ⇒
+run pipeline-hunt.
+<<< END
