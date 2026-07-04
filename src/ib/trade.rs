@@ -14,6 +14,7 @@
 //! - **No retry, ever**: a placement timeout is an UNKNOWN state, not a failure to redo —
 //!   automatic re-placement is the classic double-order bug.
 
+use ibapi::client::blocking::Client;
 use ibapi::contracts::{Contract, LegAction, OptionRight};
 use ibapi::orders::{Action, CancelOrder, Order, PlaceOrder, TimeInForce};
 use serde_json::{json, Value};
@@ -202,39 +203,32 @@ pub fn cancel(cfg: &Config, args: &CancelArgs) -> Result<Value, AppError> {
     }
 }
 
-/// Shared placement core (stk + option, ADR 0020 D7). Extracts the contract-agnostic
-/// gate → connect → allocate → place → bounded first-ack steps. Behavior byte-identical
-/// to the pre-refactor stk path — the frozen stk suite asserts it. `ack` maps
-/// (order_id, status) → the verb-specific ack JSON, so the two ack shapes (6-key stk,
-/// 9-key option) stay pure and disjoint.
-fn place_core(
-    cfg: &Config,
+/// Placement body (ADR 0020 D7 + review-01 fix): everything from `next_order_id()` onward,
+/// taking an already-connected client. Called by `place_core` (stk/option single-leg) and
+/// directly by `option_combo` (which needs the client for per-leg conid resolution first —
+/// never a second same-client-id connect).
+fn place_with_client(
+    client: &Client,
     ctx: &str,
     contract: &Contract,
     order: &Order,
     ack: impl Fn(i32, &str) -> Value,
 ) -> Result<Value, AppError> {
-    // 1. Double gate (config error, before connect — offline-deterministic).
-    require_live_write_gate(cfg)?;
-
-    // 2. Connect (connection errors).
-    let client = super::connect(cfg)?;
-
-    // 3. Allocate the order id FIRST so even a timeout error can NAME it. Uses the
-    //    handshake-seeded local allocator (client.next_order_id, ADR 0018): non-blocking,
-    //    returns the id_manager's next id. The prior next_valid_order_id() was an unbounded
-    //    subscription.next() that this gateway never answers (paper wedge, ADR 0018).
+    // Allocate the order id FIRST so even a timeout error can NAME it. Uses the
+    // handshake-seeded local allocator (client.next_order_id, ADR 0018): non-blocking,
+    // returns the id_manager's next id. The prior next_valid_order_id() was an unbounded
+    // subscription.next() that this gateway never answers (paper wedge, ADR 0018).
     let order_id = client.next_order_id();
 
-    // 4. Place.
+    // Place.
     let subscription = client
         .place_order(order_id, contract, order)
         .map_err(|e| AppError::data(format!("place_order failed: {e}"), ctx))?;
 
-    // 5. Bounded first-ack loop (ADR 0016 bounded-iterator pattern). Take the FIRST
-    //    OrderStatus or OpenOrder event; skip ExecutionData/CommissionReport (window
-    //    refreshes on each arrival). Any None before an ack = UNKNOWN state (the order
-    //    MAY have been submitted) — never a silent success, never a blind retry.
+    // Bounded first-ack loop (ADR 0016 bounded-iterator pattern). Take the FIRST
+    // OrderStatus or OpenOrder event; skip ExecutionData/CommissionReport (window
+    // refreshes on each arrival). Any None before an ack = UNKNOWN state (the order
+    // MAY have been submitted) — never a silent success, never a blind retry.
     let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
     loop {
         match items.next() {
@@ -264,6 +258,22 @@ fn place_core(
             }
         }
     }
+}
+
+/// Shared placement core (stk + single-leg option). Thin wrapper: gate → connect →
+/// `place_with_client`. Behavior byte-identical to the pre-refactor stk path — the frozen
+/// stk + option-orders suites assert it. `option_combo` calls `place_with_client` directly
+/// (it has its own client for per-leg conid resolution — never a second connect).
+fn place_core(
+    cfg: &Config,
+    ctx: &str,
+    contract: &Contract,
+    order: &Order,
+    ack: impl Fn(i32, &str) -> Value,
+) -> Result<Value, AppError> {
+    require_live_write_gate(cfg)?;
+    let client = super::connect(cfg)?;
+    place_with_client(&client, ctx, contract, order, ack)
 }
 
 /// Stk placement: validation → build → place_core with the 6-key ack closure.
@@ -594,7 +604,7 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
 
     let action_str = format!("{:?}", side);
     let legs_snapshot: Vec<(LegSpec, i32)> = resolved;
-    place_core(cfg, ctx, &contract, &order, |id, status| {
+    place_with_client(&client, ctx, &contract, &order, |id, status| {
         let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
         shape_combo_order_ack(id, status, &underlying, &action_str, args.qty, args.limit, &leg_refs)
     })
