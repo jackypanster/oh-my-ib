@@ -23,3 +23,24 @@ Do: arch.md (component design: build_option_order + shape_option_order_ack + pla
     path: LMT-only + whole-contract qty + ack shape + core extraction), CONTEXT.md delta
     (marketable-LMT pattern, whole contracts), freeze coverage pin. Then journal seq=2.
 <<< END
+
+## seq=2 · 2026-07-04T00:58:09Z · arch→task · completed · by=claude-fable-5
+done:   arch decision-complete (full-auto continues): build_option_order + 9-key
+        shape_option_order_ack pure seams; place_core extraction (ack via closure — stk
+        frozen suite = regression net); validation reuse via pub(crate) promotion of
+        normalize_right/parse_expiry; OptionOrderArgs pinned verbatim; docs amendment
+        text pinned; ADR 0020 (LMT-only, whole contracts, shared core, cancel reuse);
+        ibapi facts re-verified (ExpirationDate Display zero-padded, OptionRight, builder
+        chain). ONE card. Freeze coverage pinned incl. MANDATORY verbatim-compile pre-check
+        (options-read seq=5 lesson).
+output: .pipeline/option-orders/arch.md, CONTEXT.md, docs/adr/0020-option-single-leg-orders.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task (SAME orchestrator session, full-auto).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required.
+Do: ONE card (01). Red spec tests/option_orders_command.rs per arch §Freeze coverage.
+    MANDATORY: verbatim-compile the spec with temp stubs BEFORE the freeze commit.
+    Freeze commit (spec only) = spec-rev; record commit (card + current.json stage=task +
+    full-verify + journal seq=3); push. Then dispatch pipeline-impl to π (omp pane).
+<<< END
