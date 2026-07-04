@@ -198,3 +198,53 @@ pipeline-impl continues on the omp pane: apply the corrected CLAUDE.md short-for
 claude_md/agents_md/option_orders_command targets green, push, card->review (attempts=1),
 journal seq=7, push metadata. Then pipeline-review round 2 (codex).
 <<< END
+
+## seq=7 · 2026-07-04 · impl(card 01 r2 docs)→review · completed · by=glm-5.2 (omp)
+done:   card 01 docs-scope fix landed on feat/option-orders (5170c16): CLAUDE.md intro restored
+        to trunk-exact (reverted the round-1 trim drift); 'Writes are gated' bullet tail
+        replaced with the SHORT form from corrected arch §Docs amendment item 2 (arch
+        correction 9b40991, journal seq=6): "All other commands remain read-only; no modify,
+        no combos. Options: data read + single-leg ORDERS (`option-buy`/`option-sell`,
+        LMT/DAY), same gates." AGENTS.md unchanged from round-1 (keeps the full form — canonical
+        doc, no budget constraint). CLAUDE.md now 868 bytes (< 900 frozen budget). git diff
+        origin/main HEAD -- CLAUDE.md shows EXACTLY one bullet changed (intro is trunk-exact).
+        cargo test --test claude_md --test agents_md --test option_orders_command = 23/23 green.
+        Card 01 → review (attempts stays 1).
+output: CLAUDE.md (5170c16), PR https://github.com/jackypanster/oh-my-ib/pull/17
+--- handoff ---
+>>> NEXT
+Run pipeline-review round 2 on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-orders pr=https://github.com/jackypanster/oh-my-ib/pull/17
+Model: frontier SOTA required — review is a reasoning stage; operator assigns the bot.
+First: git fetch origin; git checkout feat/option-orders (tip 5170c16 — the CLAUDE.md SHORT-form
+        fix atop 2589341 card 01 impl, on spec-rev 63f3232).
+Read for context (before acting):
+  - .pipeline/option-orders/tasks/01.md — card 01 at review, attempts=1; spec-rev 63f3232
+  - .pipeline/option-orders/reviews/review-01.md — prior rejection (docs-scope drift, now fixed)
+  - .pipeline/option-orders/arch.md §Docs amendment (CORRECTED, journal seq=6) — TWO texts: full (AGENTS.md) + short (CLAUDE.md)
+  - .pipeline/option-orders/docs/adr/0020-option-single-leg-orders.md — D1-D5 binding decisions
+  - tests/option_orders_command.rs + tests/stk_orders_command.rs + tests/claude_md.rs + tests/agents_md.rs — frozen specs (DO NOT diff-edit)
+Your task (CONTRACT §Test ownership + §State authority):
+  1. Freeze gate FIRST: `git diff 63f3232 <review-tip> -- tests/` non-empty ⇒ reject.
+     Expected: empty across ALL tests/ (option_orders + stk + claude_md + agents_md).
+  2. Docs-scope check (the review-01 finding): `git diff origin/main <review-tip> -- CLAUDE.md`
+     must show EXACTLY ONE changed bullet (the 'Writes are gated' line, SHORT form); intro
+     paragraph must be trunk-exact. `git diff origin/main <review-tip> -- AGENTS.md` shows
+     the FULL-form amendment (canonical doc). CLAUDE.md < 900 bytes (frozen claude_md budget).
+  3. Semantic re-review (WRITE polarity — round-1 code passed all checks; only docs changed):
+     a. Code unchanged from round-1 (2589341): place_core extraction, build_option_order,
+        shape_option_order_ack, option_buy/option_sell, validation ordering, LMT-only,
+        containment, option_quote.rs two pub(crate) promotions.
+     b. clippy --all-targets -D warnings clean; full suite green (160 tests round-1; +claude_md/agents_md re-verified).
+  4. Human confirm → squash-merge PR #17 (the only merge). Card → done.
+  5. Live acceptance (operator, paper :4002, PRD criterion 10, MERGE GATE): far-below-market
+     LMT option-buy → orders shows working → cancel → completed-orders Cancelled → positions
+     unchanged. Paper options-permission rejection = journaled observation, operator decides.
+Feature gotchas:
+  - The ONLY change in round-2 is CLAUDE.md (one bullet, SHORT form); no code changed.
+  - AGENTS.md full-form amendment is correct per corrected arch (canonical doc, no byte budget).
+  - CLAUDE.md 868 bytes = under the 900-byte frozen budget by 32 bytes.
+Done when: freeze gate empty, docs-scope clean (one bullet, intro trunk-exact, <900B), code
+semantic checks reaffirmed, full-suite green, human confirms, PR #17 squash-merged, card→done.
+On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
