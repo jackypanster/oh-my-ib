@@ -115,3 +115,48 @@ Done when: card 01 verify + full suite + clippy are green, freeze gates are empt
 again with attempts still 1, journal seq=6 is pushed, and PR #18 is updated. On failure:
 attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-04 · impl(card 01 r2)→review · completed · by=glm-5.2 (omp)
+done:   card 01 review-01 fix landed on feat/option-combo (5def158): split place_core into
+        place_with_client(client: &Client, ctx, contract, order, ack) — the allocate→place→
+        bounded-first-ack body — and a thin place_core(cfg, ctx, contract, order, ack) wrapper
+        (gate + connect + place_with_client). option_combo now calls place_with_client(&client, ...)
+        with its EXISTING client (the one used for per-leg contract_details resolution) — never a
+        second same-client-id connect. stk buy/sell and option-buy/sell paths UNCHANGED
+        (place_core delegates identically; byte-identical — 16/16 stk + 21/21 option-orders frozen
+        regression green). cargo test --test option_combo_command 21/21 green; full suite 181/181
+        green; clippy --all-targets -D warnings clean; freeze gates c0e72a3..tip -- tests/ ALL empty.
+        Card 01 → review (attempts stays 1).
+output: src/ib/trade.rs (5def158), PR https://github.com/jackypanster/oh-my-ib/pull/18
+--- handoff ---
+>>> NEXT
+Run pipeline-review round 2 on a FRESH session (rebuild from repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-combo pr=https://github.com/jackypanster/oh-my-ib/pull/18
+Model: frontier SOTA required — review is a reasoning stage; operator assigns the bot.
+First: git fetch origin; git checkout feat/option-combo (tip 5def158 — the single-connect refactor
+        atop 6d470a1 card 01 impl, spec-rev c0e72a3).
+Read for context (before acting):
+  - .pipeline/option-combo/tasks/01.md — card 01 at review, attempts=1; spec-rev c0e72a3
+  - .pipeline/option-combo/reviews/review-01.md — prior rejection (double-connect hazard, now fixed)
+  - tests/option_combo_command.rs + tests/stk_orders_command.rs + tests/option_orders_command.rs — frozen specs
+Your task (CONTRACT §Test ownership + §State authority):
+  1. Freeze gate FIRST: `git diff c0e72a3 <review-tip> -- tests/` non-empty ⇒ reject. Expected: empty.
+  2. Confirm review-01 finding is dead: option_combo uses ONE client for the whole flow —
+     per-leg contract_details conid resolution THEN place_with_client(&client, ...) — never a
+     second connect. place_core (stk/single-leg) still connects itself (gate + connect +
+     place_with_client) — its behavior is byte-identical (stk + option-orders suites green).
+  3. Semantic re-review (WRITE polarity — only the connect-flow changed from round 1):
+     a. place_with_client: takes &Client, does next_order_id + place_order + bounded first-ack.
+     b. place_core: thin wrapper — require_live_write_gate + connect + place_with_client.
+     c. option_combo: its own connect + per-leg resolve + place_with_client(&client, ...) — one connect.
+     d. All round-1 code checks still hold (SpreadBuilder, sign-free limit, containment, parse_combo_leg, etc.)
+  4. Full-suite gate: `cargo build && cargo test` — ALL GREEN (181 tests). clippy clean.
+  5. Human confirm → squash-merge PR #18 (the only merge). Card → done.
+Feature gotchas:
+  - The ONLY change in round-2 is the place_core split (3 fns where there was 1); no other code changed.
+  - place_with_client is fn-private (not exported); place_core stays fn-private.
+  - option_combo's `client` is moved into place_with_client as &Client (borrowed, not consumed).
+Done when: freeze gate empty, review-01 finding verified dead (single connect), semantic review clean,
+full-suite green, human confirms, PR #18 squash-merged, card→done, current.json.stage=done.
+On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
