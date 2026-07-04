@@ -14,12 +14,13 @@
 //! - **No retry, ever**: a placement timeout is an UNKNOWN state, not a failure to redo —
 //!   automatic re-placement is the classic double-order bug.
 
+use ibapi::accounts::{AccountPortfolioValue, AccountUpdate};
 use ibapi::client::blocking::Client;
-use ibapi::contracts::{Contract, LegAction, OptionRight};
+use ibapi::contracts::{Contract, LegAction, OptionRight, SecurityType};
 use ibapi::orders::{Action, CancelOrder, Order, PlaceOrder, TimeInForce};
 use serde_json::{json, Value};
 
-use crate::cli::{CancelArgs, OptionComboArgs, OptionOrderArgs, OrderArgs};
+use crate::cli::{CancelArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs};
 use crate::config::{Config, LIVE_PORT};
 use crate::error::AppError;
 
@@ -146,6 +147,75 @@ pub fn require_live_write_gate(cfg: &Config) -> Result<(), AppError> {
         ));
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Option-close (close-by-conid) — pure seams (ADR 0022). Gateway fn below.
+// ---------------------------------------------------------------------------
+
+/// Pure, FROZEN seam (ADR 0022 §2): derive the close side + qty from a HELD option
+/// position. The SIGN of `position` is the ONLY side authority — long (>0) ⇒ SELL, short
+/// (<0) ⇒ BUY (the anti-double gate: a close never trusts user-declared direction).
+/// `qty None` ⇒ full close (`|position|`); `Some(q)` ⇒ must be finite ∧ whole ∧ >= 1 ∧
+/// <= `|position|` (over-close never flips a position). `position == 0` ⇒ Err.
+pub fn derive_close(position: f64, qty: Option<f64>) -> Result<(Action, f64), String> {
+    if position == 0.0 {
+        return Err("position is 0 — nothing to close".to_string());
+    }
+    let side = if position > 0.0 { Action::Sell } else { Action::Buy };
+    let abs = position.abs();
+    let close_qty = match qty {
+        None => abs,
+        Some(q) => {
+            if !q.is_finite() {
+                return Err(format!("qty must be finite, got {q}"));
+            }
+            if q < 1.0 {
+                return Err(format!("qty must be a whole number of contracts >= 1, got {q}"));
+            }
+            if q.fract() != 0.0 {
+                return Err(format!("qty must be a whole number of contracts, got {q}"));
+            }
+            if q > abs {
+                return Err(format!(
+                    "qty {q} exceeds |position| {abs} — a close never flips a position"
+                ));
+            }
+            q
+        }
+    };
+    Ok((side, close_qty))
+}
+
+/// Pure, FROZEN seam (ADR 0022 §3): the 10-key option-close ack. Echoes the RESOLVED row
+/// identity (`conid`/`symbol`/`expiry`/`strike`/`right` — from the matched position, not
+/// user input), the DERIVED `action` (sign of held position), `quantity` (derived), and
+/// `limit_price` (always a number — LMT-only). `order_id`/`status` from allocation + first ack.
+#[allow(clippy::too_many_arguments)] // the 10-key ack shape IS the frozen contract (brief.rs:27 precedent)
+pub fn shape_option_close_ack(
+    order_id: i32,
+    status: &str,
+    conid: i32,
+    symbol: &str,
+    expiry: &str,
+    strike: f64,
+    right: &str,
+    action: &str,
+    quantity: f64,
+    limit_price: f64,
+) -> Value {
+    json!({
+        "order_id": order_id,
+        "status": status,
+        "conid": conid,
+        "symbol": symbol,
+        "expiry": expiry,
+        "strike": strike,
+        "right": right,
+        "action": action,
+        "quantity": quantity,
+        "limit_price": limit_price,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -607,5 +677,208 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     place_with_client(&client, ctx, &contract, &order, |id, status| {
         let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
         shape_combo_order_ack(id, status, &underlying, &action_str, args.qty, args.limit, &leg_refs)
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Option-close (close-by-conid) — ADR 0022
+// ---------------------------------------------------------------------------
+
+/// Close a HELD option position by conid (`omi option-close`). LMT/DAY only, side DERIVED
+/// from the held position's sign (long ⇒ SELL, short ⇒ BUY — never user-declared; anti-double
+/// gate). Single-connect: drain → match → rebuild → conid assert → place all on ONE client
+/// (a second same-client-id connect wedges the gateway — option-combo review lesson).
+/// Validation ordering frozen: usage (local) < config (gate) < connection.
+pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppError> {
+    let ctx = "option-close";
+
+    // 1. Local validation (usage errors, before gate and connect). Ordering frozen:
+    //    usage < config(gate) < connection.
+    if args.conid < 1 {
+        return Err(AppError::usage(
+            format!("--conid must be a positive integer (got {})", args.conid),
+            ctx,
+        ));
+    }
+    if !args.limit.is_finite() || args.limit <= 0.0 {
+        return Err(AppError::usage(
+            format!("--limit must be a finite positive number (got {})", args.limit),
+            ctx,
+        ));
+    }
+    if let Some(q) = args.qty {
+        if !q.is_finite() {
+            return Err(AppError::usage(
+                format!("--qty must be finite, got {q}"),
+                ctx,
+            ));
+        }
+        if q < 1.0 {
+            return Err(AppError::usage(
+                format!("--qty must be a whole number of contracts >= 1 (got {q})"),
+                ctx,
+            ));
+        }
+        if q.fract() != 0.0 {
+            return Err(AppError::usage(
+                format!("--qty must be a whole number of contracts (got {q})"),
+                ctx,
+            ));
+        }
+    }
+
+    // 2. Double gate (config error, before connect — offline-deterministic).
+    require_live_write_gate(cfg)?;
+
+    // 3. Connect ONCE — drain, resolve, assert, and place all reuse this client.
+    let client = super::connect(cfg)?;
+
+    // 4. Account.
+    let account = super::resolve_account(&client, cfg)?;
+
+    // 5. Drain account_updates to End; LAST row whose conid matches wins (latest snapshot).
+    //    Reuses the End-marker pattern from positions() (ADR 0011).
+    let subscription = client
+        .account_updates(&account)
+        .map_err(|e| AppError::data(format!("account_updates failed: {e}"), ctx))?;
+    let mut matched: Option<AccountPortfolioValue> = None;
+    for update in subscription.iter_data() {
+        let update = update
+            .map_err(|e| AppError::data(format!("account_updates stream: {e}"), ctx))?;
+        match update {
+            AccountUpdate::PortfolioValue(p) => {
+                if p.contract.contract_id == args.conid {
+                    matched = Some(p); // last match wins
+                }
+            }
+            AccountUpdate::End => break,
+            _ => {}
+        }
+    }
+
+    // Anti-open gate: refuse if not held or already flat.
+    let row = matched.ok_or_else(|| {
+        AppError::not_found(
+            format!(
+                "no open position for conid {} — nothing to close; see `omi positions`",
+                args.conid
+            ),
+            ctx,
+        )
+    })?;
+    if row.position == 0.0 {
+        return Err(AppError::not_found(
+            format!(
+                "position for conid {} is 0 — nothing to close; see `omi positions`",
+                args.conid
+            ),
+            ctx,
+        ));
+    }
+    // Non-OPT conid ⇒ usage (this is an option verb — point at the stock verbs).
+    if !matches!(row.contract.security_type, SecurityType::Option) {
+        return Err(AppError::usage(
+            format!(
+                "conid {} is {}, not an option — use `omi sell`/`omi buy` for stock",
+                args.conid,
+                row.contract.security_type
+            ),
+            ctx,
+        ));
+    }
+
+    // 6. Derive close side + qty from the SIGN of the held position (anti-double gate).
+    let (side, close_qty) =
+        derive_close(row.position, args.qty).map_err(|reason| AppError::usage(reason, ctx))?;
+
+    // 7. Rebuild via the live-proven builder chain (ADR 0020 D8 VERBATIM reuse).
+    let symbol = row.contract.symbol.to_string();
+    let raw_expiry = row.contract.last_trade_date_or_contract_month.clone();
+    let (y, m, d) = super::option_quote::parse_expiry(&raw_expiry).ok_or_else(|| {
+        AppError::data(
+            format!("expiry unparseable for conid {}: got {raw_expiry:?}", args.conid),
+            ctx,
+        )
+    })?;
+    let strike = row.contract.strike;
+    let right = match row.contract.right {
+        Some(OptionRight::Call) => OptionRight::Call,
+        Some(OptionRight::Put) => OptionRight::Put,
+        // None or any non_exhaustive future variant ⇒ can't rebuild an option contract.
+        _ => {
+            return Err(AppError::data(
+                format!(
+                    "conid {}: held option has no recognizable right (got {:?})",
+                    args.conid, row.contract.right
+                ),
+                ctx,
+            ));
+        }
+    };
+    let right_str = match right {
+        OptionRight::Call => "C",
+        _ => "P",
+    };
+    let trading_class = if row.contract.trading_class.is_empty() {
+        None
+    } else {
+        Some(row.contract.trading_class.as_str())
+    };
+    let currency = if row.contract.currency.as_str().is_empty() {
+        "USD"
+    } else {
+        row.contract.currency.as_str()
+    };
+    let (contract, order) = build_option_order(
+        &symbol,
+        (y, m, d),
+        strike,
+        right,
+        trading_class,
+        "SMART",
+        currency,
+        side,
+        close_qty,
+        args.limit,
+    );
+
+    // 8. Wrong-contract gate (ADR 0021): the resolved contract's conid MUST match the
+    //    requested one BEFORE any placement. Refuses on mismatch (data — never places).
+    let details = client.contract_details(&contract).map_err(|e| {
+        AppError::data(format!("contract_details failed: {e}"), ctx)
+    })?;
+    let resolved_conid = details.first().map(|d| d.contract.contract_id).ok_or_else(|| {
+        AppError::not_found(
+            format!("no contract resolved for conid {} — refusing to place", args.conid),
+            ctx,
+        )
+    })?;
+    if resolved_conid != args.conid {
+        return Err(AppError::data(
+            format!(
+                "resolved conid {resolved_conid} != requested {} — refusing to place",
+                args.conid
+            ),
+            ctx,
+        ));
+    }
+
+    // 9. Place via the shared body (allocate → bounded first-ack → no retry). The ack echoes
+    //    the RESOLVED row identity; `action` is the DERIVED side.
+    let action_str = format!("{:?}", side);
+    let expiry_echo = raw_expiry.clone();
+    place_with_client(&client, ctx, &contract, &order, |id, status| {
+        shape_option_close_ack(
+            id,
+            status,
+            args.conid,
+            &symbol,
+            &expiry_echo,
+            strike,
+            right_str,
+            &action_str,
+            close_qty,
+            args.limit,
+        )
     })
 }
