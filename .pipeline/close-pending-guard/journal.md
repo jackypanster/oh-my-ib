@@ -166,3 +166,54 @@ On success: pipeline-review merges PR #20, card→done, stage→done, journal se
 On failure: per CONTRACT — flip the offending card review→todo (attempts++); >=3 ⇒ blocked ⇒
 pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-04T09:12:18Z · impl→review · completed · by=gpt-5-codex
+done:   review-01 APPROVE written for PR #20 at b4b67c78d9761faba7031e0b948d4c0bab8d47de.
+        Freeze gate ran FIRST and was empty for tests/close_pending_guard.rs using short
+        spec-rev 61f17e8 resolved to 61f17e82125c25e56ab68713b7003b89d1e69e21; older frozen
+        specs tests/option_close_command.rs and tests/positions_row.rs were untouched in the
+        PR diff; CLAUDE.md was untouched and remains 876B. Detached worktree verification passed:
+        cargo build, cargo test (215 tests), cargo clippy --all-targets -- -D warnings, and
+        cargo test --test close_pending_guard. Semantic/adversarial review passed for guard
+        placement, single-connect reuse, fail-closed row parse, refusal message content, Debug
+        action string assumption, empty-array vs malformed-row distinction, AGENTS.md phrase,
+        and write-call containment. Temporary worktree removed. No merge performed.
+output: .pipeline/close-pending-guard/reviews/review-01.md, .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-review merge continuation on a FRESH session after explicit human confirmation.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/20
+Model: frontier SOTA required — broker write-path guard; do not downgrade.
+First: git pull --rebase; no repo .env. Keep the shared checkout on main; use an isolated
+worktree for any re-verification.
+Read for context:
+  - AGENTS.md — repo conventions and write gates
+  - CONTRACT.md in jackypanster/pipeline
+  - .pipeline/close-pending-guard/{PRD.md,arch.md,CONTEXT.md,journal.md}
+  - .pipeline/close-pending-guard/docs/adr/0023-pending-close-guard.md
+  - .pipeline/close-pending-guard/tasks/01.md — card should remain status=review
+  - .pipeline/close-pending-guard/reviews/review-01.md — APPROVE verdict and evidence
+Your task:
+  1. Proceed only after the operator explicitly confirms merge. If PR head moved from
+     b4b67c78d9761faba7031e0b948d4c0bab8d47de, rerun freeze gates, isolated cargo build/test/clippy,
+     card-scoped verify, semantic review, and adversarial pass.
+  2. Use spec-rev short 61f17e8 (actual full 61f17e82125c25e56ab68713b7003b89d1e69e21) if
+     rerunning freeze gates; tasks/01.md contains a mistyped expanded SHA and review did not
+     edit it because spec-rev repair is outside the review write-set.
+  3. Confirm current.json feature=close-pending-guard stage=review and card 01 remains status=review.
+  4. Squash-merge PR #20 via GitHub forge adapter and delete feat/close-pending-guard.
+  5. On main after merge, flip card 01 status=done, set current.json stage=done, append seq=6
+     review→done journal entry, commit once, and push main.
+Feature gotchas:
+  - Do NOT merge without explicit human confirmation.
+  - Do NOT author product code or edit frozen specs from review/merge continuation.
+  - PRD criterion 7 paper lifecycle is deliberately deferred to the next US trading session;
+    offline gates + review are today's merge basis unless the operator changes that gate.
+  - Guard must remain after non-OPT and before derive_close, with open_orders_with_client on the
+    already-connected client and no second connect.
+  - Bad open-order rows must data-error, never skip.
+Done when: PR #20 squash-merged after explicit confirm, card 01 done, current.json stage=done,
+final journal entry committed and pushed to main.
+On reject: name the offending card, attempts++ and card review→todo (or blocked at >=3), then route
+pipeline-impl or pipeline-hunt per CONTRACT.
+<<< END
