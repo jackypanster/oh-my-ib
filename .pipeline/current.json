@@ -1,11 +1,6 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "options-read",
-  "stage": "done",
-  "full-verify": [
-    "cargo build",
-    "cargo test"
-  ],
-  "pr": "https://github.com/jackypanster/oh-my-ib/pull/16"
+  "feature": "option-orders",
+  "stage": "prd"
 }
