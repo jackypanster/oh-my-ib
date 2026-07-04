@@ -120,15 +120,26 @@ args, Action::Buy|Sell, "option-buy"|"option-sell")`:
 
 ## Docs amendment (impl copies VERBATIM)
 
-In `AGENTS.md` **and** `CLAUDE.md`, replace the sentence
-`All other commands remain read-only; no modify, no option ORDERS, no combos yet (options DATA is readable: \`option-chain\`/\`option-quote\`).`
-with:
+Two files, two DIFFERENT texts (CORRECTION 2026-07-04: CLAUDE.md carries a frozen
+< 900-byte budget — tests/claude_md.rs, slim-claude-md — so it gets a SHORT form; AGENTS.md
+is the canonical doc and gets the full form. The original single-text amendment overflowed
+the budget and caused the review-01 docs-scope reject chain).
 
-> All other commands remain read-only; no modify, no combos yet. Options: DATA readable
-> (`option-chain`/`option-quote`); single-leg option ORDERS exist
-> (`option-buy`/`option-sell`, LMT/DAY only) behind the same gates.
+1. `AGENTS.md` — replace the sentence
+   `All other commands remain read-only; no modify, no option ORDERS, no combos yet (options DATA is readable: \`option-chain\`/\`option-quote\`).`
+   with:
 
-Nothing else in either file changes (docs tests assert coarse markers only — still safe).
+   > All other commands remain read-only; no modify, no combos yet. Options: DATA readable
+   > (`option-chain`/`option-quote`); single-leg option ORDERS exist
+   > (`option-buy`/`option-sell`, LMT/DAY only) behind the same gates.
+
+2. `CLAUDE.md` — replace the SAME original sentence with the SHORT form:
+
+   > All other commands remain read-only; no modify, no combos. Options: data read +
+   > single-leg ORDERS (`option-buy`/`option-sell`, LMT/DAY), same gates.
+
+Nothing else in either file changes — the CLAUDE.md intro paragraph stays EXACTLY as on
+main (docs tests: agents_md markers + claude_md < 900-byte budget both hold).
 
 ## Freeze coverage (pinned for pipeline-task — ONE card)
 

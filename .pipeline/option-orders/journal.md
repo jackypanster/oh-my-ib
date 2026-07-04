@@ -180,3 +180,21 @@ Done when: card 01 verify + full suite + clippy are green, freeze gates are empt
 again with attempts still 1, journal seq=6 is pushed, and PR #17 is updated. On failure:
 attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-04T01:57:56Z · impl(blocked on docs budget)→arch(correction)→impl · completed · by=claude-fable-5
+done:   ARCH CORRECTION (root cause of the review-01 reject chain): the single docs-amendment
+        text overflowed CLAUDE.md's frozen < 900-byte budget (tests/claude_md.rs,
+        slim-claude-md) — 935B with the intro restored. That is WHY the coder trimmed the
+        intro (scope drift, correctly rejected). Fix in MY write-set: arch.md §Docs amendment
+        now specifies TWO texts — AGENTS.md keeps the full form (already correct on the
+        branch), CLAUDE.md gets a SHORT form (~866B total, intro untouched). No frozen test
+        changes; the slim-claude-md invariant is deliberate and stands. Coder's three offered
+        alternatives (intro trim / budget re-freeze / accept red) all rejected.
+output: .pipeline/option-orders/arch.md (§Docs amendment corrected)
+--- handoff ---
+>>> NEXT
+pipeline-impl continues on the omp pane: apply the corrected CLAUDE.md short-form bullet
+(intro restored to main's exact text), AGENTS.md unchanged from branch, verify
+claude_md/agents_md/option_orders_command targets green, push, card->review (attempts=1),
+journal seq=7, push metadata. Then pipeline-review round 2 (codex).
+<<< END
