@@ -248,3 +248,42 @@ Done when: freeze gate empty, docs-scope clean (one bullet, intro trunk-exact, <
 semantic checks reaffirmed, full-suite green, human confirms, PR #17 squash-merged, card→done.
 On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=8 · 2026-07-04T02:04:48Z · review→review · completed · by=codex-reviewer
+done:   review-02 PASS written. Freeze gates stayed empty; round-2 product delta is only
+        CLAUDE.md at 5170c16; corrected docs amendment now matches arch §Docs amendment
+        (AGENTS full form, CLAUDE short form, CLAUDE intro trunk-exact, 868 bytes < 900).
+        Full regression at branch tip passed: `cargo build`, `cargo test` (160 tests), and
+        `cargo clippy --all-targets -- -D warnings`. No merge performed: awaiting operator
+        paper acceptance (PRD criterion 10) + explicit human confirm.
+output: .pipeline/option-orders/reviews/review-02.md
+--- handoff ---
+>>> NEXT
+Operator action before merge: run PRD criterion 10 paper acceptance for option-orders, then explicitly
+confirm whether pipeline-review may squash-merge PR #17.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-orders pr=https://github.com/jackypanster/oh-my-ib/pull/17
+Model: frontier SOTA required if another review/merge session is dispatched.
+First: git fetch origin; do not use stale local refs. Keep the shared checkout safe; use isolated
+worktrees for verification if needed.
+Read for context:
+  - .pipeline/option-orders/reviews/review-02.md — PASS evidence at branch tip 5170c16.
+  - .pipeline/option-orders/reviews/review-01.md — prior docs-scope rejection now fixed.
+  - .pipeline/option-orders/arch.md §Docs amendment — corrected two-text AGENTS/CLAUDE rule.
+  - .pipeline/option-orders/PRD.md criterion 10 — paper acceptance scope.
+Your task:
+  1. Operator runs paper `:4002` acceptance: far-below-market LMT `omi option-buy` on a liquid option,
+     confirm `omi orders` shows the working order, cancel it, confirm `completed-orders` shows
+     Cancelled, and confirm positions are unchanged. Paper option-permission rejection is an
+     observation for the operator to decide, not an automatic implementation failure.
+  2. If acceptance passes and the operator explicitly confirms merge, run pipeline-review merge path:
+     re-check freeze gates and full verification on current PR head, then squash-merge PR #17.
+  3. Only after merge: set card 01 done, set current.json stage=done, append the final journal entry,
+     commit and push trunk metadata.
+Feature gotchas:
+  - Do NOT merge without explicit human confirmation after paper acceptance.
+  - Review-02 passed the docs fix; review-01 already passed the safety-critical Rust write surface.
+  - Keep frozen specs untouched; merge is the only path for product code to reach trunk.
+Done when: paper acceptance is recorded, human confirms, PR #17 is squash-merged, card 01 is done,
+current.json stage=done, and the final journal entry is pushed. On failure: route the specific evidence
+back through pipeline-impl/task/hunt as appropriate.
+<<< END
