@@ -42,7 +42,7 @@ pub use option_quote::{option_quote, option_quote_greeks, shape_option_quote, Gr
 pub use quote::{quote, quote_price_tick, shape_quotes};
 pub use search::{search, shape_search, SearchRow};
 pub use completed_orders::{completed_orders, shape_completed_orders, CompletedOrderRow};
-pub use trade::{build_stk_order, cancel, buy, sell, shape_order_ack, require_live_write_gate};
+pub use trade::{build_option_order, build_stk_order, cancel, buy, sell, option_buy, option_sell, shape_order_ack, shape_option_order_ack, require_live_write_gate};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
