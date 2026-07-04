@@ -287,3 +287,28 @@ Done when: paper acceptance is recorded, human confirms, PR #17 is squash-merged
 current.json stage=done, and the final journal entry is pushed. On failure: route the specific evidence
 back through pipeline-impl/task/hunt as appropriate.
 <<< END
+
+## seq=9 · 2026-07-04T02:16:35Z · review→done · completed · by=claude-fable-5
+done:   MERGED — operator-confirmed squash-merge of PR #17 (trunk ceafd64); card 01 done;
+        trunk full-verify GREEN (22 targets / 160 tests). omi gains option-buy/option-sell
+        (single-leg, LMT/DAY, ADR 0017/0018 gates verbatim). PAPER ACCEPTANCE (criterion 10)
+        PASSED end-to-end: far-LMT option-buy (AAPL 20260717 200C x1 @0.05) -> PreSubmitted
+        9-key ack -> orders shows working -> cancel Cancelled -> completed-orders
+        "Cancelled by Trader" -> positions unchanged. OBSERVATIONS: (a) gateway API
+        Read-Only mode was ON at first attempt (clean [321] data envelope; operator toggled
+        it off — record: acceptance requires Read-Only API OFF); (b) completed-orders view
+        echoes order_id=-1 for the cancelled option order (gateway quirk, display-only);
+        (c) paper account HAS options trading permission (criterion 10 unknown resolved).
+        Feature arc: impl r1 -> review-01 REJECT (docs-scope drift) -> arch self-correction
+        seq=6 (amendment overflowed CLAUDE.md's frozen <900B budget; two-text fix) ->
+        impl r2 docs -> review-02 PASS. FULL-AUTO run: operator touched only Read-Only
+        toggle + merge word.
+output: PR https://github.com/jackypanster/oh-my-ib/pull/17 (merged, squash ceafd64);
+        reviews/review-01.md + review-02.md
+--- handoff ---
+>>> NEXT
+Feature option-orders is DONE. Phase 2 ladder: step 4 (combos/BAG single PRD) is the last
+rung — start with /pipeline-prd when the operator opens it. Standing observations for the
+next live/trading session: Tiger :4001 reqSecDefOptParams support; option-quote ticks under
+real entitlement; reqPnLSingle rows with positions; executions commission join on a fill day.
+<<< END
