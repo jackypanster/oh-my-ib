@@ -44,3 +44,33 @@ Do: ONE card (01). Red spec tests/option_orders_command.rs per arch §Freeze cov
     Freeze commit (spec only) = spec-rev; record commit (card + current.json stage=task +
     full-verify + journal seq=3); push. Then dispatch pipeline-impl to π (omp pane).
 <<< END
+
+## seq=3 · 2026-07-04T01:00:56Z · task→impl · completed · by=claude-fable-5
+done:   spec FROZEN: freeze commit 63f3232 (= spec-rev) carries card 01's red tests
+        (tests/option_orders_command.rs, 22 tests; RED on unresolved oh_my_ib imports only;
+        VERBATIM-compile pre-verified via temp stub target, deleted pre-commit — the seq=5
+        options-read lesson is now house procedure). stk frozen suite re-checked green
+        pre-freeze. ONE card at todo/0. Deliberate spec omission documented: no
+        env+live+dead gate-pass twin (live-order hazard if :4001 up during test runs).
+output: .pipeline/option-orders/tasks/01.md, tests/option_orders_command.rs (spec-rev 63f3232)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on the omp pane (π / GLM-5.2), full-auto (orchestrator dispatches directly).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl).
+First: git pull --rebase; no .env in this repo.
+Read: CONTRACT.md; .pipeline/option-orders/tasks/01.md (THE card); arch.md (§Component design
+      + §CLI + §Docs amendment VERBATIM); docs/adr/0020; CONTEXT.md; src/ib/trade.rs (the
+      module you extend + refactor); src/ib/option_quote.rs (helpers to promote pub(crate)).
+Do: card 01 → in-progress (metadata to main); branch feat/option-orders from trunk HEAD;
+    implement per card §Scope; green: cargo build && cargo test --test option_orders_command;
+    REGRESSION NET: cargo test --test stk_orders_command must stay green (place_core
+    refactor byte-identity); pre-PR: FULL cargo test + clippy -D warnings; push; open PR
+    (gh pr create, title 'feat(option-orders): option-buy/option-sell — card 01', body cites
+    card + spec-rev 63f3232); card → review; journal seq=4; push metadata.
+Gotchas: NEVER touch tests/**; freeze gate diffs 63f3232..tip over the spec; no repo-wide
+    fmt; write calls only in trade.rs; validation<gate<connect ordering is frozen; LMT-only
+    (no MKT arm); public repo no secrets.
+Done when: verify green + stk suite green + full suite green + clippy clean + PR open +
+    card review + seq=4 pushed. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
