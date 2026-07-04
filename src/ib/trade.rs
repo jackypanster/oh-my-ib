@@ -218,6 +218,34 @@ pub fn shape_option_close_ack(
     })
 }
 
+/// Pure, FROZEN seam (ADR 0023 §3): working orders that BLOCK a close on `conid` for a
+/// position of this sign = SAME conid AND action OPPOSITE to the position. Long (>0) ⇒
+/// "Sell" blocks; short (<0) ⇒ "Buy" blocks; same-side orders (adds) never block; other
+/// conids never block. `position == 0.0` ⇒ empty (defensive totality — the verb refuses
+/// flat positions upstream). Action strings are the Debug forms the shared drain emits
+/// ("Buy"/"Sell", orders.rs precedent). Returns ids ASCENDING (deterministic output).
+pub fn blocking_close_order_ids(
+    position: f64,
+    conid: i32,
+    open_orders: &[(i32, i32, String)],
+) -> Vec<i32> {
+    let opposite = if position > 0.0 {
+        "Sell"
+    } else if position < 0.0 {
+        "Buy"
+    } else {
+        // Flat ⇒ nothing blocks (unreachable in the verb; seam stays total).
+        return Vec::new();
+    };
+    let mut ids: Vec<i32> = open_orders
+        .iter()
+        .filter(|(_, c, a)| *c == conid && a == opposite)
+        .map(|(id, _, _)| *id)
+        .collect();
+    ids.sort_unstable();
+    ids
+}
+
 // ---------------------------------------------------------------------------
 // Gateway fns (review-by-reading; NOT frozen — needs a live gateway)
 // ---------------------------------------------------------------------------
@@ -787,6 +815,61 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
         ));
     }
 
+    // 5.5 Pending-close guard (ADR 0023): scan working orders ON THE SAME CLIENT; if any
+    //     same-conid order has action OPPOSITE to the position sign, refuse — naming every
+    //     blocking id. Kills the double-fire path (retry after a placement timeout). Zero
+    //     new connects: reuses the shared drain already proven on the read path.
+    let open_orders_value = super::orders::open_orders_with_client(&client, None, ctx)?;
+    let open_rows = open_orders_value.as_array().ok_or_else(|| {
+        AppError::data(
+            format!(
+                "open_orders drain did not return an array for conid {} — refusing to place",
+                args.conid
+            ),
+            ctx,
+        )
+    })?;
+    // Extract (order_id, conid, action) triples; a malformed row ⇒ data error naming the
+    // index (NEVER skip — a skipped row could hide a blocker; fail-closed, ADR 0023 §5).
+    let mut triples: Vec<(i32, i32, String)> = Vec::with_capacity(open_rows.len());
+    for (i, r) in open_rows.iter().enumerate() {
+        let order_id = r["order_id"].as_i64().ok_or_else(|| {
+            AppError::data(
+                format!("open_orders row {i}: missing/invalid order_id — refusing to place"),
+                ctx,
+            )
+        })?;
+        let row_conid = r["conid"].as_i64().ok_or_else(|| {
+            AppError::data(
+                format!("open_orders row {i}: missing/invalid conid — refusing to place"),
+                ctx,
+            )
+        })?;
+        let action = r["action"].as_str().ok_or_else(|| {
+            AppError::data(
+                format!("open_orders row {i}: missing/invalid action — refusing to place"),
+                ctx,
+            )
+        })?;
+        triples.push((order_id as i32, row_conid as i32, action.to_string()));
+    }
+    let blocking = blocking_close_order_ids(row.position, args.conid, &triples);
+    if !blocking.is_empty() {
+        let ids = blocking
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(AppError::not_found(
+            format!(
+                "close blocked: working close order(s) [{ids}] already cover conid {} — \
+                 cancel first (`omi cancel <id>`) or inspect `omi orders`; a second close \
+                 would flip the position",
+                args.conid
+            ),
+            ctx,
+        ));
+    }
     // 6. Derive close side + qty from the SIGN of the held position (anti-double gate).
     let (side, close_qty) =
         derive_close(row.position, args.qty).map_err(|reason| AppError::usage(reason, ctx))?;
