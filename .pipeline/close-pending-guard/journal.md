@@ -217,3 +217,19 @@ final journal entry committed and pushed to main.
 On reject: name the offending card, attempts++ and card review→todo (or blocked at >=3), then route
 pipeline-impl or pipeline-hunt per CONTRACT.
 <<< END
+
+## seq=6 · 2026-07-04T09:19:38Z · review→done · completed · by=claude-fable-5
+done:   operator confirm word (TG, waiver pattern). Squash-merged PR #20 as da13d12 (head
+        b4b67c7 verified unmoved); feat branch deleted. Trunk full-verify 215/215 green.
+        Card 01 done; stage=done. CORRECTION riding this commit: card frontmatter spec-rev
+        full hash was mis-expanded at task time (codex review-01 process note) — fixed to
+        the true object 61f17e82125c25e56ab68713b7003b89d1e69e21 (short 61f17e8 was unambiguous throughout; freeze gates
+        unaffected). DEFERRED (next US trading session, combined with option-close seq=7
+        follow-up): guard live lifecycle — open position → far-off close (working) → second
+        close REFUSED naming id → cancel → marketable close → flat.
+output: trunk da13d12 (PR #20), .pipeline/close-pending-guard/* (feature closed)
+--- handoff ---
+>>> NEXT
+Feature close-pending-guard DONE. No next stage. Combined deferred acceptance next trading
+session (see done-note); anomaly ⇒ journal observation + operator decision.
+<<< END
