@@ -2,5 +2,5 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "order-account-stamp",
-  "stage": "prd"
+  "stage": "arch"
 }

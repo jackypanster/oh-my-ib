@@ -35,3 +35,34 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: arch.md + CONTEXT.md + ADR 0024 on trunk (journal seq=2 same commit).
 On success: run pipeline-task. On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-04T09:28:16Z · arch→task · completed · by=claude-fable-5
+done:   arch.md + CONTEXT.md + ADR 0024. Pinned: place_with_client gains REQUIRED &AccountId
+        param (clone order + stamp_order_account inside — no caller can skip); place_core &
+        option_combo resolve after connect; option_close passes existing account. Frozen
+        builders untouched (still emit account="").
+output: .pipeline/order-account-stamp/arch.md, CONTEXT.md, docs/adr/0024-order-account-stamp.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required.
+First: git pull --rebase; no repo .env.
+Read for context: .pipeline/order-account-stamp/PRD.md + arch.md (SS Freeze plan) + docs/adr/0024;
+  tests/close_pending_guard.rs as freeze style precedent (do NOT touch).
+Your task (concrete, numbered):
+  1. ONE card: tests/order_account_stamp.rs = seam matrix (stamps empty; overwrites pre-set;
+     all other fields byte-identical for LMT AND MKT shapes; empty-string account degenerate).
+  2. Freeze commit (spec only, verbatim-compile stub pre-check, RED on unresolved
+     oh_my_ib::ib::stamp_order_account import only) then record commit (card + current.json
+     stage=task + full-verify + journal seq=3); push both.
+  3. Card verify: [cargo build, cargo test --test order_account_stamp].
+     impl-paths: src/ib/trade.rs, src/ib/mod.rs, AGENTS.md. spec INTERSECT impl = EMPTY.
+Feature gotchas:
+  - All six existing frozen suites byte-untouched; CLAUDE.md must NOT change.
+  - Seam signature exactly: pub fn stamp_order_account(order: &mut Order, account: &str).
+  - Metadata edits via Write/Edit tools with loud assertions (2026-07-04 lesson).
+Done when: freeze commit (= spec-rev, record the FULL rev-parse hash — do not hand-expand) +
+record commit pushed, journal seq=3.
+On success: run pipeline-impl (pi on omp pane). On failure: attempts++; >=3 blocked => pipeline-hunt.
+<<< END
