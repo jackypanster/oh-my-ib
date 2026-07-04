@@ -23,7 +23,7 @@ readability.** When unsure "is this for a human or an agent?", assume agent.
   stderr as `{"error":{"code","message","context"}}` with a non-zero exit code.
 
 ## Hard safety rules
-- **Writes are gated** — Phase 2 (2026-07-03) added `buy`/`sell`/`cancel` (STK, LMT/MKT, DAY). Paper (`:4002`, the default) is ungated; **live orders require BOTH `--live` AND `OMI_ALLOW_LIVE=1`**. All other commands remain read-only; no modify, no combos yet. Options: DATA readable (`option-chain`/`option-quote`); single-leg option ORDERS exist (`option-buy`/`option-sell`, LMT/DAY only) behind the same gates. Write code lives ONLY in `src/ib/trade.rs`.
+- **Writes are gated** — Phase 2 (2026-07-03) added `buy`/`sell`/`cancel` (STK, LMT/MKT, DAY). Paper (`:4002`, the default) is ungated; **live orders require BOTH `--live` AND `OMI_ALLOW_LIVE=1`**. All other commands remain read-only; no modify. Options: DATA readable (`option-chain`/`option-quote`); option ORDERS exist (`option-buy`/`option-sell` single-leg, `option-combo` multi-leg; LMT/DAY) behind the same gates. Write code lives ONLY in `src/ib/trade.rs`.
 - **Public repo**: never commit account ids, tokens, or any credential. Real config lives at
   `~/.config/oh-my-ib/config.toml` (outside the repo).
 - **Live gate**: paper (`:4002`) is the default; live (`:4001`) requires an explicit `--live` flag;

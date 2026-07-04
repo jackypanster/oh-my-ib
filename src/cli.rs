@@ -90,6 +90,8 @@ pub enum Command {
     OptionBuy(OptionOrderArgs),
     /// Place a single-leg option SELL (LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
     OptionSell(OptionOrderArgs),
+    /// Place a multi-leg option combo (BAG, LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    OptionCombo(OptionComboArgs),
 }
 
 #[derive(Args, Debug)]
@@ -218,4 +220,27 @@ pub struct OptionOrderArgs {
     /// Trading class, e.g. SPXW (optional; gateway resolves when absent)
     #[arg(long)]
     pub trading_class: Option<String>,
+}
+
+/// omi option-combo --action BUY --qty 1 --limit 0.05 --leg "BUY 1 AAPL 20260918 240 C" --leg "SELL 1 AAPL 20260918 250 C"
+#[derive(Args, Debug)]
+pub struct OptionComboArgs {
+    /// Combo side: BUY or SELL (the overall order action)
+    #[arg(long)]
+    pub action: String,
+    /// Quantity in whole contracts (>= 1)
+    #[arg(long)]
+    pub qty: f64,
+    /// Net limit price (REQUIRED — LMT-only; negative = credit; allow_hyphen_values for -0.50)
+    #[arg(long, allow_hyphen_values = true)]
+    pub limit: f64,
+    /// Leg specs: "ACTION RATIO SYMBOL EXPIRY STRIKE RIGHT" (2..=4 legs required)
+    #[arg(long = "leg", required = true)]
+    pub legs: Vec<String>,
+    /// Exchange
+    #[arg(long, default_value = "SMART")]
+    pub exchange: String,
+    /// Currency
+    #[arg(long, default_value = "USD")]
+    pub currency: String,
 }
