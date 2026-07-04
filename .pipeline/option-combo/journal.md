@@ -70,3 +70,48 @@ Done when: freeze gate empty, semantic review clean (esp. place_core byte-identi
 sign-free limit + SpreadBuilder), full-suite green, human confirms, PR #18 squash-merged, card→done.
 On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-04T02:54:44Z · review→impl · failed · by=codex-reviewer
+done:   review-01 REJECT written. Freeze gates were empty; detached branch full verification
+        (`cargo build`, `cargo test` 181 tests, `cargo clippy --all-targets -- -D warnings`) was
+        green; parser/validation dead-port probes passed; docs/deps/read-module/write-containment
+        checks passed. Blocking issue is semantic write-path flow: option_combo resolves conids
+        through one connected Client, then calls place_core, which opens a second same-client-id
+        connection before allocation/place. Card 01 review→todo, attempts 0→1.
+output: .pipeline/option-combo/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session for the option-combo review-01 rejection.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-combo pr=https://github.com/jackypanster/oh-my-ib/pull/18
+Model: capable-local OK for the focused Rust retry; use frontier SOTA if changing the architecture.
+First: git fetch origin; never edit frozen tests; work on `feat/option-combo` only for product/docs
+changes, and keep trunk metadata commits separate per CONTRACT.
+Read for context:
+  - .pipeline/option-combo/reviews/review-01.md — blocking finding and passed evidence.
+  - .pipeline/option-combo/tasks/01.md — card 01 now todo, attempts=1.
+  - tests/option_combo_command.rs — frozen contract; do not edit.
+  - src/ib/trade.rs — place_core + option_combo flow.
+Your task:
+  1. Fix the review-01 blocker: `option_combo` currently connects once for `contract_details`, then
+     calls `place_core`, which connects again with the same `cfg.client_id` before `next_order_id` and
+     `place_order`. Make combo use a single connected placement sequence after validation/gate.
+  2. Preserve existing STK and single-leg option behavior byte-identically. A likely safe shape is a
+     helper that performs allocate→place→bounded-first-ack on an existing `Client`, with current
+     `place_core` delegating to it after its gate/connect step.
+  3. Keep all per-leg resolution guarantees: fail-fast in input order, `leg N` errors, first
+     `contract_details` row as conid, and no `place_order` until every leg is resolved.
+  4. Re-run freeze gates (`git diff c0e72a3 origin/feat/option-combo -- tests/option_combo_command.rs`
+     and `git diff origin/main origin/feat/option-combo -- tests/`) plus full `cargo build`,
+     `cargo test`, and `cargo clippy --all-targets -- -D warnings`.
+  5. Set card 01 back to review, append journal seq=6, push branch + trunk metadata, and hand off to
+     pipeline-review.
+Feature gotchas:
+  - The frozen tests are already green; this is a reviewed-by-reading live write-path defect.
+  - Keep sign-free combo net limits (negative/zero/positive finite accepted; NaN/inf rejected).
+  - Keep `--leg` singular and `--limit` negative-value parsing.
+  - Do not touch `tests/**`, Cargo.toml, Cargo.lock, or read modules unless a new explicit blocker
+    appears.
+Done when: card 01 verify + full suite + clippy are green, freeze gates are empty, card 01 is review
+again with attempts still 1, journal seq=6 is pushed, and PR #18 is updated. On failure:
+attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
