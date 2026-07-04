@@ -79,3 +79,50 @@ Done when: freeze commit (= spec-rev) + record commit on trunk, both pushed, jou
 On success: run pipeline-impl (π on the omp pane, capable-local OK). On failure: attempts++;
 >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-04T07:49:02Z · task→impl · completed · by=claude-fable-5
+done:   spec FROZEN: freeze commit 286eb6a (= spec-rev) carries BOTH cards' red tests
+        (tests/positions_row.rs 6 tests + tests/option_close_command.rs 21 tests; RED on
+        unresolved oh_my_ib imports only; verbatim-compile pre-verified via stub scratch,
+        deleted pre-commit). TWO cards at todo/0. Same deliberate gate-pass omission as
+        option-orders/combo (live-order hazard). full-verify recorded.
+output: .pipeline/option-close/tasks/01.md, tasks/02.md, tests/positions_row.rs,
+        tests/option_close_command.rs (spec-rev 286eb6a)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl) — π on the omp pane; operator/orchestrator assigns.
+First: git pull --rebase; no repo .env.
+Read for context (before acting):
+  - AGENTS.md — repo conventions + hard safety rules (public repo, write containment)
+  - .pipeline/option-close/PRD.md — what + D1-D8
+  - .pipeline/option-close/arch.md — §Card 01 table + §Data flow steps 1-9 VERBATIM
+  - .pipeline/option-close/CONTEXT.md + docs/adr/0022 — binding decisions
+  - .pipeline/option-close/tasks/01.md then 02.md — the cards (oldest todo first)
+Your task (concrete, numbered):
+  1. Branch feat/option-close from trunk HEAD.
+  2. Card 01: promote position_row to pub + 5 identity keys (arch §Card 01 exact mapping);
+     re-export at ib root; verify: cargo build && cargo test --test positions_row green.
+  3. Card 02: derive_close + shape_option_close_ack pure seams + option_close gateway fn
+     (single-connect, steps in arch §Data flow order) + CLI/dispatch + docs amendment;
+     verify: cargo test --test option_close_command green.
+  4. Regression: cargo test --test stk_orders_command --test option_orders_command
+     --test option_combo_command --test brief_command green; then FULL cargo test + clippy
+     --all-targets -- -D warnings clean.
+  5. wc -c CLAUDE.md < 900 BEFORE PR. Open ONE PR for the feature branch; flip both cards
+     status: in-progress→review with your commits; journal seq=4; push.
+Feature gotchas (project-specific traps the next node MUST know):
+  - NEVER touch tests/positions_row.rs or tests/option_close_command.rs (frozen spec-paths;
+    review diffs 286eb6a..tip over them — ANY change ⇒ reject).
+  - SINGLE connect in option_close: drain, contract_details assert, place — all on the ONE
+    client (a second same-client-id connect wedges the gateway; option-combo review lesson).
+  - Validation ORDER frozen: usage < config(gate) < connection (dead-port matrix asserts it).
+  - contract_details conid assert comes BEFORE place_with_client — refuse on mismatch (data).
+  - right/security_type are non_exhaustive — always a _ fallback arm.
+  - account_updates drain: reuse the End-marker pattern from positions(); LAST conid match wins.
+  - CLAUDE.md is byte-budgeted (<900, frozen test) — the computed amendment is +15 bytes.
+Done when: both cards' verify green + regressions + full suite + clippy; PR open; cards at
+review; journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++;
+>=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
