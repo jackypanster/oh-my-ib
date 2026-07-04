@@ -139,3 +139,44 @@ Done when: both freeze gates empty, semantic review clean (esp. stk byte-identit
 full-suite green, human confirms, PR #17 squash-merged, card → done, current.json.stage=done.
 On failure: flip card review→todo + attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-04T01:26:44Z · review→impl · failed · by=codex-reviewer
+done:   review-01 REJECT written. Freeze gates were empty; detached branch full verification
+        (`cargo build`, `cargo test`, `cargo clippy --all-targets -- -D warnings`) was green; write
+        containment, LMT-only option order building, no-retry, validation-before-connect, 9-key ack,
+        no dependency drift, and dead-port behavioral probes passed. Blocking issue is docs scope:
+        `CLAUDE.md` changes intro prose outside the arch/card-pinned §Docs amendment "nothing else"
+        boundary. Card 01 review→todo, attempts 0→1.
+output: .pipeline/option-orders/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session for the option-orders review-01 rejection.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-orders pr=https://github.com/jackypanster/oh-my-ib/pull/17
+Model: capable-local OK for the docs retry; use frontier SOTA if escalating the spec/arch conflict.
+First: git fetch origin; never edit frozen tests; work on `feat/option-orders` only for product/docs
+changes, and keep trunk metadata commits separate per CONTRACT.
+Read for context:
+  - .pipeline/option-orders/reviews/review-01.md — blocking finding and passed evidence.
+  - .pipeline/option-orders/tasks/01.md — card 01 now todo, attempts=1.
+  - .pipeline/option-orders/arch.md §Docs amendment — docs sentence is pinned verbatim.
+  - tests/claude_md.rs — frozen global constraint `100 < len < 900` that caused the intro trim.
+Your task:
+  1. Fix the review-01 docs-scope rejection: `CLAUDE.md` currently changes intro prose outside the
+     arch/card docs amendment. Make the PR docs diff comply with the pinned "amendment only" scope.
+  2. If that is impossible while keeping `tests/claude_md.rs` green, stop and route the evidence to
+     pipeline-task/hunt for an explicit spec/architecture correction; do not silently widen scope.
+  3. Keep the already-reviewed write-path code unchanged unless the docs fix unexpectedly requires it.
+  4. Re-run freeze gates (`git diff 63f3232 origin/feat/option-orders -- tests/option_orders_command.rs`
+     and `git diff origin/main origin/feat/option-orders -- tests/`) plus full `cargo build`,
+     `cargo test`, and `cargo clippy --all-targets -- -D warnings`.
+  5. Set card 01 back to review, append journal seq=6, push branch + trunk metadata, and hand off to
+     pipeline-review.
+Feature gotchas:
+  - Review-01 passed the safety-critical Rust surface by reading and dead-port probes; the rejection is
+    the docs-scope contract only.
+  - Do not touch `tests/**`, Cargo.toml, Cargo.lock, read modules, or the option-order write-path unless
+    a new explicit blocker appears.
+Done when: card 01 verify + full suite + clippy are green, freeze gates are empty, card 01 is review
+again with attempts still 1, journal seq=6 is pushed, and PR #17 is updated. On failure:
+attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
