@@ -107,3 +107,62 @@ Done when: card verify + regressions + full suite + clippy green; PR open; card 
 journal seq=4 pushed. On success: run pipeline-review. On failure: attempts++; >=3 ⇒ blocked ⇒
 run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-04T12:05:00Z · impl→review · completed · by=glm-5.2
+done:   Card 01 green + regressions + full suite + clippy clean. Pure seam
+        blocking_close_order_ids(position, conid, &[(order_id, conid, action)]) -> Vec<i32>
+        ascending (long⇒Sell blocks, short⇒Buy blocks, same-side/other-conid/position-0 ⇒
+        empty). Guard wired in option_close step 5.5 (between non-OPT check and derive_close):
+        drain on the SAME client via super::orders::open_orders_with_client(&client, None, ctx)
+        (zero new connects), extract triples (malformed row ⇒ data error naming index,
+        fail-closed), non-empty ⇒ not_found refusal naming conid + all ids + remediation
+        pointers. Re-exported at ib root. AGENTS.md option-close phrase gains guard clause.
+        CLAUDE.md untouched. Freeze gate: git diff 61f17e8..HEAD over tests/{close_pending_guard,
+        option_close_command,positions_row}.rs is EMPTY.
+output: PR #20 (feat/close-pending-guard), src/ib/{trade,mod}.rs, AGENTS.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/20
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no repo .env.
+Read for context (before acting):
+  - AGENTS.md — repo conventions + hard safety rules (write containment, gates)
+  - .pipeline/close-pending-guard/PRD.md + arch.md (§Guard wiring VERBATIM) + docs/adr/0023
+  - .pipeline/close-pending-guard/tasks/01.md — the card (now status: review)
+  - PR #20 diff — the review surface
+Your task (concrete, numbered):
+  1. Freeze gate FIRST (deterministic): git diff 61f17e8..HEAD -- tests/close_pending_guard.rs
+     tests/option_close_command.rs tests/positions_row.rs MUST be empty (non-empty ⇒ reject,
+     route impl). Also confirm CLAUDE.md untouched (git diff 61f17e8..HEAD -- CLAUDE.md empty).
+  2. Semantic review of src/ib/trade.rs:
+     - Guard placement: step 5.5, AFTER the non-OPT check, BEFORE derive_close.
+     - Single-connect invariant: open_orders_with_client(&client, None, ctx) on the
+       ALREADY-CONNECTED client — NO second connect anywhere (option-combo review lesson).
+     - Fail-closed row parse: any malformed (order_id/conid/action) ⇒ data error naming row
+       index; never skip-and-continue (ADR 0023 §5).
+     - Refusal message: not_found family; names the conid, ALL blocking ids, both `omi cancel
+       <id>` and `omi orders` pointers, states a second close would flip the position.
+     - Seam correctness: long⇒Sell, short⇒Buy, same-side/other-conid/position-0 ⇒ empty;
+       ascending ids; action strings exact "Buy"/"Sell".
+     - derive_close/shape_option_close_ack signatures byte-untouched.
+     - Containment polarity unchanged (write calls only in trade.rs).
+     - AGENTS.md option-close phrase now names the guard.
+  3. Full-suite gate: cargo build + cargo test (current.json.full-verify) on
+     feat/close-pending-guard HEAD MUST be green before merge.
+  4. Human confirm → squash-merge PR #20; flip card status: review→done; stage: impl→done;
+     journal seq=5; push.
+Feature gotchas (project-specific traps the next node MUST know):
+  - DELIBERATELY deferred: live paper lifecycle (PRD criterion 7) combined with option-close
+    criterion 12 — next US trading session. Offline gates + review are today's merge basis.
+  - The guard gateway path is review-by-reading only (not offline-reachable — needs a live
+    gateway); its pure seam IS frozen offline.
+  - all_open_orders returns only working orders (terminal ⇒ completed-orders) — no status
+    filter; PendingCancel still blocks = fail-closed correct.
+  - TOCTOU residual accepted (ADR 0023): scan→place not atomic; fixed client_id is the
+    de-facto mutex that kills the realistic sequential trigger.
+Done when: freeze gate empty + semantic review pass + full-suite green + human-confirmed merge.
+On success: pipeline-review merges PR #20, card→done, stage→done, journal seq=5.
+On failure: per CONTRACT — flip the offending card review→todo (attempts++); >=3 ⇒ blocked ⇒
+pipeline-hunt.
+<<< END
