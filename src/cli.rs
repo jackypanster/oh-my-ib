@@ -92,6 +92,8 @@ pub enum Command {
     OptionSell(OptionOrderArgs),
     /// Place a multi-leg option combo (BAG, LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
     OptionCombo(OptionComboArgs),
+    /// Close a HELD option position by conid (side derived from held position; LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    OptionClose(OptionCloseArgs),
 }
 
 #[derive(Args, Debug)]
@@ -243,4 +245,18 @@ pub struct OptionComboArgs {
     /// Currency
     #[arg(long, default_value = "USD")]
     pub currency: String,
+}
+
+/// omi option-close --conid 123456789 --limit 3.20 [--qty 1]
+#[derive(Args, Debug)]
+pub struct OptionCloseArgs {
+    /// Conid of the HELD option position to close (from `omi positions`)
+    #[arg(long)]
+    pub conid: i32,
+    /// Limit price (REQUIRED — LMT-only, no MKT; finite, > 0)
+    #[arg(long)]
+    pub limit: f64,
+    /// Quantity to close in whole contracts (>= 1); omit to close the full position
+    #[arg(long)]
+    pub qty: Option<f64>,
 }

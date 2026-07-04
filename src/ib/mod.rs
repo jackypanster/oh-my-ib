@@ -36,13 +36,13 @@ pub use history::history;
 pub use orders::orders;
 pub use pnl::{pnl, pnl_number};
 pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
-pub use positions::positions;
+pub use positions::{position_row, positions};
 pub use option_chain::{option_chain, shape_option_chain, ChainRow};
 pub use option_quote::{option_quote, option_quote_greeks, shape_option_quote, GreeksRow};
 pub use quote::{quote, quote_price_tick, shape_quotes};
 pub use search::{search, shape_search, SearchRow};
 pub use completed_orders::{completed_orders, shape_completed_orders, CompletedOrderRow};
-pub use trade::{build_combo_order, build_option_order, build_stk_order, cancel, buy, sell, option_buy, option_combo, option_sell, parse_combo_leg, shape_combo_order_ack, shape_order_ack, shape_option_order_ack, require_live_write_gate, LegSpec};
+pub use trade::{build_combo_order, build_option_order, build_stk_order, cancel, buy, sell, derive_close, option_buy, option_close, option_combo, option_sell, parse_combo_leg, require_live_write_gate, shape_combo_order_ack, shape_option_close_ack, shape_order_ack, shape_option_order_ack, LegSpec};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;
