@@ -55,3 +55,57 @@ Done when: arch.md + CONTEXT.md + ADR(s) landed on trunk; freeze-ability decided
 classified. On success: current.json.stage=arch, then run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-05T03:43:07Z · arch→task · completed · by=claude (orchestrator)
+done:   Architecture for the doc-only reference-behavior audit. RESOLVED the top open question
+        (freeze-ability): the doc is a TEST-GUARDED LIVING artifact, not review-by-reading only —
+        ADR 0025. Frozen spec = tests/write_path_semantics_doc.rs (coverage + default-canary):
+        (a) doc exists via runtime read_to_string — RED now; (b) every required field token has a
+        row + tier marker; (c) anti-rot source-scan of src/ib/trade.rs asserts each set field is
+        documented; (d) default-canary pins ibapi Order::default() load-bearing values
+        (transmit==true, outside_rth==false, what_if==false, tif==Day, display_size==Some(0),
+        origin==Customer, exempt_code==-1) — the transmit-catastrophe guard. Deliverable =
+        docs/write-path-semantics.md (7-col table + ⚠️ risk register w/ probe recipes; account
+        row ✅, transmit + combo-credit seeded ⚠️). Code-first verified: ibapi custom Default
+        (mod.rs:478), Contract SMART/USD/mult-100 (builders.rs). One card. NO src/ change (D6).
+output: .pipeline/write-path-semantics/arch.md, CONTEXT.md, docs/adr/0025-write-path-semantics-doc.md, current.json
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required (task is a reasoning stage; it authors the frozen red test).
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — task needs no gateway, skip).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; write code ONLY in src/ib/trade.rs; read FIRST)
+  - .pipeline/write-path-semantics/PRD.md — WHAT + decisions D1-D6
+  - .pipeline/write-path-semantics/arch.md — the shape + "Freeze plan handed to task (advisory)" (USE IT VERBATIM)
+  - .pipeline/write-path-semantics/docs/adr/0025-write-path-semantics-doc.md — the freeze design (§3 the test, §4 freeze coverage)
+  - .pipeline/write-path-semantics/CONTEXT.md — glossary (verification tier, load-bearing default, default-canary, anti-rot scan)
+  - src/ib/trade.rs — the write path the source-scan (c) targets
+  - ibapi-3.1.0/src/orders/mod.rs:478 (custom Default) — the canary (d) values source of truth
+Your task (concrete, numbered):
+  1. ONE card, tasks/01.md. Decompose is trivial (single deliverable) — do NOT over-split.
+  2. FREEZE COMMIT (spec-paths ONLY): write tests/write_path_semantics_doc.rs implementing ADR 0025 §3
+     (a)+(b)+(c)+(d) using the arch.md required-field list + canary asserts VERBATIM. It MUST compile and
+     FAIL now (doc absent ⇒ read_to_string Err ⇒ RED). GOTCHA: runtime std::fs::read_to_string(concat!(
+     env!("CARGO_MANIFEST_DIR"), "/docs/write-path-semantics.md")), NEVER include_str! (absent-file =
+     compile error, which would violate "spec must compile and FAIL"). This commit's hash = spec-rev.
+  3. RECORD COMMIT (metadata only): tasks/01.md frontmatter — status: todo, attempts: 0,
+     verify: `cargo test --test write_path_semantics_doc`, spec-paths: [tests/write_path_semantics_doc.rs],
+     impl-paths: [docs/write-path-semantics.md], spec-rev: <freeze hash>. Assert spec-paths ∩ impl-paths = ∅.
+     Advance current.json.stage=task. full-verify stays [cargo build, cargo test].
+  4. Add a `## Freeze coverage` section to the card: FROZEN = doc exists + required-token coverage +
+     tier markers + default-canary pin; REVIEW MUST READ = the SEMANTIC truth of each row's
+     reference-semantics/boundary columns + that ⚠️ rows carry a runnable probe recipe (not machine-checkable).
+Feature gotchas (project-specific traps the next node MUST know):
+  - DOC-ONLY: impl writes docs/write-path-semantics.md (Markdown), NOT src/. The frozen test greens when
+    the doc is complete. Do NOT freeze anything in src/ib/trade.rs — it does not change (D6).
+  - read_to_string, NOT include_str! (see step 2) — the single most likely mistake.
+  - Card verify is card-scoped (`--test write_path_semantics_doc`), never the full suite (CONTRACT multi-card rule),
+    though this feature has one card.
+  - Trunk suite goes RED from the freeze commit until impl merges — expected (one feature in flight, no CI).
+  - branch is `main`. SKILL-PROPOSAL (carry forward, do NOT act): reference-behavior subsection required for
+    write cards, via pipeline-improve — not this feature.
+Done when: freeze commit (RED test) + record commit (card + stage) on trunk; spec-rev recorded on the card.
+On success: current.json.stage=task, then run pipeline-impl. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
