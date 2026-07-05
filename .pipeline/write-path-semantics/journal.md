@@ -492,3 +492,27 @@ Hard rules:
   - Do NOT force-push trunk/shared refs.
   - Do NOT skip review-NN, card→done, current.json.stage=done, or the final journal entry after merge.
 <<< END
+
+## seq=10 · 2026-07-05T06:07:41Z · review→done · completed · by=claude (orchestrator)
+done:   HUMAN CONFIRM received (operator: "merge PR #22"). PR #22 squash-merged as 30e3e0a
+        ("impl(write-path-semantics): reference-behavior audit doc (#22)"); feat branch deleted.
+        Pre-merge re-check: PR head unmoved from review baseline 846e719; squash content =
+        docs/write-path-semantics.md ONLY (+121) via merge-base 845f2e0..846e719 (the
+        gh-pr-diff tasks/01.md entry was a stale-card two-dot artifact, not merged). Freeze gate
+        empty (0 bytes). Post-merge trunk: frozen test write_path_semantics_doc RED→GREEN (4/4);
+        FULL suite 224 passed / 0 failed across 28 binaries (was 220 + 4 new). Card 01 done;
+        stage=done. Feature write-path-semantics COMPLETE — the Reference-Port audit doc is on
+        trunk as a test-guarded living artifact (anti-rot serde-diff + transmit default-canary).
+output: trunk 30e3e0a (PR #22), docs/write-path-semantics.md, .pipeline/write-path-semantics/* (feature closed)
+--- handoff ---
+>>> NEXT
+Feature write-path-semantics DONE. No next stage.
+Outstanding (NOT blocking; operator-owned, both recorded across this feature):
+  1. SKILL-PROPOSAL (D1, /think Step 2): make a "reference-behavior" field-semantics subsection REQUIRED
+     for any write-path card before its red test freezes. Route via pipeline-improve against
+     jackypanster/pipeline (a gated skill-diff PR), NOT an oh-my-ib feature. Not yet opened.
+  2. Deferred paper probes (D2): run the 4 ⚠️ risk-register recipes in docs/write-path-semantics.md on
+     :4002 during a live US session (combo net-credit sign ×N, display_size=Some(0)); each ⚠️ that
+     confirms flips to ✅ with a date, each that refutes opens a fix feature (D6). A one-doc edit,
+     no pipeline stage needed.
+<<< END
