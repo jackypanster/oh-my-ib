@@ -109,3 +109,48 @@ Feature gotchas (project-specific traps the next node MUST know):
 Done when: freeze commit (RED test) + record commit (card + stage) on trunk; spec-rev recorded on the card.
 On success: current.json.stage=task, then run pipeline-impl. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-05T03:52:43Z · task→impl · completed · by=claude (orchestrator)
+done:   Froze the spec in TWO commits (CONTRACT §Test ownership). FREEZE COMMIT
+        1549375611870e690e1a6717df63de515b5691d5 = spec-rev: tests/write_path_semantics_doc.rs,
+        verified COMPILES + FAILS (3 red: doc absent; 1 green: the default-canary, by design).
+        RECORD COMMIT (this one): tasks/01.md (status=todo, spec-paths=[the test],
+        impl-paths=[docs/write-path-semantics.md], disjoint ✓) + stage=task. One card.
+        Task-author refinement of arch's advisory (c): the anti-rot scan is a reflection-free
+        serde-diff of builder OUTPUT vs Order::default() (Order serializes plain field names, no
+        rename) — robust where a trade.rs source regex is fragile; catches the same class (a new
+        builder-set field nobody documented). full-verify unchanged [cargo build, cargo test].
+output: .pipeline/write-path-semantics/tasks/01.md, current.json; spec-rev 1549375 (tests/write_path_semantics_doc.rs)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — this card writes ONE Markdown doc, no Rust logic.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — impl needs no gateway, skip).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first authoring; read FIRST)
+  - .pipeline/write-path-semantics/tasks/01.md — THE CARD: what to write, the row/tier/probe guidance, Freeze coverage
+  - .pipeline/write-path-semantics/docs/adr/0025-write-path-semantics-doc.md — the doc schema (§1) + freeze design
+  - .pipeline/write-path-semantics/PRD.md + CONTEXT.md — decisions D1-D6 + glossary
+  - tests/write_path_semantics_doc.rs — the FROZEN spec you must green (do NOT edit it)
+  - src/ib/trade.rs — READ ONLY: the builders/fields the doc audits (do NOT modify — D6)
+  - ibapi-3.1.0/src/orders/mod.rs:478 (Default) + contracts/builders.rs — reference values to cite (📖)
+Your task (concrete, numbered):
+  1. Cut feat/write-path-semantics from trunk (carries spec-rev 1549375).
+  2. Write docs/write-path-semantics.md per tasks/01.md: 7-col table (~15-20 rows) + `## ⚠️ Risk register`
+     with a runnable probe recipe per ⚠️ row. account=✅ (cite order-account-stamp probe); combo net-credit
+     + display_size=Some(0) = ⚠️ with recipes; the rest 📖 with ibapi/IB citations.
+  3. Green the card: `cargo build` && `cargo test --test write_path_semantics_doc` all pass. The serde-diff
+     test (c) passes once every builder-set field has a row; (b) once every required token is present.
+  4. Edit ONLY docs/write-path-semantics.md (impl-paths). Do NOT touch tests/write_path_semantics_doc.rs
+     (spec freeze gate) or any src/ file (D6). Open the PR.
+Feature gotchas:
+  - impl-paths = docs/write-path-semantics.md ONLY. Touching the frozen test or src/ = a freeze-gate reject.
+  - A field value you think is WRONG ⇒ register a ⚠️ row, do NOT fix code (D6 — separate feature).
+  - The ⚠️ probes are DEFERRED (D2): write the recipes, do NOT run them (need live :4002 US session).
+  - Doc must satisfy the serde-diff (c): if unsure which fields the builders set, run the test and read the
+    failure — it NAMES the undocumented field.
+  - branch main; only pipeline-review merges (human-confirmed).
+Done when: cargo test --test write_path_semantics_doc GREEN on feat/write-path-semantics; PR open.
+On success: current.json.stage=impl, then run pipeline-review. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
