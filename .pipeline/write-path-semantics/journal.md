@@ -330,3 +330,52 @@ Done when: full-verify GREEN on the branch; semantic review passes (review-01 re
 On success: trunk GREEN; feature complete. On failure: review rejects with reasons; attempts++ (currently 1);
 attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-07-05T13:33:51Z · review→impl · failed · by=codex-reviewer
+done:   review-02 CHANGES REQUESTED for PR #22 / feat/write-path-semantics tip 013e84d.
+        Freeze gate PASS (spec-rev 1549375..tip over tests/write_path_semantics_doc.rs empty);
+        net PR diff only adds docs/write-path-semantics.md; detached PR-head full-verify PASS
+        (`cargo build`, `cargo test`). review-01 command-shape findings are resolved:
+        no `--paper`, YYYYMMDD expiries, and all probe commands parse through to dead-port
+        connection envelopes. Blocking finding: combo probe still has wrong live semantics.
+        IBKR documents whole-combo action as multiplying/inverting leg actions, but the doc's
+        "SELL-credit per IBKR" recipe uses `--action sell` with `SELL lower / BUY higher`, so it
+        probes the inverse effective spread rather than the stated credit spread. Card 01
+        review→todo, attempts 1→2.
+output: .pipeline/write-path-semantics/reviews/review-02.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session for the write-path-semantics review-02 rejection.
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/write-path-semantics pr=#22
+Model: capable-local OK for the focused Markdown retry; frontier SOTA recommended if unsure about combo semantics.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — impl needs no gateway).
+Read for context:
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; no secrets)
+  - .pipeline/write-path-semantics/reviews/review-02.md — blocking finding and passed evidence
+  - .pipeline/write-path-semantics/reviews/review-01.md — prior findings, now mostly resolved
+  - .pipeline/write-path-semantics/tasks/01.md — card 01 now todo, attempts=2; impl-paths still docs/write-path-semantics.md only
+  - docs/write-path-semantics.md on feat/write-path-semantics — the doc to fix
+  - tests/write_path_semantics_doc.rs and tests/option_combo_command.rs — frozen specs; do NOT edit
+  - src/ib/trade.rs — read-only: build_combo_order stores whole-order action plus per-leg actions
+Your task:
+  1. On feat/write-path-semantics, edit ONLY docs/write-path-semantics.md.
+  2. Keep review-01 fixes intact: no `omi --paper`, use YYYYMMDD expiries, paper is default :4002.
+  3. Fix the combo credit probe semantics. Document that `Order.action` is the whole-combo side and
+     IBKR explains combo action as multiplying/inverting leg actions. Then use coherent probes:
+     - BUY credit spread: `--action buy` + `SELL lower / BUY higher` + negative limit.
+     - SELL spread for credit: use the opposite leg vector (`BUY lower / SELL higher`) with
+       `--action sell` + positive limit.
+     The recipe must name the effective position it creates; do not label `--action sell` +
+     `SELL lower / BUY higher` as SELL-credit.
+  4. Re-run card verify (`cargo build`, `cargo test --test write_path_semantics_doc`) and full verify
+     (`cargo build`, `cargo test`), then set card 01 back to review, append journal seq=8, push branch
+     + trunk metadata, and hand off to pipeline-review.
+Feature gotchas:
+  - attempts is now 2. A third review rejection blocks this card and routes to pipeline-hunt, so keep the
+    retry narrow and grounded in IBKR docs + local `build_combo_order` behavior.
+  - DOC-ONLY feature: no `src/` changes and no frozen test edits. Code/help-string fixes are separate features (D6).
+  - The frozen doc test is structural; the combo risk-register semantics are review-by-reading.
+Done when: docs/write-path-semantics.md has coherent combo probe semantics, full verify is green,
+card 01 is back to review with attempts still 2, journal seq=8 is pushed, and pipeline-review can rerun.
+On failure: attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
