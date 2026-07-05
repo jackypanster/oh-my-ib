@@ -1,9 +1,8 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "order-preview",
-  "stage": "done",
-  "pr": "https://github.com/jackypanster/oh-my-ib/pull/23",
+  "feature": "preview-readonly",
+  "stage": "prd",
   "full-verify": [
     "cargo build",
     "cargo test"
