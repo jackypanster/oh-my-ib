@@ -216,3 +216,51 @@ Done when: full-verify GREEN on the branch; semantic review passes; human confir
 On success: trunk GREEN (freeze red cleared); feature complete. On failure: review rejects with reasons;
 re-route to pipeline-impl (attempts<3) or pipeline-hunt (>=3 blocked).
 <<< END
+
+## seq=5 · 2026-07-05T05:12:13Z · review→impl · failed · by=codex-reviewer
+done:   review-01 CHANGES REQUESTED for PR #22 / feat/write-path-semantics tip 5364482.
+        Freeze gate PASS (spec-rev 1549375..tip over tests/write_path_semantics_doc.rs empty);
+        net PR diff only adds docs/write-path-semantics.md; detached PR-head full-verify PASS
+        (`cargo build`, `cargo test`). Blocking findings: (1) both ⚠️ probe recipes use
+        `omi --paper`, but the CLI has no --paper flag, so the recipes fail at argument parsing;
+        (2) combo net-limit row/probe flatten IBKR's action-relative combination pricing into
+        "negative = credit" and use `--action sell --limit -0.05`, conflicting with IBKR's
+        documented sell-credit positive-price convention. Card 01 review→todo, attempts 0→1.
+output: .pipeline/write-path-semantics/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session for the write-path-semantics review-01 rejection.
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/write-path-semantics pr=#22
+Model: capable-local OK for the focused Markdown retry; use frontier SOTA if changing combo semantics.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — impl needs no gateway).
+Read for context:
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; no secrets; review owns metadata)
+  - .pipeline/write-path-semantics/reviews/review-01.md — blocking findings and passed evidence
+  - .pipeline/write-path-semantics/tasks/01.md — card 01 now todo, attempts=1; impl-paths still docs/write-path-semantics.md only
+  - docs/write-path-semantics.md on feat/write-path-semantics — the doc to fix
+  - tests/write_path_semantics_doc.rs — frozen spec; do NOT edit
+  - src/cli.rs — CLI surface: paper is default, --live selects live; there is no --paper
+  - src/ib/trade.rs — write-path source, read-only cross-check
+Your task:
+  1. On feat/write-path-semantics, edit ONLY docs/write-path-semantics.md.
+  2. Replace invalid `omi --paper ...` probe commands with valid paper commands: plain `omi ...`
+     (default :4002) or explicit `omi --port 4002 ...`; ensure every ⚠️ recipe is copy-paste runnable.
+  3. Correct combo net-limit semantics: IBKR/TWS combination-order pricing is action-relative.
+     Buying a credit spread uses a negative limit; selling a spread and receiving cash uses a
+     positive limit. Keep Tiger-specific acceptance as ⚠️ if unprobed, but do not state the
+     global "negative = credit" rule as reference semantics.
+  4. Adjust the combo probe accordingly: either test a BUY credit spread with a negative limit, or
+     test a SELL credit spread with a positive limit. If testing the current `--action sell --limit -0.05`
+     behavior, label it as a suspected divergence from IBKR docs.
+  5. Re-run card verify (`cargo build`, `cargo test --test write_path_semantics_doc`) and full verify
+     (`cargo build`, `cargo test`), then set card 01 back to review, append the next journal entry,
+     push branch + trunk metadata, and hand off to pipeline-review.
+Feature gotchas:
+  - DOC-ONLY feature: no `src/` changes and no frozen test edits. A code fix is a separate feature (D6).
+  - The frozen doc test will pass even if the probe recipe is not runnable; review-01 is a semantic
+    reviewed-by-reading rejection.
+  - `omi --help` is the source of truth for CLI flags; paper is the default gateway port 4002.
+Done when: docs/write-path-semantics.md is fixed on PR #22, card verify + full suite are green,
+card 01 is back to review with attempts still 1, journal seq=6 is pushed, and pipeline-review can rerun.
+On failure: attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
