@@ -379,3 +379,85 @@ Done when: docs/write-path-semantics.md has coherent combo probe semantics, full
 card 01 is back to review with attempts still 2, journal seq=8 is pushed, and pipeline-review can rerun.
 On failure: attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=8 · 2026-07-05T13:50:00Z · impl · completed · by=claude (pipeline-impl)
+done:   Review-02 fix applied. Edited ONLY docs/write-path-semantics.md on
+        feat/write-path-semantics (commit 846e719, PR #22 updated). Three concrete
+        fixes (one finding, two supporting clarifications):
+        (1) action row: added an explicit combo scalar-vector note to the boundary
+            column — Order.action multiplies each ComboLeg.action (--action buy keeps
+            leg actions as-written; --action sell INVERTS them). This is the IBKR
+            TWS combo-lesson semantics the prior version was missing.
+        (2) credit row: rewrote the IBKR reference-semantics cell to spell out the
+            scalar-vector interaction concretely for a call credit spread (L<H):
+            BUY-credit = --action buy + SELL L / BUY H + negative limit (effective
+            legs unchanged); SELL-credit = --action sell + BUY L / SELL H + positive
+            limit (effective legs inverted to SELL L / BUY H). Flagged omi's
+            cli.rs:236 'negative = credit' help string as a simplification that
+            ignores BOTH the action-relative sign AND the scalar-vector leg inversion.
+        (3) Risk register: rewrote the combo entry as THREE structurally coherent
+            probes on the same call credit spread (L=240, H=250), each NAMING the
+            effective position it actually creates under the IBKR scalar-vector model:
+              - probe 1 BUY-credit per IBKR (--action buy + SELL 240 / BUY 250 + -0.05)
+                → effective legs unchanged = bear call = credit spread, bought. Matches
+                the frozen test negative_net_limit_is_a_credit_and_builds build shape.
+              - probe 2 SELL-credit per IBKR (--action sell + BUY 240 / SELL 250 + 0.05)
+                → effective legs re-inverted to SELL 240 / BUY 250 = same credit spread, sold.
+              - probe 3 divergence probe (--action sell + BUY 240 / SELL 250 + -0.05, omi
+                help-string literal) → credit-spread legs sold under a SELL-debit sign per
+                IBKR; if Tiger rejects/reprices this where probe 2 was accepted, omi's
+                help-string simplification is a confirmed divergence.
+            Added a 'reading the triplet' paragraph mapping outcome combinations to which
+            convention Tiger follows. The mislabelled `--action sell + SELL 240 / BUY 250`
+            recipe (effective bull-call DEBIT sold) is gone.
+        VERIFY card-scoped: cargo build ✓; cargo test --test write_path_semantics_doc
+        ⇒ 4/4 pass. attempts stays 2. Probes still DEFERRED (D2). Code unchanged (D6):
+        build_combo_order still stores Order.action and ComboLeg.action independently
+        (trade.rs:563,574); the scalar-vector interpretation is a gateway-semantics
+        question the doc now states and the probes isolate.
+output: docs/write-path-semantics.md (commit 846e719 on feat/write-path-semantics, PR #22); .pipeline/write-path-semantics/tasks/01.md (status=review), .pipeline/current.json (stage=impl)
+--- handoff ---
+>>> NEXT
+Feature write-path-semantics has ONE card; it is back to status=review after the
+        review-02 fixes. NO todo/in-progress cards remain ⇒ run pipeline-review ONCE on the complete feature.
+        attempts is 2 — a third semantic rejection blocks this card and routes to pipeline-hunt.
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/write-path-semantics pr=#22
+Model: frontier SOTA recommended (review is a reasoning stage; the combo scalar-vector semantics are subtle).
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — review needs no gateway, skip).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; write code ONLY in src/ib/trade.rs)
+  - .pipeline/write-path-semantics/reviews/review-01.md + review-02.md — the two prior rejections
+  - .pipeline/write-path-semantics/journal.md seq=7 (review-02 rejection) + seq=8 (this fix) — what changed and why
+  - .pipeline/write-path-semantics/docs/adr/0025-write-path-semantics-doc.md — §4 "Freeze coverage" = the review checklist
+  - .pipeline/write-path-semantics/tasks/01.md — the card (impl-paths, Freeze coverage)
+  - tests/write_path_semantics_doc.rs + tests/option_combo_command.rs — frozen specs; do NOT edit
+  - docs/write-path-semantics.md — the deliverable under review
+  - src/cli.rs (cli.rs:236 help string) + src/ib/trade.rs (build_combo_order:563,574) — READ ONLY cross-check
+Your task (concrete, numbered):
+  1. Diff feat/write-path-semantics against main: expect EXACTLY one new file (docs/write-path-semantics.md).
+     Any src/ or tests/ change ⇒ freeze-gate reject (impl-paths = the doc ONLY, D6).
+  2. Confirm review-02 finding is RESOLVED: the combo probe pair (now a triplet) uses leg vectors
+     COHERENT with the whole-order action under the IBKR scalar-vector model. Each probe NAMES the
+     effective position it creates:
+     - probe 1 BUY-credit: --action buy + SELL L / BUY H + negative limit → effective unchanged.
+     - probe 2 SELL-credit: --action sell + BUY L / SELL H + positive limit → effective re-inverted.
+     - probe 3 divergence: --action sell + BUY L / SELL H + negative limit → SELL-debit sign on credit legs.
+     No recipe pairs --action sell with SELL lower / BUY higher legs labeled as SELL-credit.
+  3. SEMANTIC review (ADR 0025 §4): each row's reference-semantics and boundary columns are TRUE;
+     tier assignments HONEST; every ⚠️ row carries a runnable probe with YYYYMMDD expiry and the
+     correct paper invocation shape (plain `omi ...`, default :4002).
+  4. Run full-verify (cargo build && cargo test) on the branch — the final freeze gate.
+  5. Human-confirm the merge. Only pipeline-review merges.
+Feature gotchas:
+  - The combo scalar-vector model is the subtle point: Order.action is a scalar that IBKR multiplies
+    into each ComboLeg.action; --action sell inverts the leg vector. omi's code stores both fields
+    independently (trade.rs:563,574) and passes them through — the doc now states this, the probes
+    isolate Tiger's interpretation. A code/help-string fix is a separate feature (D6).
+  - The frozen doc test passes structurally; the SEMANTIC truth of the combo section is what rejected
+    seq=6 and what must pass now.
+  - account is stamped post-build (place_with_client, trade.rs:317) — covered by required-token (b) + review.
+Done when: full-verify GREEN on the branch; semantic review passes (review-02 resolved); human confirms ⇒ merge PR #22.
+On success: trunk GREEN; feature complete. On failure: review rejects with reasons; attempts++ (currently 2);
+attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
