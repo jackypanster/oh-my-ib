@@ -264,3 +264,69 @@ Done when: docs/write-path-semantics.md is fixed on PR #22, card verify + full s
 card 01 is back to review with attempts still 1, journal seq=6 is pushed, and pipeline-review can rerun.
 On failure: attempts++; attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-05T13:25:00Z · impl · completed · by=claude (pipeline-impl)
+done:   Review-01 fixes applied. Edited ONLY docs/write-path-semantics.md on
+        feat/write-path-semantics (commit 013e84d, PR #22 updated). Three concrete
+        fixes (review found 2, expiry-format was a 3rd discovered while fixing):
+        (1) Dropped the non-existent `--paper` flag from every probe recipe. Paper
+            is the DEFAULT gateway port :4002 (cli.rs:28-33, config.rs:12); live is
+            opt-in via --live. Recipes now use plain `omi ...`.
+        (2) Fixed the expiry format in both recipes: `20260918` (YYYYMMDD), not the
+            dashed `2026-09-18` form, which is a frozen usage error
+            (option-orders::dashed_expiry_is_usage_error).
+        (3) Rewrote the combo `credit` row: IBKR TWS "Notes on Combination Orders"
+            defines the net-limit sign ACTION-RELATIVE — selling a credit spread
+            takes a POSITIVE limit, only BUYing a credit spread takes a negative
+            one. The prior "negative = credit" was a flattening. Flagged omi's
+            CLI help string `--limit ... negative = credit` (cli.rs:236) as a
+            SIMPLIFICATION that misleads for SELL-action combos. Kept Tiger's
+            enforcement + the help-string divergence as ⚠️. The probe now tests
+            BOTH coherent pairings (positive-limit SELL per IBKR vs negative-limit
+            SELL per omi's help string) so the operator can distinguish the two
+            hypotheses. Did NOT change cli.rs or trade.rs (D6 — separate feature).
+        VERIFY card-scoped: cargo build ✓; cargo test --test write_path_semantics_doc
+        ⇒ 4/4 pass. attempts stays 1 (rejection didn't reset it; this is the same
+        card's successful retry within budget). Probes still DEFERRED (D2).
+output: docs/write-path-semantics.md (commit 013e84d on feat/write-path-semantics, PR #22); .pipeline/write-path-semantics/tasks/01.md (status=review), .pipeline/current.json (stage=impl)
+--- handoff ---
+>>> NEXT
+Feature write-path-semantics has ONE card; it is back to status=review after the
+        review-01 fixes. NO todo/in-progress cards remain ⇒ run pipeline-review ONCE on the complete feature.
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/write-path-semantics pr=#22
+Model: frontier SOTA recommended (review is a reasoning stage; the combo sign semantics are subtle).
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — review needs no gateway, skip).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; write code ONLY in src/ib/trade.rs)
+  - .pipeline/write-path-semantics/reviews/review-01.md — the prior rejection (2 findings)
+  - .pipeline/write-path-semantics/journal.md seq=5 (review rejection) + seq=6 (this fix) — what changed and why
+  - .pipeline/write-path-semantics/docs/adr/0025-write-path-semantics-doc.md — §4 "Freeze coverage" = the review checklist
+  - .pipeline/write-path-semantics/tasks/01.md — the card (impl-paths, Freeze coverage, Review 01 rejection — required fixes)
+  - tests/write_path_semantics_doc.rs — the FROZEN spec (4 guards; do NOT edit)
+  - docs/write-path-semantics.md — the deliverable under review (the diff is this one file vs main)
+  - src/cli.rs + src/ib/trade.rs — READ ONLY cross-check for the doc's CLI/sign citations
+Your task (concrete, numbered):
+  1. Diff feat/write-path-semantics against main: expect EXACTLY one new file (docs/write-path-semantics.md).
+     Any src/ or tests/ change ⇒ freeze-gate reject (impl-paths = the doc ONLY, D6).
+  2. Confirm review-01 findings are RESOLVED: (a) no `omi --paper` anywhere — recipes use plain `omi ...`
+     on the default :4002; (b) the combo `credit` row states IBKR's ACTION-RELATIVE convention (not a
+     global "negative = credit"), and the probe tests coherent action/sign pairings.
+  3. SEMANTIC review (ADR 0025 §4): for EACH row, the reference-semantics and boundary columns are TRUE;
+     tier assignments are HONEST (every 📖 has a real citation, ✅ a real probe, ⚠️ a real gap + recipe).
+  4. Every ⚠️ row (display_size=Some(0), combo net-credit sign) carries a RUNNABLE probe recipe on :4002
+     with YYYYMMDD expiry and the correct paper invocation shape. Probes are deferred (D2) — review
+     confirms the recipe is runnable, NOT that it was run.
+  5. Run full-verify (cargo build && cargo test) on the branch — the final freeze gate.
+  6. Human-confirm the merge. Only pipeline-review merges.
+Feature gotchas:
+  - The combo sign semantics are the subtle point: IBKR is action-relative (SELL-credit = positive
+    limit); omi's CLI help string `negative = credit` (cli.rs:236) is a simplification that only holds
+    for BUY-action combos. The doc now flags this; a code/help-string fix is a separate feature (D6).
+  - The frozen doc test passes structurally (doc exists + tokens + serde-diff + canary); the SEMANTIC
+    truth of each row is review-by-reading — that is what rejected seq=4 and what must pass now.
+  - account is stamped post-build (place_with_client, trade.rs:317) — covered by required-token (b) + review.
+Done when: full-verify GREEN on the branch; semantic review passes (review-01 resolved); human confirms ⇒ merge PR #22.
+On success: trunk GREEN; feature complete. On failure: review rejects with reasons; attempts++ (currently 1);
+attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
