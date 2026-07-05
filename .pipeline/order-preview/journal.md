@@ -34,3 +34,47 @@ Feature gotchas (project-specific traps):
 Done when: arch.md + CONTEXT.md exist, decision-complete; current.json.stage=arch; journal seq=2 appended. On success: run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-05T13:32:52Z · arch→task · completed · by=claude (cc)
+done:   Architecture decision-complete. No arch-level human grill needed — the 3 PRD decisions are
+        human-confirmed and every ⚠️assumed row settled by code (config/dispatch/ibapi-OrderState
+        all read). Chosen shape: branch to a non-transmitting whatIf placement AT the placement
+        call-site (AFTER require_live_write_gate) so the real transmit path stays byte-identical and
+        the gate is reused unchanged (gate == real order by construction). Two new seams in
+        src/ib/trade.rs: shape_preview(&Contract,&Order,&OrderState)->Value (pure FROZEN, mirrors the
+        ack seam at trade.rs:51; OrderState derives Default+pub fields so it's a real-value literal,
+        not a mock) and preview_with_client (gateway fn, review-by-reading). Flag plumbs
+        GlobalOpts.preview→Config.preview; main.rs unchanged. ADR 0026 records it (0025 was taken by
+        write-path-semantics). Tiger what_if premise tabled as R1/R2 risk register in CONTEXT.md —
+        NOT frozen (live-acceptance only).
+output: .pipeline/order-preview/arch.md, .pipeline/order-preview/CONTEXT.md,
+        .pipeline/order-preview/docs/adr/0026-order-preview-whatif.md, .pipeline/current.json (stage=arch)
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/order-preview pr=none
+Model: frontier SOTA required.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (write code ONLY in src/ib/trade.rs; no mocks). Read FIRST.
+  - .pipeline/order-preview/PRD.md — what.
+  - .pipeline/order-preview/arch.md — how: the branch shape, component boundaries, the two seams, the freeze boundary (task→gate).
+  - .pipeline/order-preview/CONTEXT.md — glossary + R1/R2 reference-behavior risk register (Tiger what_if — NOT frozen).
+  - .pipeline/order-preview/docs/adr/0026-order-preview-whatif.md — the binding decision.
+Your task (concrete, numbered):
+  1. Decompose into atomic landable card(s). Likely ONE card (cohesive: flag plumb + branch + shape_preview + wire all 6 verbs) — split only if a clean red-test boundary justifies it.
+  2. Freeze the RED tests over spec-paths (ONE freeze commit, must compile + FAIL). Freeze EXACTLY the arch.md §Freeze boundary FROZEN set:
+       a. `--preview` parses on all 6 verbs → dead-port connection envelope (black-box assert_cmd; mirror existing tests/ write-path parse tests).
+       b. Config.preview merge unit (g.preview → cfg.preview).
+       c. order.what_if==true after the preview transform; ==false on the real path.
+       d. shape_preview exact envelope + OrderState→key mapping + Option::None→JSON null, built from real (Contract,Order) via the builders + a constructed OrderState{..Default::default()} literal.
+  3. Do NOT freeze gateway behavior (R1/R2): that Tiger returns margin under what_if and does not transmit is review-by-reading + operator live-acceptance. Record this in the card's `## Freeze coverage` (frozen: flag/shape/what_if-flag; review-must-read: preview_with_client gateway wiring + no-transmit).
+  4. Record spec-paths ∩ impl-paths = ∅; impl-paths = src/** (trade.rs branch + seams, cli.rs flag, config.rs field). Set current.json.full-verify = ["cargo build","cargo test"] (already set). Advance current.json.stage=task. Append journal seq=3.
+Feature gotchas:
+  - shape_preview is the ONLY meaningful FROZEN correctness surface (a pure crate exists via lib.rs, so tests/ CAN reach it — NOT a pure-binary case). Freeze it hard.
+  - Keep the real transmit path byte-identical — a frozen test should assert what_if==false on a normal buy/sell so impl can't regress it.
+  - ADR next free number was 0026 (0025 taken). Gate stays identical to a real order — do NOT freeze any test that implies preview is ungated/read-shaped.
+  - Metadata + the red test commit straight to trunk (main); feat/order-preview is cut by impl.
+Done when: cards + frozen RED tests exist (compile+fail); spec-rev recorded on every card; current.json.stage=task; journal seq=3. On success: run pipeline-impl (coder = π / GLM-5.2).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
