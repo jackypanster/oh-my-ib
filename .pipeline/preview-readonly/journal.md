@@ -181,3 +181,26 @@ Done when: review passes the freeze + containment + impl-shape checks; green gat
 explicit human confirm; then MERGE (only pipeline-review merges). On reject: card 01 status←todo,
 attempts++, journal seq=5; >=3 ⇒ pipeline-hunt.
 <<< END
+
+
+## seq=5 · 2026-07-05T16:09:43Z · review→review · completed · by=codex
+done:   Review PASS was written to .pipeline/preview-readonly/reviews/review-01.md. Freeze gate was empty
+        against spec-rev 5dce9574; containment confirmed the preview path calls no place_order;
+        cargo build, cargo clippy --all-targets -- -D warnings, and cargo test passed at PR head df43bd1.
+output: .pipeline/preview-readonly/reviews/review-01.md; PR #24 awaiting explicit operator merge confirmation
+--- handoff ---
+>>> NEXT
+Operator confirmed merge; pipeline-review proceeds to squash-merge PR #24 and close the feature.
+<<< END
+
+
+## seq=6 · 2026-07-05T16:09:43Z · review→done · completed · by=codex
+done:   Operator merge confirmation received. PR #24 was squash-merged into main and branch
+        feat/preview-readonly was deleted. Card 01 marked done; current.json.stage set to done.
+output: PR #24 https://github.com/jackypanster/oh-my-ib/pull/24;
+        squash-merge 8be87cbaf4e30e60d95d81fe2905dba3433fd8be;
+        .pipeline/preview-readonly/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Feature preview-readonly is done. No next pipeline stage.
+<<< END
