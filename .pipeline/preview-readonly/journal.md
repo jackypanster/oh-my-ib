@@ -121,3 +121,63 @@ Feature gotchas:
 Done when: cargo test --test order_preview_command green + full suite green + clippy clean; PR open; card 01 status=review; journal seq=4. On success: run pipeline-review (reviewer = codex / gpt-5.5, writer≠reviewer).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+
+## seq=4 · 2026-07-05T16:02:00Z · impl→review · completed · by=π (GLM-5.2)
+done:   Card 01 IMPL complete on feat/preview-readonly (1 commit, PR #24). Re-frozen
+        tests/order_preview_command.rs GREEN 12/12; full suite 236/236 (29 suites);
+        cargo build clean; cargo clippy --all-targets -D warnings clean. Single-file diff
+        (src/ib/trade.rs, +127/-88); tests/ untouched; mod.rs unchanged (re-export by name).
+        shape_preview rewritten to the 4-arg read-only signature (Value contract, &Order,
+        multiplier, ccy) → 8-key envelope (preview/transmits:false/action/contract/order/
+        notional/notional_currency/note); NO what_if/margin/commission/status. preview_with_client
+        (place_order+what_if) REMOVED; replaced with preview_stk_option (client.contract_details
+        READ → contract JSON → shape_preview; NO place_order). Read-shaped gate: place_core
+        branches preview BEFORE require_live_write_gate; combo/close gate conditional
+        (!cfg.preview) + preview arms shape from already-resolved conids. Real arms unchanged.
+        CONTAINMENT verified by grep: .place_order( ONLY at place_with_client:371 (real arm);
+        .cancel_order( ONLY at cancel:319; the preview path has ZERO place_order calls — the
+        safety property is structural, not a bet on gateway behavior.
+output: PR #24 (feat/preview-readonly → main, NOT merged), commit df43bd1,
+        .pipeline/preview-readonly/tasks/01.md (status=review), .pipeline/current.json (stage=review)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session. REVIEWER = codex (gpt-5.5); writer ≠ reviewer.
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/preview-readonly pr=24
+Model: frontier SOTA reviewer.
+First: git pull --rebase; load repo config (.env if present).
+Read for context (before reviewing):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — containment (place_order/cancel_order ONLY in trade.rs);
+    the read-only preview adds NO write calls. Read FIRST.
+  - .pipeline/preview-readonly/tasks/01.md — the card (verify, spec-paths, impl-paths, spec-rev,
+    exact impl guidance, ## Freeze coverage).
+  - .pipeline/preview-readonly/arch.md §Component changes — the change table to diff against.
+  - .pipeline/preview-readonly/CONTEXT.md — R1 REFUTED (Tiger transmits whatIf); read-shaped gate;
+    containment (no place_order in preview — THE safety property).
+  - .pipeline/preview-readonly/docs/adr/0027-preview-readonly-no-transmit.md — binding decision.
+  - tests/order_preview_command.rs — the re-frozen spec (spec-rev 5dce9574; assertions freeze the
+    read-only envelope + notional + read-shaped-gate + real-path-still-gated + help).
+Your review (concrete, numbered):
+  1. Enforce the spec freeze: confirm the frozen ASSERTIONS in tests/order_preview_command.rs are
+     byte-identical to spec-rev 5dce9574. NO tests/ changes in this PR (impl-paths only).
+  2. THE SAFETY PROPERTY — containment: grep `.place_order(` in src/ib/trade.rs. MUST appear ONLY
+     at place_with_client (the real arm choke point, ~line 371). The preview path (preview_stk_option
+     + combo/close preview arms) must have ZERO place_order calls. Any place_order in preview is a
+     REVIEW-BLOCKER (R1 refuted — whatIf transmits on Tiger). This is the whole point of the feature.
+  3. Diff impl against arch.md §Component changes: shape_preview new signature (no OrderState);
+     preview_with_client REMOVED; preview_stk_option = contract_details READ + shape_preview (no
+     place_order); read-shaped gate (preview branches BEFORE require_live_write_gate in place_core;
+     combo/close gate conditional).
+  4. Confirm the REAL path still gates: buy/sell --live without OMI_ALLOW_LIVE ⇒ config (frozen
+     real_buy_on_live_without_env_is_still_config_error + real_sell_..._config_error pass). The real
+     arm calls require_live_write_gate unchanged.
+  5. Reproduce the green gate on the branch: cargo build; cargo clippy --all-targets -- -D warnings;
+     cargo test. All must pass.
+  6. NOT frozen (do NOT block review on these — cc live-acceptance only): the contract_details wiring;
+     the read-shaped gate on the LIVE port (--live --preview without env reaches connect, not config);
+     and the R1-fix acceptance: OMI_ALLOW_LIVE-unset \`omi --live buy AAPL 1 --limit 1 --preview\`
+     returns the resolved envelope AND \`omi --live orders\` is EMPTY.
+Done when: review passes the freeze + containment + impl-shape checks; green gate reproduced;
+explicit human confirm; then MERGE (only pipeline-review merges). On reject: card 01 status←todo,
+attempts++, journal seq=5; >=3 ⇒ pipeline-hunt.
+<<< END
