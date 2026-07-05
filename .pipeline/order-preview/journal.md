@@ -78,3 +78,46 @@ Feature gotchas:
 Done when: cards + frozen RED tests exist (compile+fail); spec-rev recorded on every card; current.json.stage=task; journal seq=3. On success: run pipeline-impl (coder = π / GLM-5.2).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-05T13:43:29Z · task→impl · completed · by=claude (cc)
+done:   ONE atomic card (cohesive: flag + branch + shape_preview + wire 6 verbs). Froze the RED spec
+        tests/order_preview_command.rs in the freeze commit (spec-rev f8999954...); verbatim-compile
+        pre-check PASSED (scratch-stubbed shape_preview, `cargo test --no-run` clean → no masked
+        body errors), scratch deleted. Real spec confirmed RED via exactly one unresolved symbol
+        (oh_my_ib::ib::shape_preview). Frozen surface: shape_preview 9-key envelope + None→null +
+        real-path what_if==false + --preview accepted on all 6 verbs (dead-port connection) +
+        gate-identical (config on --live w/o env) + help. Gateway wiring (preview_with_client) is
+        review-by-reading; Tiger no-transmit (R1) is operator live-acceptance. Card records exact
+        impl guidance per arch.md/ADR 0026.
+output: .pipeline/order-preview/tasks/01.md, tests/order_preview_command.rs (freeze commit f8999954),
+        .pipeline/current.json (stage=task)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session. CODER = π (GLM-5.2) per operator role assignment.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/order-preview pr=none
+Model: capable-local OK (impl) — operator assigns π / GLM-5.2.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — write code ONLY in src/ib/trade.rs; NO mocks; writes gated. Read FIRST.
+  - .pipeline/order-preview/tasks/01.md — THE CARD (verify, spec-paths, impl-paths, spec-rev, exact impl guidance).
+  - .pipeline/order-preview/arch.md §Data flow + §The two new seams — verbatim implementation shape.
+  - .pipeline/order-preview/CONTEXT.md — glossary + R1/R2 (Tiger what_if — NOT frozen; do NOT relax the gate).
+  - .pipeline/order-preview/docs/adr/0026-order-preview-whatif.md — binding decision.
+Your task (concrete, numbered):
+  1. Pick card 01 (status=todo). Cut branch feat/order-preview from trunk (main) HEAD.
+  2. Make `cargo test --test order_preview_command` GREEN by editing ONLY impl-paths (src/cli.rs, src/config.rs, src/ib/trade.rs, src/ib/mod.rs). NEVER touch tests/ (freeze gate).
+     - cli.rs: GlobalOpts `#[arg(long, global = true)] pub preview: bool`.
+     - config.rs: Config `pub preview: bool` (default false) + `self.preview = g.preview;` in merge_flags.
+     - trade.rs: pure `shape_preview(&Contract,&Order,&OrderState)->Value` (exact 9-key envelope, card 01); gateway `preview_with_client` (= place_with_client + order.what_if=true + shape_preview ack); branch `if cfg.preview` AFTER the gate in place_core + option_combo + option_close. Keep the real what_if=false path BYTE-IDENTICAL.
+     - mod.rs: re-export `shape_preview`.
+  3. Run the full gate on the branch: `cargo build`; `cargo clippy --all-targets -- -D warnings`; `cargo test`. All green (the frozen suite + existing 224 tests).
+  4. Open a PR feat/order-preview → main. Set card 01 status=review. Append journal seq=4. Do NOT merge.
+Feature gotchas:
+  - The RED is an unresolved-import compile-fail (oh_my_ib::ib::shape_preview) — adding + re-exporting shape_preview is what first makes the file compile; then the black-box --preview tests must pass (flag accepted on all 6 verbs → dead-port connection error; --live w/o OMI_ALLOW_LIVE → config error).
+  - shape_preview keys are EXACT and frozen (sorted: action,commission,contract,margin,order,preview,status,warning,what_if). Option<f64> None → JSON null (key present).
+  - Do NOT change require_live_write_gate or move it — preview reuses it unchanged (branch is after the gate). Preview must be gated exactly like a real order; do NOT make it read-shaped/ungated.
+  - No mocks. shape_preview is unit-frozen via a constructed OrderState literal (real type, Default-constructible) — that's not a mock.
+  - Gateway behavior (what_if no-transmit on Tiger, margin populated) is NOT frozen — leave preview_with_client to review-by-reading + operator live-acceptance; do not try to test it against a live gateway in cargo test.
+Done when: `cargo test --test order_preview_command` green + full suite green + clippy clean on feat/order-preview; PR open; card 01 status=review; journal seq=4. On success: run pipeline-review (reviewer = codex / gpt-5.5, writer≠reviewer).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
