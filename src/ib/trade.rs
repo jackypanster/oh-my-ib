@@ -18,7 +18,7 @@ use ibapi::accounts::types::AccountId;
 use ibapi::accounts::{AccountPortfolioValue, AccountUpdate};
 use ibapi::client::blocking::Client;
 use ibapi::contracts::{Contract, LegAction, OptionRight, SecurityType};
-use ibapi::orders::{Action, CancelOrder, Order, PlaceOrder, TimeInForce};
+use ibapi::orders::{Action, CancelOrder, Order, OrderState, PlaceOrder, TimeInForce};
 use serde_json::{json, Value};
 
 use crate::cli::{CancelArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs};
@@ -66,6 +66,42 @@ pub fn shape_order_ack(
         "action": action,
         "quantity": quantity,
         "limit_price": limit_price,
+    })
+}
+
+/// Pure, FROZEN seam (ADR 0026): the uniform whatIf preview envelope — exact 9-key object
+/// echoed for ALL six order verbs. `Option<f64>` `None` ⇒ JSON `null` (key present, value
+/// null): Tiger may honor `what_if` but leave margin/commission empty (CONTEXT.md R2); the
+/// envelope stays a valid confirm card (echo + resolved contract). `state.warning_text`/
+/// `state.status` map straight off `OrderState` (the mapping lives here, so it is frozen).
+pub fn shape_preview(contract: &Contract, order: &Order, state: &OrderState) -> Value {
+    json!({
+        "preview": true,
+        "what_if": true,
+        "action": format!("{:?}", order.action),
+        "contract": {
+            "symbol": contract.symbol.to_string(),
+            "sec_type": contract.security_type.to_string(),
+            "conid": contract.contract_id,
+        },
+        "order": {
+            "type": order.order_type,
+            "qty": order.total_quantity,
+            "limit": order.limit_price,
+        },
+        "margin": {
+            "init_change": state.initial_margin_change,
+            "maint_change": state.maintenance_margin_change,
+            "equity_with_loan_change": state.equity_with_loan_change,
+        },
+        "commission": {
+            "value": state.commission,
+            "min": state.minimum_commission,
+            "max": state.maximum_commission,
+            "currency": state.commission_currency,
+        },
+        "warning": state.warning_text,
+        "status": format!("{:?}", state.status),
     })
 }
 
@@ -374,6 +410,60 @@ fn place_with_client(
     }
 }
 
+/// Preview placement (ADR 0026, gateway fn — review-by-reading + operator
+/// live-acceptance, NOT frozen). Identical to `place_with_client` with two deltas:
+///   1. after the account stamp, set `order.what_if = true` (the non-transmitting
+///      whatIf query flag);
+///   2. in the bounded first-ack loop, return `shape_preview(contract, &order,
+///      &od.order_state)` on the FIRST `OpenOrder(od)` — the whatIf margin/commission
+///      payload rides `OpenOrder.order_state` (skip `OrderStatus`/ExecutionData/etc).
+///
+/// Same bounded first-ack loop + UNKNOWN semantics. For preview UNKNOWN = "no preview
+/// data"; nothing transmitted, assuming Tiger honors `what_if` (CONTEXT.md R1).
+fn preview_with_client(
+    client: &Client,
+    ctx: &str,
+    contract: &Contract,
+    order: &Order,
+    account: &AccountId,
+) -> Result<Value, AppError> {
+    let mut order = order.clone();
+    stamp_order_account(&mut order, &account.0);
+    order.what_if = true;
+
+    let order_id = client.next_order_id();
+
+    let subscription = client
+        .place_order(order_id, contract, &order)
+        .map_err(|e| AppError::data(format!("place_order failed: {e}"), ctx))?;
+
+    let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
+    loop {
+        match items.next() {
+            Some(Ok(PlaceOrder::OpenOrder(od))) => {
+                return Ok(shape_preview(contract, &order, &od.order_state));
+            }
+            Some(Ok(_)) => {} // OrderStatus / ExecutionData / CommissionReport — skip until OpenOrder.
+            Some(Err(e)) => {
+                return Err(AppError::data(
+                    format!("order stream: {e}"),
+                    ctx,
+                ))
+            }
+            None => {
+                return Err(AppError::timeout(
+                    format!(
+                        "preview order {order_id} — no OpenOrder within {}s; no preview data \
+                         available (nothing transmitted assuming Tiger honors whatIf)",
+                        super::TAKE_FIRST_TIMEOUT.as_secs()
+                    ),
+                    ctx,
+                ))
+            }
+        }
+    }
+}
+
 /// Shared placement core (stk + single-leg option). Thin wrapper: gate → connect →
 /// `place_with_client`. Behavior byte-identical to the pre-refactor stk path — the frozen
 /// stk + option-orders suites assert it. `option_combo` calls `place_with_client` directly
@@ -388,7 +478,11 @@ fn place_core(
     require_live_write_gate(cfg)?;
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
-    place_with_client(&client, ctx, contract, order, &account, ack)
+    if cfg.preview {
+        preview_with_client(&client, ctx, contract, order, &account)
+    } else {
+        place_with_client(&client, ctx, contract, order, &account, ack)
+    }
 }
 
 /// Stk placement: validation → build → place_core with the 6-key ack closure.
@@ -723,10 +817,14 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
 
     let action_str = format!("{:?}", side);
     let legs_snapshot: Vec<(LegSpec, i32)> = resolved;
-    place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
-        let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
-        shape_combo_order_ack(id, status, &underlying, &action_str, args.qty, args.limit, &leg_refs)
-    })
+    if cfg.preview {
+        preview_with_client(&client, ctx, &contract, &order, &account)
+    } else {
+        place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
+            let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
+            shape_combo_order_ack(id, status, &underlying, &action_str, args.qty, args.limit, &leg_refs)
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -971,18 +1069,22 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
     //    the RESOLVED row identity; `action` is the DERIVED side.
     let action_str = format!("{:?}", side);
     let expiry_echo = raw_expiry.clone();
-    place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
-        shape_option_close_ack(
-            id,
-            status,
-            args.conid,
-            &symbol,
-            &expiry_echo,
-            strike,
-            right_str,
-            &action_str,
-            close_qty,
-            args.limit,
-        )
-    })
+    if cfg.preview {
+        preview_with_client(&client, ctx, &contract, &order, &account)
+    } else {
+        place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
+            shape_option_close_ack(
+                id,
+                status,
+                args.conid,
+                &symbol,
+                &expiry_echo,
+                strike,
+                right_str,
+                &action_str,
+                close_qty,
+                args.limit,
+            )
+        })
+    }
 }
