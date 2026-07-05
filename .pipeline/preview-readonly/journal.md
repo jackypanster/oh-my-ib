@@ -80,3 +80,44 @@ Feature gotchas:
 Done when: card + re-frozen RED spec (compile+fail); spec-rev on the card; current.json.stage=task; journal seq=3. On success: run pipeline-impl (coder = π / GLM-5.2).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-05T15:46:56Z · task→impl · completed · by=claude (cc)
+done:   ONE card. RE-FROZE tests/order_preview_command.rs for the READ-ONLY preview (spec-rev
+        5dce9574). shape_preview gets a NEW 4-arg signature (Value contract, &Order, multiplier, ccy;
+        computes notional = qty×|limit|×mult, null for MKT) — the old 3-arg (&Contract,&Order,&OrderState)
+        is gone → that's the RED. Frozen: read-only envelope (transmits:false, notional, no
+        what_if/margin/commission) + notional math + 6-verb --preview + REAL-path-still-gated + help.
+        Review-by-reading: CONTAINMENT (no place_order in preview — the safety property) + contract_details
+        wiring + read-shaped gate; cc live-acceptance: orders-empty after preview. Verbatim pre-check
+        PASSED incl. clippy -D warnings (which caught + I fixed a doc_lazy_continuation in the header
+        BEFORE freeze — exactly the PR #33 improvement working).
+output: .pipeline/preview-readonly/tasks/01.md, tests/order_preview_command.rs (freeze 5dce9574),
+        .pipeline/current.json (stage=task)
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session. CODER = π (GLM-5.2).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/preview-readonly pr=none
+Model: capable-local OK (impl) — operator assigns π / GLM-5.2.
+First: git pull --rebase; load repo config (.env if present).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — containment: place_order/cancel_order ONLY in trade.rs; the read-only preview adds none. Read FIRST.
+  - .pipeline/preview-readonly/tasks/01.md — THE CARD (verify, spec-paths, impl-paths, spec-rev, exact impl guidance).
+  - .pipeline/preview-readonly/arch.md §Component changes — the change table.
+  - .pipeline/preview-readonly/CONTEXT.md + docs/adr/0027 — R1 refuted; read-shaped gate; binding decision.
+Your task (concrete, numbered):
+  1. Pick card 01 (todo). Cut branch feat/preview-readonly from trunk (main) HEAD.
+  2. Make `cargo test --test order_preview_command` GREEN editing ONLY impl-paths (src/ib/trade.rs, src/ib/mod.rs). NEVER touch tests/.
+     - shape_preview → NEW signature (card 01): (contract: serde_json::Value, order: &Order, multiplier: f64, notional_ccy: &str) -> Value. notional = limit_price.map(qty×|l|×mult) → null for MKT. transmits:false. NO what_if/margin/commission/status.
+     - REMOVE preview_with_client (place_order+what_if). Add preview_stk_option: client.contract_details(&contract) READ → contract JSON → shape_preview. NO place_order.
+     - Move the preview branch BEFORE require_live_write_gate in place_core (:471) + option_combo (:820) + option_close (:1072). combo/close shape from already-resolved conids. Real arms unchanged (still gate).
+  3. Full gate on the branch: cargo build; cargo clippy --all-targets -- -D warnings; cargo test. All green.
+  4. Open PR feat/preview-readonly → main. Set card 01 status=review. Append journal seq=4. Do NOT merge.
+Feature gotchas:
+  - THE POINT: NO place_order anywhere in the preview path (R1 refuted — whatIf transmits on Tiger). Any place_order in preview is WRONG and a review-blocker.
+  - shape_preview signature CHANGES (drops OrderState, adds Value/multiplier/ccy) — that's the RED. Keep it a pure fn.
+  - Read-shaped: preview must NOT hit require_live_write_gate; the REAL path still must (the frozen buy/sell --live-no-env ⇒ config tests assert it).
+  - contract_details is the read to reuse (see src/ib/contract.rs). No mocks.
+  - Live-acceptance is cc-run (omi directly); Hermes/TG deferred (operator directive).
+Done when: cargo test --test order_preview_command green + full suite green + clippy clean; PR open; card 01 status=review; journal seq=4. On success: run pipeline-review (reviewer = codex / gpt-5.5, writer≠reviewer).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
