@@ -1,0 +1,99 @@
+# write-path-semantics — reference-behavior audit
+
+> Source of truth for every field `omi` actually sends to the Tiger/IB gateway on a write
+> (`buy`/`sell`/`option-buy`/`option-sell`/`option-combo`/`option-close`/`cancel`). Frozen by
+> `tests/write_path_semantics_doc.rs` (ADR 0025). DOC-ONLY audit (D6): a value that looks WRONG is
+> registered `⚠️`, never fixed here — a fix is its own feature.
+>
+> **Field sources**: `Order` built via `..Default::default()` → ibapi's CUSTOM `impl Default`
+> (`ibapi/orders/mod.rs:478-624`); a derived `Default` would be false and silently stage orders.
+> Builders: `src/ib/trade.rs` (`build_stk_order`/`build_option_order`/`build_combo_order`/
+> `stamp_order_account`) + ibapi `Contract::stock/call/put/spread` (`ibapi/contracts/builders.rs`).
+>
+> **Verification tiers** — exactly one per row:
+> - `✅ paper-probe` — observed on `:4002` paper (Tiger accepted the value; live order ack'd).
+> - `📖 doc-cite` — pinned by an ibapi source line and/or the IB TWS API Order/Contract reference.
+> - `⚠️ UNVERIFIED` — plausible but never observed against Tiger; carries a probe recipe below.
+
+## Field inventory
+
+7-column table. `our value` = the exact bytes/enum the gateway sees for a single-leg STK LMT BUY
+unless the cell qualifies otherwise. `inert` = `Default::default()` value, sent but not
+send-meaningful for our order shapes.
+
+| field | our value | ibapi type/behavior | Tiger/IB reference semantics | why this value / deliberate divergence | boundary cases | verification tier |
+|---|---|---|---|---|---|---|
+| `action` | `Action::Buy`/`Sell` (verb-derived) | `Action` enum (`mod.rs:88`); default `Buy` (`:485`) | BUY/SELL side. SELL auto-shorts if qty > long (ibapi doc). | verb (`buy`/`option-sell`/…) is the only side authority; option-close DERIVES side from held position sign (ADR 0022, never user-declared). | SSHORT/SLONG are institution-only; never emitted. | 📖 doc-cite |
+| `total_quantity` | `f64`, user `--qty` (e.g. `1.0`) | `f64` (`mod.rs:90`); default `0.0` (`:486`) | shares (STK) / contracts (OPT) / combo units (BAG). | passed through verbatim; option-close derives `|position|` or bounded sub-qty (ADR 0022 §2). | fractional qty rejected upstream; over-close capped at `|position|`. | 📖 doc-cite |
+| `order_type` | `"LMT"` (option/combo always; STK when `--limit` given) else `"MKT"` (STK only) | `String` (`mod.rs:92`); default `""` (`:487`) | LMT = limit_price is the cap; MKT = immediate market. | single-leg option is LMT-only (ADR 0020 D2); combo is LMT-only (ADR 0021). STK supports MKT. | no STOP/STP_LMT emission. | 📖 doc-cite |
+| `tif` | `TimeInForce::Day` | `TimeInForce` (`mod.rs:101`); default `Day` (`:490`) | order alive for the trading day. | always Day (v1; ADR 0020 D2, ADR 0021). NOT explicit in `Order { .. }` literal — inherited from custom Default. | no GTC/IOC/FOK/OPG emission. | 📖 doc-cite |
+| `limit_price` | `Some(px)` for LMT; `None` for STK MKT | `Option<f64>` (`mod.rs:95`); default `None` (`:488`) | LIMIT price cap. MKT ⇒ absent. | single-leg: always `Some` (option LMT-only); STK MKT ⇒ `None`. **combo**: `Some(px)` SIGN-FREE — see `credit` row. | non-finite/non-positive rejected upstream for options. | 📖 doc-cite |
+| `account` | `AccountId` string, RESOLVED (e.g. `"U12345"`) | `String` (`mod.rs` account field); default `""` | routes the order to a specific account. | stamped at the SINGLE placement choke point (`place_with_client`, `trade.rs:317`) via `stamp_order_account` (`trade.rs:255`), OVERWRITING any prior value — the resolved account is the only authority (ADR 0024 §2). | never user-declared on the order; `--account` resolves first, then stamp. | ✅ paper-probe |
+| `transmit` | `true` (inherited) | `bool` (`mod.rs:113`); default `true` (`:494`) | false ⇒ TWS stages the order WITHOUT sending it. | NOT in the `Order { .. }` literal — inherited from ibapi custom Default. A derived `Default` (`false`) would silently never send; the canary (d) pins it. | never set `false` anywhere in the write path. | 📖 doc-cite |
+| `outside_rth` | `false` (inherited) | `bool` (default `false`, `mod.rs:500`) | true ⇒ eligible outside regular trading hours. | inherited; we never enable RTH. | STK MKT outside RTH behaves differently — not exercised. | 📖 doc-cite |
+| `display_size` | `Some(0)` (inherited) | `Option<i32>` (default `Some(0)`, `mod.rs:498`, ibapi carries `// TODO - default to None?`) | IB: for Iceberg/Hidden orders, the visible block size. `0` is ibapi's chosen default semantics. | inherited unchanged. **Whether Tiger treats `Some(0)` as "show all" (no iceberg) or as a degenerate iceberg is UNVERIFIED** — see risk register. | we never construct an iceberg; if `0` triggers partial-display behavior it is a latent bug (D6 fix = set `None`). | ⚠️ UNVERIFIED |
+| `what_if` | `false` (inherited) | `bool` (`mod.rs:322`); default `false` (`:562`) | true ⇒ the order is a margin/commission PREVIEW, not a real order. | inherited; never set `true`. canary (d) pins it. | `OrderBuilder::analyze()` flips this — NOT used by `omi`. | 📖 doc-cite |
+| `origin` | `OrderOrigin::Customer` (inherited) | `OrderOrigin` (default `Customer`, `mod.rs:516`) | identifies the submitter; Customer = retail flow. | inherited; never changed. | institutional `Dealer`/`Provider` never emitted. | 📖 doc-cite |
+| `exempt_code` | `-1` (inherited) | `i32` (default `-1`, `mod.rs:519`) | IB: exempt-from-SSR flag; `-1` = not-exempt (the documented non-actionable value). | inherited; never changed. | `>= 0` would assert SSR exemption — never emitted. | 📖 doc-cite |
+| `symbol` | underlying ticker, e.g. `"AAPL"` | `Contract.symbol`; back-filled for BAG | contract identity. STK/OPT: from `--symbol`. **combo**: `SpreadBuilder` leaves it `""`; `build_combo_order` back-fills `contract.symbol = underlying` (`trade.rs:572`). | combo back-fill is load-bearing — without it the BAG has no underlying. | case-normalized uppercase upstream. | 📖 doc-cite |
+| `security_type` | `Stock` / `Option` / `Spread` (BAG) | `SecurityType`; set by each builder's `build()` | IB contract class. STK ⇒ `Stock` (`builders.rs:60`); OPT ⇒ `Option` (`:207`); BAG ⇒ `Spread` (`:592`). | chosen by the verb/contract ctor, never user-tunable. | no FUT/CASH/BOND emission. | 📖 doc-cite |
+| `exchange` | `"SMART"` (default) or `--exchange` override | `Exchange` (`builders.rs`); StockBuilder/OptionBuilder/SpreadBuilder all default `"SMART"` (`:23`,`:93`,`:513`) | IB smart-routing. option/combo honor `--exchange`; STK uses the builder default. | parity with read path (`quote`/`contract`). | none — SMART is the universal default. | 📖 doc-cite |
+| `currency` | `"USD"` (default) or `--currency` override | `Currency`; defaults `"USD"` (`:24`,`:94`,`:514`) | quote currency. option/combo honor `--currency`; STK uses the builder default. | Tiger gateway is USD-denominated. | non-USD never exercised against Tiger. | 📖 doc-cite |
+| `multiplier` | `"100"` (options) | `String` on Contract; OptionBuilder default `100` (`builders.rs:95`/`:110`), serialized via `.to_string()` at `build()` (`:213`) | IB option contract multiplier (shares per contract). | fixed `100`; STK/BAG leave it as Contract default (empty). | never overridden; US equity options are 100. | 📖 doc-cite |
+| `strike` | `f64`, e.g. `240.0` (options only) | `f64` on Contract (`OptionBuilder.strike`, `builders.rs:120-124`); serialized at `build()` (`:208`) | option strike price. | passed through from `--strike`; positive-finite validated upstream. | STK/BAG: Contract default (0.0), inert. | 📖 doc-cite |
+| `right` | `Some(OptionRight::Call)`/`Put` (options only) | `Option<OptionRight>` on Contract; set at `build()` (`:209`) | C = call, P = put. | derived from verb (`option-call`/`option-put`/leg DSL); option-close takes it from the matched position. | STK/BAG: `None`, inert. | 📖 doc-cite |
+| `credit` (combo net-limit sign) | combo `limit_price` SIGN-FREE: negative = **credit**, positive = debit | `Option<f64>` (`mod.rs:95`); `build_combo_order` passes `Some(limit)` unchanged (`trade.rs:577`) | IB BAG net limit: the sign encodes credit vs debit (deliberately UNLIKE single-leg, which never goes negative). | ADR 0021: a credit spread is placed with `--limit -0.05`. Tiger's acceptance of a negative net limit is the open assumption. | single-leg paths never emit a negative limit (validated upstream). | ⚠️ UNVERIFIED |
+| inert tail (~70 remaining `Order` fields) | ibapi `Default::default()` each: empty string / `0` / `0.0` / `false` / `None` / `vec![]` | full list `mod.rs:73-476`; defaults `:478-624` | not send-meaningful for our shapes (no OCA, no algo, no trailing, no delta-neutral, no volatility, …). | inherited en masse via `..Default::default()`; never named in the write path. | a future verb that sets one of these MUST add a row here (anti-rot guard (c) fires on builder output diff). | 📖 doc-cite |
+
+## Placement choke point
+
+`stamp_order_account` mutates `order.account` IN PLACE at `place_with_client` (`trade.rs:317`) — the
+single gate every placement verb funnels through, so no current or future verb can skip the account
+stamp. This is a post-build gateway-path mutation, NOT builder output, so it is invisible to the
+anti-rot serde-diff (c); covered by the required-field list (b) + review.
+
+## ⚠️ Risk register
+
+One entry per `⚠️` row. Recipes are runnable on `:4002` (paper, ungated) during a live US session —
+DEFERRED (D2): the doc ships with recipes; executing them is an operator lifecycle, not a merge gate.
+
+### display_size = Some(0)
+
+- **Concern**: ibapi's own source carries `// TODO - default to None?` at `mod.rs:498`. If Tiger
+  interprets `Some(0)` as "iceberg with visible block 0" rather than "no iceberg / show all", every
+  `omi` order would be sent with degenerate partial-display semantics.
+- **Probe recipe** (`:4002`, paper):
+  1. Place a far-from-market single-leg LMT so it rests open:
+     `omi --paper option-buy --symbol AAPL --expiry 2026-09-18 --strike 240 --right C --qty 1 --limit 0.05`
+  2. `omi --paper orders` — observe the open order.
+  3. **Confirms `Some(0)` is benign** if: the order is accepted at the full `--qty` with no partial/
+     iceberg display flag, and behaves identically to a hand-placed TWS limit order at the same price.
+  4. `omi --paper cancel <id>` to clean up.
+- **Fallback (if `0` triggers iceberg semantics)**: a separate feature sets `display_size = None` in
+  the builders (D6 — do NOT fix here). Record the observed Tiger behavior in that feature's ADR.
+
+### combo net-limit sign (credit)
+
+- **Concern**: ADR 0021 assumes Tiger/IB accepts a **negative** net `limit_price` on a BAG to mean
+  "credit the account" (a credit spread). If Tiger instead rejects negative limits or requires the
+  sign on `action`, every credit-spread `omi option-combo` would fail or misprice.
+- **Probe recipe** (`:4002`, paper, US session so the option chain resolves):
+  1. Pick a far-OTM credit spread (price away from market so it rests open), e.g.:
+     `omi --paper option-combo --action sell --leg "SELL 1 AAPL 2026-09-18 240 C" --leg "BUY 1 AAPL 2026-09-18 250 C" --qty 1 --limit -0.05 --exchange SMART --currency USD`
+  2. `omi --paper orders` — observe the BAG.
+  3. **Confirms the sign convention** if: the BAG is accepted at the intended net credit (`-0.05`),
+     i.e. the order rests without a "price must be positive" rejection and the ack echoes the
+     negative limit.
+  4. `omi --paper cancel <id>` to clean up.
+- **Fallback (if rejected/mispriced)**: record the sign convention Tiger actually requires in a new
+  ADR and adapt `build_combo_order` (`trade.rs:577`) in a separate feature (D6). Do NOT change the
+  sign here.
+
+## Anti-rot guard
+
+The frozen spec's guard (c) diffs each builder's serialized `Order` against `Order::default()` and
+fails if any differing field lacks a row above. Adding a new builder-set `Order` field without a row
+here ⇒ red; the failure message names the field. The canary (d) pins the load-bearing defaults
+(`transmit==true`, `outside_rth==false`, `what_if==false`, `tif==Day`, `display_size==Some(0)`,
+`origin==Customer`, `exempt_code==-1`) so an ibapi bump that silently flips one turns the suite red
+before it reaches a gateway.
