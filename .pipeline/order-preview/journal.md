@@ -210,3 +210,14 @@ Your review (concrete, numbered):
 Done when: freeze empty + impl-shape correct + green gate reproduced ⇒ request explicit HUMAN CONFIRM, then squash-merge PR #23 (only pipeline-review merges); set card 01 status=done, current.json.stage=done; append journal seq=6 with the merge SHA. Do NOT merge without human confirm; do NOT force-push trunk.
 On reject: card 01 status←todo, attempts++ (→1), journal seq=6; >=3 ⇒ pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-05T14:37:36Z · review→done · completed · by=codex
+done:   Human merge confirmation received. PR #23 squash-merged into main; card 01 marked done and
+        current.json.stage set to done. Final trunk sanity cargo test will be run after metadata push.
+output: PR #23 https://github.com/jackypanster/oh-my-ib/pull/23;
+        squash-merge c5d9abb6a3fb807f092e8d75279670b8d6456f7d;
+        .pipeline/order-preview/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Feature order-preview is done. No next pipeline stage.
+<<< END
