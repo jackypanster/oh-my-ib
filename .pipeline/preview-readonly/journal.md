@@ -37,3 +37,46 @@ Feature gotchas:
 Done when: arch.md + CONTEXT.md exist, decision-complete; current.json.stage=arch; journal seq=2. On success: run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-05T15:39:30Z · arch→task · completed · by=claude (cc)
+done:   Architecture decision-complete, no human grill (2 decisions confirmed; module=code-first;
+        R1 now KNOWN so no unverified premise). Chosen shape: replace preview_with_client
+        (place_order+what_if) with a READ-ONLY path — contract_details resolve (STK/single-leg opt) or
+        reuse already-resolved conids (combo/close, both resolve BEFORE the preview branch); shape a
+        transmits:false envelope with notional (qty×limit×mult: STK1/OPT100). Preview branch moves
+        BEFORE require_live_write_gate (read-shaped). Module stays in trade.rs (containment unaffected;
+        minimal churn). ADR 0027. shape_preview changes signature (no OrderState). The old
+        tests/order_preview_command.rs is the spec-to-CHANGE (what_if:true + gate=config must flip).
+output: .pipeline/preview-readonly/arch.md, CONTEXT.md, docs/adr/0027-preview-readonly-no-transmit.md,
+        .pipeline/current.json (stage=arch)
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/preview-readonly pr=none
+Model: frontier SOTA required.
+First: git pull --rebase; load repo config (.env if present).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — conventions (containment = place_order/cancel_order ONLY in trade.rs; the read-only preview adds none). Read FIRST.
+  - .pipeline/preview-readonly/PRD.md — what.
+  - .pipeline/preview-readonly/arch.md §Component changes + §Freeze boundary — the change table + what to freeze.
+  - .pipeline/preview-readonly/CONTEXT.md — R1 refuted (resolved); read-shaped gate; containment.
+  - .pipeline/preview-readonly/docs/adr/0027-preview-readonly-no-transmit.md — binding decision.
+  - tests/order_preview_command.rs — the OLD spec to REPLACE (asserts what_if:true + gate=config).
+Your task (concrete, numbered):
+  1. ONE card likely (cohesive: rewrite the preview path read-only + envelope + read-shaped gate across all 6 verbs). Split only if a clean red-test boundary justifies it.
+  2. RE-FREEZE tests/order_preview_command.rs (this is a spec CHANGE, not preserve) for the NEW behavior. Freeze EXACTLY arch.md §Freeze boundary:
+       a. pure shape_preview READ-ONLY envelope — exact keys incl. "transmits": false, "notional", "note"; NO "what_if"/"margin"/"commission"/"status". Built from a constructed contract-JSON + a real built Order (via build_stk_order) + a notional number.
+       b. notional math: STK qty×limit×1; option qty×limit×100.
+       c. read-shaped gate (black-box): `omi buy AAPL 1 --limit 1 --live --preview` WITHOUT OMI_ALLOW_LIVE on a dead port ⇒ error code "connection", NOT "config". (This FLIPS the old preview_on_live_without_env_is_config_error test — replace it.) Also keep a real-order gate test (buy --live w/o env ⇒ config) to prove the REAL path still gates.
+  3. Do NOT freeze gateway behavior: the contract_details wiring + containment (no place_order in preview) are review-by-reading. Record in the card's `## Freeze coverage` (frozen: read-only envelope/notional/read-shaped-gate; review-must-read: contract_details wiring + place_order-absent-from-preview grep + cc live-acceptance orders-empty).
+  4. MANDATORY verbatim-compile pre-check on the re-frozen spec: copy verbatim to a scratch, stub the not-yet-existing shape_preview signature, run BOTH `cargo test --test <scratch> --no-run` AND `cargo clippy --all-targets -- -D warnings` on the scratch (per the pipeline pre-check — a clippy-dirty spec cornered the coder last feature), then delete the scratch.
+  5. impl-paths = src/ib/trade.rs (+ src/cli.rs/config.rs only if the flag/gate wiring needs it — the --preview flag already exists; likely just trade.rs). Record spec-paths ∩ impl-paths = ∅. current.json.full-verify already ["cargo build","cargo test"]. Advance stage=task. Append journal seq=3.
+Feature gotchas:
+  - The whole point: NO place_order in the preview path (R1 refuted — whatIf transmits on Tiger). Any place_order in preview is WRONG.
+  - shape_preview signature CHANGES (drops OrderState). The frozen test must import + call the NEW signature (RED until impl lands it).
+  - combo/close already resolve conids before the preview branch → their preview needs no extra gateway call; STK/single-leg opt resolve via contract_details.
+  - Read-shaped: preview must NOT hit require_live_write_gate. Real path keeps it.
+  - Live-acceptance is cc-run (omi directly), Hermes/TG deferred.
+Done when: card + re-frozen RED spec (compile+fail); spec-rev on the card; current.json.stage=task; journal seq=3. On success: run pipeline-impl (coder = π / GLM-5.2).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
