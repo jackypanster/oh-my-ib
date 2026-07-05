@@ -163,3 +163,50 @@ Your review (concrete, numbered):
   - (b) Hold letter-of-law — revert commit 6c6ba37, re-route to pipeline-task for a whitespace re-freeze; impl commit 4ed1ea0 stands either way.
 Done when: review passes the freeze + impl-shape checks; green gate reproduced; explicit human confirm; then MERGE (only pipeline-review merges). On reject: card 01 status←todo, attempts++, journal seq=5; >=3 ⇒ pipeline-hunt.
 <<< END
+## seq=5 · 2026-07-05T14:22:22Z · impl→task(re-freeze) · completed · by=claude (cc)
+done:   RE-FREEZE (bad-spec, CONTRACT §Test ownership). The original spec-rev f8999954 was
+        clippy-DIRTY: tests/order_preview_command.rs:4-8 (a markdown bullet list) immediately
+        followed by prose tripped clippy::doc_lazy_continuation ("doc list item without
+        indentation"), which is FATAL under the card's `cargo clippy --all-targets -- -D warnings`
+        verify. Proven deterministically (scratch-clippy of f8999954's test → 2 errors). The coder
+        (π) could not satisfy clippy without editing the frozen file; it made the content-neutral
+        fix (commit 6c6ba37, ONE `//!` separator line, ZERO assertion/logic change) AND transparently
+        flagged it for reviewer adjudication in seq=4. Correct resolution = task re-freeze (a wrong
+        spec routes to task, not impl): adopted π's exact fixed test as the new frozen spec on trunk.
+        NEW spec-rev = 0914c912468be16d3acbc97069c935b87ca302b8. Card 01 spec-rev updated; status
+        stays review, attempts stays 0 (π did not fail — the spec did). Freeze gate now PASSES
+        cleanly: `git diff 0914c912 origin/feat/order-preview -- tests/order_preview_command.rs` is
+        EMPTY. Branch verified green pre-handoff: cargo clippy --all-targets -D warnings clean; full
+        suite 232 passed / 0 failed (incl. the 11 order_preview_command frozen tests).
+        The seq=4 "Reviewer adjudication" is now MOOT — no reviewer judgment call needed.
+        SKILL-PROPOSAL: pipeline-task — the verbatim-compile pre-check should run
+        `cargo clippy --all-targets -- -D warnings` on the STUBBED scratch (not just
+        `cargo test --no-run`), so a clippy-dirty frozen spec (doc lints, etc.) is caught BEFORE the
+        freeze commit instead of cornering the coder. Route via pipeline-improve, do NOT self-edit.
+output: tests/order_preview_command.rs (re-freeze commit 0914c912), .pipeline/order-preview/tasks/01.md
+        (spec-rev bumped), .pipeline/order-preview/journal.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session. REVIEWER = codex (gpt-5.5); writer(π) ≠ reviewer.
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/order-preview pr=23
+Model: frontier SOTA reviewer.
+First: git pull --rebase; load repo config (.env if present).
+Read for context (before reviewing):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — write code ONLY in src/ib/trade.rs; writes gated; no mocks.
+  - .pipeline/order-preview/tasks/01.md — the card. NOTE spec-rev is now 0914c912 (re-frozen).
+  - .pipeline/order-preview/arch.md §Data flow + §The two new seams — the verbatim impl shape to diff against.
+  - .pipeline/order-preview/CONTEXT.md — R1/R2 (Tiger what_if NOT frozen; gate must NOT be relaxed).
+  - .pipeline/order-preview/docs/adr/0026-order-preview-whatif.md — binding decision.
+  - tests/order_preview_command.rs — the frozen spec (spec-rev 0914c912).
+FREEZE IS ALREADY RESOLVED (seq=5): the spec was re-frozen at 0914c912; the PR branch matches it
+exactly. Do NOT re-litigate the doc-comment adjudication — just run the gate.
+Your review (concrete, numbered):
+  1. Freeze gate: `git diff 0914c912468be16d3acbc97069c935b87ca302b8 origin/feat/order-preview -- tests/order_preview_command.rs` — MUST be empty (it is). Non-empty ⇒ reject.
+  2. Diff impl-paths vs arch.md §Data flow + §The two new seams: shape_preview pure 9-key envelope (None→null); preview_with_client = place_with_client + order.what_if=true + shape_preview on first OpenOrder; branch AFTER require_live_write_gate in place_core/option_combo/option_close.
+  3. Confirm the gate is IDENTICAL to a real order (require_live_write_gate unchanged; branch after it; preview NEVER read-shaped/ungated). Confirm the real what_if=false path (place_with_client body) is byte-identical.
+  4. Confirm write code lives ONLY in src/ib/trade.rs (grep place_order/cancel_order appear nowhere else).
+  5. Reproduce the green gate on the branch: cargo build; cargo clippy --all-targets -- -D warnings; cargo test. All pass (already verified by cc: full suite green, clippy clean).
+  6. NOT frozen (do NOT block on these — operator live-acceptance): preview_with_client sets what_if=true + reads OpenOrder.order_state; Tiger does NOT transmit under what_if (CONTEXT.md R1).
+Done when: freeze empty + impl-shape correct + green gate reproduced ⇒ request explicit HUMAN CONFIRM, then squash-merge PR #23 (only pipeline-review merges); set card 01 status=done, current.json.stage=done; append journal seq=6 with the merge SHA. Do NOT merge without human confirm; do NOT force-push trunk.
+On reject: card 01 status←todo, attempts++ (→1), journal seq=6; >=3 ⇒ pipeline-hunt.
+<<< END
