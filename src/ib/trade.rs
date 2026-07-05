@@ -18,7 +18,7 @@ use ibapi::accounts::types::AccountId;
 use ibapi::accounts::{AccountPortfolioValue, AccountUpdate};
 use ibapi::client::blocking::Client;
 use ibapi::contracts::{Contract, LegAction, OptionRight, SecurityType};
-use ibapi::orders::{Action, CancelOrder, Order, OrderState, PlaceOrder, TimeInForce};
+use ibapi::orders::{Action, CancelOrder, Order, PlaceOrder, TimeInForce};
 use serde_json::{json, Value};
 
 use crate::cli::{CancelArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs};
@@ -69,39 +69,35 @@ pub fn shape_order_ack(
     })
 }
 
-/// Pure, FROZEN seam (ADR 0026): the uniform whatIf preview envelope — exact 9-key object
-/// echoed for ALL six order verbs. `Option<f64>` `None` ⇒ JSON `null` (key present, value
-/// null): Tiger may honor `what_if` but leave margin/commission empty (CONTEXT.md R2); the
-/// envelope stays a valid confirm card (echo + resolved contract). `state.warning_text`/
-/// `state.status` map straight off `OrderState` (the mapping lives here, so it is frozen).
-pub fn shape_preview(contract: &Contract, order: &Order, state: &OrderState) -> Value {
+/// Pure, FROZEN seam (ADR 0027): the read-only preview envelope — exact 8-key object,
+/// echoed for ALL six order verbs. `--preview` NEVER transmits (R1 refuted: Tiger transmits
+/// whatIf orders), so this path calls NO `place_order`. The `contract` sub-object is the
+/// verbatim JSON the caller resolved (STK/OPT/combo-legs/close); `notional` is the read-only
+/// substitute for margin = `qty × |limit| × multiplier` (STK ×1, OPT ×100, combo ×100 on
+/// |net_limit|). MKT (no limit) ⇒ `notional: null` (key present). `transmits: false` is the
+/// machine-readable safety marker; `note` explains why margin/commission are absent.
+pub fn shape_preview(
+    contract: Value,
+    order: &Order,
+    multiplier: f64,
+    notional_ccy: &str,
+) -> Value {
+    let notional = order
+        .limit_price
+        .map(|l| order.total_quantity * l.abs() * multiplier);
     json!({
         "preview": true,
-        "what_if": true,
+        "transmits": false,
         "action": format!("{:?}", order.action),
-        "contract": {
-            "symbol": contract.symbol.to_string(),
-            "sec_type": contract.security_type.to_string(),
-            "conid": contract.contract_id,
-        },
+        "contract": contract,
         "order": {
             "type": order.order_type,
             "qty": order.total_quantity,
             "limit": order.limit_price,
         },
-        "margin": {
-            "init_change": state.initial_margin_change,
-            "maint_change": state.maintenance_margin_change,
-            "equity_with_loan_change": state.equity_with_loan_change,
-        },
-        "commission": {
-            "value": state.commission,
-            "min": state.minimum_commission,
-            "max": state.maximum_commission,
-            "currency": state.commission_currency,
-        },
-        "warning": state.warning_text,
-        "status": format!("{:?}", state.status),
+        "notional": notional,
+        "notional_currency": notional_ccy,
+        "note": "margin/commission unavailable on this gateway (whatIf transmits)",
     })
 }
 
@@ -410,64 +406,65 @@ fn place_with_client(
     }
 }
 
-/// Preview placement (ADR 0026, gateway fn — review-by-reading + operator
-/// live-acceptance, NOT frozen). Identical to `place_with_client` with two deltas:
-///   1. after the account stamp, set `order.what_if = true` (the non-transmitting
-///      whatIf query flag);
-///   2. in the bounded first-ack loop, return `shape_preview(contract, &order,
-///      &od.order_state)` on the FIRST `OpenOrder(od)` — the whatIf margin/commission
-///      payload rides `OpenOrder.order_state` (skip `OrderStatus`/ExecutionData/etc).
-///
-/// Same bounded first-ack loop + UNKNOWN semantics. For preview UNKNOWN = "no preview
-/// data"; nothing transmitted, assuming Tiger honors `what_if` (CONTEXT.md R1).
-fn preview_with_client(
+/// Read-only preview for STK / single-leg option (ADR 0027, gateway fn, review-by-reading
+/// and cc live-acceptance — NOT frozen). Resolves the contract via
+/// `client.contract_details` (a READ, mirrors `src/ib/contract.rs`), builds the contract
+/// JSON, then shapes the `transmits:false` envelope via `shape_preview`. Calls NO
+/// `place_order` — R1 refuted (Tiger transmits whatIf orders), so the preview path is
+/// structurally non-transmitting. Multiplier: STK ×1, OPT ×100.
+fn preview_stk_option(
     client: &Client,
     ctx: &str,
     contract: &Contract,
     order: &Order,
-    account: &AccountId,
 ) -> Result<Value, AppError> {
-    let mut order = order.clone();
-    stamp_order_account(&mut order, &account.0);
-    order.what_if = true;
-
-    let order_id = client.next_order_id();
-
-    let subscription = client
-        .place_order(order_id, contract, &order)
-        .map_err(|e| AppError::data(format!("place_order failed: {e}"), ctx))?;
-
-    let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
-    loop {
-        match items.next() {
-            Some(Ok(PlaceOrder::OpenOrder(od))) => {
-                return Ok(shape_preview(contract, &order, &od.order_state));
-            }
-            Some(Ok(_)) => {} // OrderStatus / ExecutionData / CommissionReport — skip until OpenOrder.
-            Some(Err(e)) => {
-                return Err(AppError::data(
-                    format!("order stream: {e}"),
-                    ctx,
-                ))
-            }
-            None => {
-                return Err(AppError::timeout(
-                    format!(
-                        "preview order {order_id} — no OpenOrder within {}s; no preview data \
-                         available (nothing transmitted assuming Tiger honors whatIf)",
-                        super::TAKE_FIRST_TIMEOUT.as_secs()
-                    ),
-                    ctx,
-                ))
-            }
-        }
-    }
+    let details = client
+        .contract_details(contract)
+        .map_err(|e| AppError::data(format!("contract_details failed: {e}"), ctx))?;
+    let d = details.first().ok_or_else(|| {
+        AppError::not_found("no contract details resolved for preview".to_string(), ctx)
+    })?;
+    let c = &d.contract;
+    let currency = c.currency.to_string();
+    let (multiplier, contract_json) = match c.security_type {
+        SecurityType::Option => (
+            100.0,
+            json!({
+                "symbol": c.symbol,
+                "conid": c.contract_id,
+                "sec_type": c.security_type.to_string(),
+                "exchange": c.exchange,
+                "currency": c.currency,
+                "long_name": d.long_name,
+                "expiry": c.last_trade_date_or_contract_month,
+                "strike": c.strike,
+                "right": match &c.right {
+                    Some(OptionRight::Call) => json!("C"),
+                    Some(OptionRight::Put) => json!("P"),
+                    _ => Value::Null,
+                },
+            }),
+        ),
+        _ => (
+            1.0,
+            json!({
+                "symbol": c.symbol,
+                "conid": c.contract_id,
+                "sec_type": c.security_type.to_string(),
+                "exchange": c.exchange,
+                "currency": c.currency,
+                "long_name": d.long_name,
+            }),
+        ),
+    };
+    Ok(shape_preview(contract_json, order, multiplier, &currency))
 }
 
-/// Shared placement core (stk + single-leg option). Thin wrapper: gate → connect →
-/// `place_with_client`. Behavior byte-identical to the pre-refactor stk path — the frozen
-/// stk + option-orders suites assert it. `option_combo` calls `place_with_client` directly
-/// (it has its own client for per-leg conid resolution — never a second connect).
+/// Shared placement core (stk + single-leg option). ADR 0027: the preview branch runs
+/// BEFORE `require_live_write_gate` (read-shaped — preview is a pure read, gated only by
+/// `--live` for the port, like `omi contract`/`quote`). The real path is unchanged:
+/// gate → connect → resolve_account → `place_with_client`. `option_combo` calls
+/// `place_with_client` directly (it has its own client for per-leg conid resolution).
 fn place_core(
     cfg: &Config,
     ctx: &str,
@@ -475,14 +472,14 @@ fn place_core(
     order: &Order,
     ack: impl Fn(i32, &str) -> Value,
 ) -> Result<Value, AppError> {
+    if cfg.preview {
+        let client = super::connect(cfg)?;
+        return preview_stk_option(&client, ctx, contract, order);
+    }
     require_live_write_gate(cfg)?;
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
-    if cfg.preview {
-        preview_with_client(&client, ctx, contract, order, &account)
-    } else {
-        place_with_client(&client, ctx, contract, order, &account, ack)
-    }
+    place_with_client(&client, ctx, contract, order, &account, ack)
 }
 
 /// Stk placement: validation → build → place_core with the 6-key ack closure.
@@ -764,8 +761,11 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
         ));
     }
 
-    // 2. Double gate (config error, before connect — offline-deterministic).
-    require_live_write_gate(cfg)?;
+    // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
+    //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
+    if !cfg.preview {
+        require_live_write_gate(cfg)?;
+    }
 
     // 3. Connect (connection errors).
     let client = super::connect(cfg)?;
@@ -818,7 +818,30 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     let action_str = format!("{:?}", side);
     let legs_snapshot: Vec<(LegSpec, i32)> = resolved;
     if cfg.preview {
-        preview_with_client(&client, ctx, &contract, &order, &account)
+        // ADR 0027: read-only preview — shape from the already-resolved legs (no
+        // place_order, no transmit). Multiplier 100 on |net_limit| (option ×100).
+        let legs_json: Vec<Value> = legs_snapshot
+            .iter()
+            .map(|(spec, conid)| {
+                json!({
+                    "action": spec.action,
+                    "ratio": spec.ratio,
+                    "symbol": spec.symbol,
+                    "expiry": spec.expiry,
+                    "strike": spec.strike,
+                    "right": spec.right,
+                    "conid": conid,
+                })
+            })
+            .collect();
+        let contract_json = json!({
+            "symbol": underlying,
+            "sec_type": "BAG",
+            "exchange": args.exchange,
+            "currency": args.currency,
+            "legs": legs_json,
+        });
+        Ok(shape_preview(contract_json, &order, 100.0, &args.currency))
     } else {
         place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
             let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
@@ -874,8 +897,11 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
         }
     }
 
-    // 2. Double gate (config error, before connect — offline-deterministic).
-    require_live_write_gate(cfg)?;
+    // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
+    //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
+    if !cfg.preview {
+        require_live_write_gate(cfg)?;
+    }
 
     // 3. Connect ONCE — drain, resolve, assert, and place all reuse this client.
     let client = super::connect(cfg)?;
@@ -1070,7 +1096,20 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
     let action_str = format!("{:?}", side);
     let expiry_echo = raw_expiry.clone();
     if cfg.preview {
-        preview_with_client(&client, ctx, &contract, &order, &account)
+        // ADR 0027: read-only preview — shape from the already-resolved held contract
+        // (conid known from args; symbol/expiry/strike/right from the matched position).
+        // NO place_order, NO transmit. Multiplier 100 (single-leg option).
+        let contract_json = json!({
+            "symbol": symbol,
+            "conid": args.conid,
+            "sec_type": "OPT",
+            "exchange": "SMART",
+            "currency": currency,
+            "expiry": raw_expiry,
+            "strike": strike,
+            "right": right_str,
+        });
+        Ok(shape_preview(contract_json, &order, 100.0, currency))
     } else {
         place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
             shape_option_close_ack(
