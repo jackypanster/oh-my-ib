@@ -461,3 +461,34 @@ Done when: full-verify GREEN on the branch; semantic review passes (review-02 re
 On success: trunk GREEN; feature complete. On failure: review rejects with reasons; attempts++ (currently 2);
 attempts>=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=9 · 2026-07-05T13:55:55Z · impl→review · completed · by=codex-reviewer
+done:   review-03 APPROVED for PR #22 / feat/write-path-semantics tip 846e719.
+        Freeze gate PASS (spec-rev 1549375..tip over tests/write_path_semantics_doc.rs empty);
+        net PR diff only adds docs/write-path-semantics.md; detached PR-head full-verify PASS
+        (`cargo build`, `cargo test`). review-01 and review-02 findings are resolved: no `--paper`,
+        YYYYMMDD expiries, command recipes parse through to dead-port connection envelopes, and the
+        combo risk-register triplet now uses coherent action/leg/sign semantics under IBKR's
+        scalar-vector model. Awaiting explicit human confirmation before merge.
+output: .pipeline/write-path-semantics/reviews/review-03.md
+--- handoff ---
+>>> NEXT
+Human confirmation required before merge.
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/write-path-semantics pr=#22
+Review verdict: APPROVED in .pipeline/write-path-semantics/reviews/review-03.md.
+Merge preconditions already satisfied:
+  - freeze gate GREEN: spec-rev 1549375611870e690e1a6717df63de515b5691d5 → PR head 846e719 over tests/write_path_semantics_doc.rs is empty
+  - feature completeness guard GREEN: only card 01 exists and status=review
+  - full-suite gate GREEN on detached PR-head worktree: cargo build; cargo test
+  - semantic review GREEN: review-01 and review-02 findings resolved
+If the operator says exactly to proceed/merge/go, run pipeline-review merge completion:
+  1. Re-read PR #22 head; if head changed, rerun freeze gate + full-verify before merging.
+  2. Squash-merge PR #22 via the GitHub forge adapter and delete the merged feat/write-path-semantics branch.
+  3. On main, set every card in write-path-semantics to status=done and set .pipeline/current.json stage=done.
+  4. Append journal seq=10 review→done completed with the merge SHA/PR URL.
+  5. Commit + push the trunk metadata completion commit.
+Hard rules:
+  - Do NOT merge without explicit human confirmation.
+  - Do NOT force-push trunk/shared refs.
+  - Do NOT skip review-NN, card→done, current.json.stage=done, or the final journal entry after merge.
+<<< END
