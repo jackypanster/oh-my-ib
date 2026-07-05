@@ -42,7 +42,7 @@ send-meaningful for our order shapes.
 | `multiplier` | `"100"` (options) | `String` on Contract; OptionBuilder default `100` (`builders.rs:95`/`:110`), serialized via `.to_string()` at `build()` (`:213`) | IB option contract multiplier (shares per contract). | fixed `100`; STK/BAG leave it as Contract default (empty). | never overridden; US equity options are 100. | 📖 doc-cite |
 | `strike` | `f64`, e.g. `240.0` (options only) | `f64` on Contract (`OptionBuilder.strike`, `builders.rs:120-124`); serialized at `build()` (`:208`) | option strike price. | passed through from `--strike`; positive-finite validated upstream. | STK/BAG: Contract default (0.0), inert. | 📖 doc-cite |
 | `right` | `Some(OptionRight::Call)`/`Put` (options only) | `Option<OptionRight>` on Contract; set at `build()` (`:209`) | C = call, P = put. | derived from verb (`option-call`/`option-put`/leg DSL); option-close takes it from the matched position. | STK/BAG: `None`, inert. | 📖 doc-cite |
-| `credit` (combo net-limit sign) | combo `limit_price` SIGN-FREE: negative = **credit**, positive = debit | `Option<f64>` (`mod.rs:95`); `build_combo_order` passes `Some(limit)` unchanged (`trade.rs:577`) | IB BAG net limit: the sign encodes credit vs debit (deliberately UNLIKE single-leg, which never goes negative). | ADR 0021: a credit spread is placed with `--limit -0.05`. Tiger's acceptance of a negative net limit is the open assumption. | single-leg paths never emit a negative limit (validated upstream). | ⚠️ UNVERIFIED |
+| `credit` (combo net-limit sign) | combo `limit_price` is SIGN-FREE: `build_combo_order` passes `Some(limit)` unchanged (`trade.rs:577`); `--limit` accepts negative/zero/positive finite (CLI `allow_hyphen_values`, `cli.rs:237`) | `Option<f64>` (`mod.rs:95`); default `None` (`:488`) | **IBKR reference = ACTION-RELATIVE** (TWS "Notes on Combination Orders"): the net-limit sign is read TOGETHER with `action`. Buying a credit spread ⇒ negative limit; selling a credit spread (receiving cash) ⇒ **positive** limit; selling a debit spread (owing cash) ⇒ negative. There is NO global "negative = credit" rule. | omi's CLI help string `--limit ... negative = credit` (`cli.rs:236`) is a SIMPLIFICATION that only matches the BUY-action case and is misleading for SELL-action combos. omi passes `--limit` through verbatim, so the OPERATOR must supply the correctly-signed value for their chosen `--action` per IBKR. | single-leg paths never emit a negative limit (validated upstream). Whether Tiger enforces the IBKR action-relative convention — and whether omi's help-string simplification misleads operators into placing inverted-sign SELL-combos — is UNVERIFIED. See risk register. | ⚠️ UNVERIFIED |
 | inert tail (~70 remaining `Order` fields) | ibapi `Default::default()` each: empty string / `0` / `0.0` / `false` / `None` / `vec![]` | full list `mod.rs:73-476`; defaults `:478-624` | not send-meaningful for our shapes (no OCA, no algo, no trailing, no delta-neutral, no volatility, …). | inherited en masse via `..Default::default()`; never named in the write path. | a future verb that sets one of these MUST add a row here (anti-rot guard (c) fires on builder output diff). | 📖 doc-cite |
 
 ## Placement choke point
@@ -64,30 +64,38 @@ DEFERRED (D2): the doc ships with recipes; executing them is an operator lifecyc
   `omi` order would be sent with degenerate partial-display semantics.
 - **Probe recipe** (`:4002`, paper):
   1. Place a far-from-market single-leg LMT so it rests open:
-     `omi --paper option-buy --symbol AAPL --expiry 2026-09-18 --strike 240 --right C --qty 1 --limit 0.05`
-  2. `omi --paper orders` — observe the open order.
+     `omi option-buy --symbol AAPL --expiry 20260918 --strike 240 --right C --qty 1 --limit 0.05`
+  2. `omi orders` — observe the open order.
   3. **Confirms `Some(0)` is benign** if: the order is accepted at the full `--qty` with no partial/
      iceberg display flag, and behaves identically to a hand-placed TWS limit order at the same price.
-  4. `omi --paper cancel <id>` to clean up.
+  4. `omi cancel <id>` to clean up.
 - **Fallback (if `0` triggers iceberg semantics)**: a separate feature sets `display_size = None` in
   the builders (D6 — do NOT fix here). Record the observed Tiger behavior in that feature's ADR.
 
-### combo net-limit sign (credit)
+### combo net-limit sign (credit) — action-relative
 
-- **Concern**: ADR 0021 assumes Tiger/IB accepts a **negative** net `limit_price` on a BAG to mean
-  "credit the account" (a credit spread). If Tiger instead rejects negative limits or requires the
-  sign on `action`, every credit-spread `omi option-combo` would fail or misprice.
-- **Probe recipe** (`:4002`, paper, US session so the option chain resolves):
-  1. Pick a far-OTM credit spread (price away from market so it rests open), e.g.:
-     `omi --paper option-combo --action sell --leg "SELL 1 AAPL 2026-09-18 240 C" --leg "BUY 1 AAPL 2026-09-18 250 C" --qty 1 --limit -0.05 --exchange SMART --currency USD`
-  2. `omi --paper orders` — observe the BAG.
-  3. **Confirms the sign convention** if: the BAG is accepted at the intended net credit (`-0.05`),
-     i.e. the order rests without a "price must be positive" rejection and the ack echoes the
-     negative limit.
-  4. `omi --paper cancel <id>` to clean up.
-- **Fallback (if rejected/mispriced)**: record the sign convention Tiger actually requires in a new
-  ADR and adapt `build_combo_order` (`trade.rs:577`) in a separate feature (D6). Do NOT change the
-  sign here.
+- **Concern**: omi's CLI passes `--limit` through verbatim and the help string says `negative = credit`
+  (`cli.rs:236`), but IBKR's TWS combination-order convention is ACTION-RELATIVE: selling a credit
+  spread (receiving cash) takes a **positive** net limit; only BUYing a credit spread takes a negative
+  one. Two distinct things are unverified against Tiger: (a) does Tiger enforce the IBKR
+  action-relative sign convention at all? (b) does omi's `negative = credit` help-string
+  simplification mislead an operator into placing an inverted-sign SELL-combo (e.g. `--action sell
+  --limit -0.05`), which under IBKR convention is a SELL-debit (you pay cash), not the intended credit?
+- **Probe recipe** (`:4002`, paper, US session so the option chain resolves). Two probes — one per
+  coherent action/sign pairing — to distinguish "Tiger follows IBKR" from "Tiger follows omi's
+  simplification":
+  1. **SELL-credit per IBKR** (positive limit, the convention-correct shape):
+     `omi option-combo --action sell --leg "SELL 1 AAPL 20260918 240 C" --leg "BUY 1 AAPL 20260918 250 C" --qty 1 --limit 0.05 --exchange SMART --currency USD`
+     then `omi orders`. **Confirms Tiger follows IBKR** if the BAG rests at the intended net credit
+     (you receive $0.05) with no sign rejection.
+  2. **Inverted-sign SELL** (negative limit — omi's help-string literal, but IBKR SELL-debit):
+     `omi option-combo --action sell --leg "SELL 1 AAPL 20260918 240 C" --leg "BUY 1 AAPL 20260918 250 C" --qty 1 --limit -0.05 --exchange SMART --currency USD`
+     then `omi orders`. **Confirms the help-string divergence is real** if Tiger rejects, re-prices,
+     or fills this as a debit (you pay) rather than a credit.
+  3. `omi cancel <id>` after each to clean up.
+- **Fallback (if Tiger rejects/misprices either)**: record the sign convention Tiger actually
+  enforces in a new ADR; fix is either the `build_combo_order` sign handling (`trade.rs:577`) or the
+  CLI help string (`cli.rs:236`) — a separate feature (D6). Do NOT change the sign here.
 
 ## Anti-rot guard
 
