@@ -6,6 +6,7 @@
 //!   - the real transmit path stays `what_if = false` (asserted on `build_stk_order` output),
 //!   - the CLI/gate contract: `--preview` is accepted on ALL SIX order verbs, gated IDENTICALLY to a
 //!     real order (live without `OMI_ALLOW_LIVE` => `config` error), and listed in `--help`.
+//!
 //! RED until impl adds the `--preview` flag (`GlobalOpts` -> `Config`), the `preview_with_client`
 //! gateway fn, and re-exports `oh_my_ib::ib::shape_preview`.
 //!
