@@ -1,23 +1,24 @@
-//! FROZEN SPEC — order-preview (card 01). Offline. The coder must NOT edit this file.
+//! FROZEN SPEC — preview-readonly (card 01). Offline. The coder must NOT edit this file.
 //!
-//! Freezes the whatIf order-preview contract (ADR 0026):
-//!   - the pure preview-envelope seam `shape_preview(&Contract, &Order, &OrderState) -> Value`
-//!     (uniform 9-key envelope; `Option<f64>::None` -> JSON null; margin/commission mapping),
-//!   - the real transmit path stays `what_if = false` (asserted on `build_stk_order` output),
-//!   - the CLI/gate contract: `--preview` is accepted on ALL SIX order verbs, gated IDENTICALLY to a
-//!     real order (live without `OMI_ALLOW_LIVE` => `config` error), and listed in `--help`.
+//! Freezes the READ-ONLY preview contract (ADR 0027): `--preview` NEVER transmits. It REPLACES the
+//! whatIf spec (order-preview) — live-acceptance REFUTED R1 (Tiger TRANSMITS whatIf orders), so the
+//! preview path drops `place_order`/`what_if` entirely.
+//!   - pure `shape_preview(Value, &Order, multiplier, ccy)`: a `transmits:false` envelope with
+//!     `notional` (qty×|limit|×multiplier; `null` for MKT), and NO `what_if`/`margin`/`commission`/
+//!     `status` keys.
+//!   - `--preview` accepted on all six order verbs (dead paper port ⇒ `connection`).
+//!   - the REAL order path is STILL gated: `buy --live` without `OMI_ALLOW_LIVE` ⇒ `config`.
 //!
-//! RED until impl adds the `--preview` flag (`GlobalOpts` -> `Config`), the `preview_with_client`
-//! gateway fn, and re-exports `oh_my_ib::ib::shape_preview`.
+//! RED until impl rewrites `shape_preview` to the read-only signature (the old
+//! `(&Contract,&Order,&OrderState)` signature no longer resolves).
 //!
-//! NOT frozen (reviewed-by-reading + operator live-acceptance, CONTEXT.md R1/R2): the gateway fn
-//! `preview_with_client` — that it sets `Order.what_if = true`, reads `OpenOrder.order_state`, and
-//! that whatIf does NOT transmit on the Tiger gateway. Write calls stay ONLY in `src/ib/trade.rs`.
-//! The dead-port cases below assert the CLI/gate wiring up to the connection boundary; the envelope
-//! shape itself is frozen via the pure `shape_preview` seam (no gateway needed).
+//! NOT frozen (review-by-reading + cc live-acceptance — CONTEXT.md): the `contract_details` wiring;
+//! CONTAINMENT (the preview path calls NO `place_order`); the read-shaped gate (`--live --preview`
+//! without env reaches connect, not `config` — observable only on the live port, so cc verifies it);
+//! and that `omi --live … --preview` leaves `omi --live orders` EMPTY (the R1-fix acceptance).
 
 use assert_cmd::Command;
-use ibapi::orders::{Action, OrderState};
+use ibapi::orders::Action;
 use predicates::prelude::*;
 use serde_json::{json, Value};
 
@@ -25,7 +26,6 @@ use oh_my_ib::ib::{build_stk_order, shape_preview};
 
 fn omi() -> Command {
     let mut cmd = Command::cargo_bin("omi").expect("the `omi` binary should build");
-    // The gate reads the environment: start every test from a clean slate.
     cmd.env_remove("OMI_ALLOW_LIVE");
     cmd
 }
@@ -38,64 +38,55 @@ fn expect_error_code(mut cmd: Command, args: &[&str], code: &str) {
     assert_eq!(v["error"]["code"], code, "args {args:?} must yield code={code}: {stderr}");
 }
 
-// ---- pure preview-envelope seam (Contract + Order + OrderState -> uniform envelope) ----
+// ---- pure READ-ONLY preview envelope (no transmit; notional; NO whatIf/margin/commission) ----
 
 #[test]
-fn preview_envelope_has_the_uniform_keys_and_maps_orderstate() {
-    let (contract, order) = build_stk_order("AAPL", Action::Buy, 100.0, Some(250.0));
-    let state = OrderState {
-        initial_margin_change: Some(1234.5),
-        commission: Some(1.0),
-        commission_currency: "USD".to_string(),
-        ..Default::default()
-    };
-    let out = shape_preview(&contract, &order, &state);
+fn preview_envelope_is_read_only_with_notional() {
+    let (_c, order) = build_stk_order("AAPL", Action::Buy, 100.0, Some(290.0));
+    let contract = json!({
+        "symbol": "AAPL", "conid": 265598, "sec_type": "STK",
+        "exchange": "SMART", "currency": "USD", "long_name": "APPLE INC"
+    });
+    let out = shape_preview(contract, &order, 1.0, "USD");
     let obj = out.as_object().expect("preview must be a JSON object");
     let mut keys: Vec<&str> = obj.keys().map(|k| k.as_str()).collect();
     keys.sort_unstable();
     assert_eq!(
         keys,
         [
-            "action", "commission", "contract", "margin", "order", "preview", "status", "warning",
-            "what_if"
+            "action", "contract", "note", "notional", "notional_currency", "order", "preview",
+            "transmits"
         ]
     );
     assert_eq!(out["preview"], json!(true));
-    assert_eq!(out["what_if"], json!(true));
-    assert_eq!(out["margin"]["init_change"], json!(1234.5));
-    assert_eq!(out["commission"]["value"], json!(1.0));
-    assert_eq!(out["commission"]["currency"], json!("USD"));
-    assert_eq!(out["order"]["type"], json!("LMT"));
-    assert_eq!(out["order"]["qty"], json!(100.0));
-    assert_eq!(out["order"]["limit"], json!(250.0));
-    assert_eq!(out["contract"]["symbol"], json!("AAPL"));
+    assert_eq!(out["transmits"], json!(false), "read-only preview: transmits MUST be false");
+    assert_eq!(out["notional"], json!(29000.0), "100 x 290 x 1");
+    assert_eq!(out["notional_currency"], json!("USD"));
+    assert_eq!(out["order"]["limit"], json!(290.0));
+    assert_eq!(out["contract"]["conid"], json!(265598));
+    // whatIf-era keys are GONE (the mechanism that transmitted on Tiger):
+    assert!(out.get("what_if").is_none(), "read-only preview must not carry what_if");
+    assert!(out.get("margin").is_none(), "no margin (whatIf transmits on this gateway)");
+    assert!(out.get("commission").is_none(), "no commission (whatIf transmits)");
 }
 
 #[test]
-fn preview_absent_orderstate_fields_are_json_null_not_missing() {
-    // Tiger may honor what_if but leave margin/commission empty (CONTEXT.md R2): None -> null,
-    // key present. The envelope stays a valid confirm card (echo + resolved contract).
-    let (contract, order) = build_stk_order("MSFT", Action::Sell, 5.0, None);
-    let state = OrderState::default();
-    let out = shape_preview(&contract, &order, &state);
-    assert_eq!(out["margin"]["init_change"], Value::Null, "None -> null, key present");
-    assert_eq!(out["margin"]["maint_change"], Value::Null);
-    assert_eq!(out["commission"]["value"], Value::Null);
-    // MKT preview (no limit): limit echoes as null, key present.
-    assert_eq!(out["order"]["limit"], Value::Null);
+fn preview_notional_uses_the_multiplier() {
+    // notional = qty x |limit| x multiplier; options pass multiplier 100.
+    let (_c, order) = build_stk_order("X", Action::Buy, 2.0, Some(5.0));
+    let out = shape_preview(json!({"sec_type": "OPT"}), &order, 100.0, "USD");
+    assert_eq!(out["notional"], json!(1000.0), "2 x 5 x 100");
 }
-
-// ---- the real transmit path must never flip what_if ----
 
 #[test]
-fn real_order_build_keeps_what_if_false() {
-    let (_contract, order) = build_stk_order("AAPL", Action::Buy, 1.0, Some(1.0));
-    assert!(!order.what_if, "the real transmit path must never set what_if");
+fn preview_mkt_has_null_notional() {
+    // MKT (no limit) ⇒ notional cannot be computed ⇒ null (key present).
+    let (_c, order) = build_stk_order("MSFT", Action::Sell, 5.0, None);
+    let out = shape_preview(json!({"sec_type": "STK"}), &order, 1.0, "USD");
+    assert_eq!(out["notional"], Value::Null, "MKT preview: no limit ⇒ notional null");
 }
 
-// ---- CLI/gate contract: --preview accepted on ALL SIX verbs, gated like a real order ----
-// Dead paper port (65000) is ungated: past parse+gate, the command reaches connect and fails with
-// `connection`. Today `--preview` is an unknown arg => `usage` (RED) until impl adds the flag.
+// ---- --preview accepted on ALL SIX verbs (dead paper port ⇒ connection, past parse) ----
 
 #[test]
 fn preview_accepted_on_buy() {
@@ -151,15 +142,20 @@ fn preview_accepted_on_option_close() {
     );
 }
 
-// ---- gate is IDENTICAL to a real order: live without OMI_ALLOW_LIVE is a config error (no connect) ----
+// ---- the REAL order path is STILL gated (errors before any connect — robust, gateway-independent) ----
 
 #[test]
-fn preview_on_live_without_env_is_config_error_like_a_real_order() {
+fn real_buy_on_live_without_env_is_still_config_error() {
     expect_error_code(
         omi(),
-        &["--format", "json", "buy", "AAPL", "1", "--limit", "1", "--live", "--preview"],
+        &["--format", "json", "buy", "AAPL", "1", "--limit", "1", "--live"],
         "config",
     );
+}
+
+#[test]
+fn real_sell_on_live_without_env_is_still_config_error() {
+    expect_error_code(omi(), &["--format", "json", "sell", "AAPL", "1", "--live"], "config");
 }
 
 // ---- the flag is documented ----
