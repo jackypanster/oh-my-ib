@@ -154,3 +154,65 @@ Feature gotchas:
 Done when: cargo test --test write_path_semantics_doc GREEN on feat/write-path-semantics; PR open.
 On success: current.json.stage=impl, then run pipeline-review. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-05T11:55:00Z · impl · completed · by=claude (pipeline-impl)
+done:   Card 01 GREEN. Cut feat/write-path-semantics from main (carries spec-rev
+        1549375). Wrote docs/write-path-semantics.md (impl-paths, DOC-ONLY — no
+        src/ change, D6): 7-col field inventory (~20 rows: explicitly-set Order
+        fields action/total_quantity/order_type/tif/limit_price/account; load-bearing
+        ibapi Default fields transmit/outside_rth/display_size/what_if/origin/
+        exempt_code; Contract surface symbol/security_type/exchange/currency/
+        multiplier/strike/right; combo net-credit sign; one inert-tail catch-all),
+        a placement choke-point note (stamp_order_account @ place_with_client,
+        trade.rs:317), and a `## ⚠️ Risk register` with a runnable `omi --paper`
+        probe recipe per ⚠️ row (display_size=Some(0) — ibapi carries the
+        `// TODO - default to None?` at mod.rs:498; combo net-credit sign — ADR
+        0021's negative=credit assumption). Tier assignment: account=✅ (paper
+        probe via order-account-stamp seq=4/6); display_size + combo credit = ⚠️;
+        all other rows 📖 with ibapi source-line citations (transmit:true@494,
+        outside_rth:false@500, what_if:false@562, tif:Day@490, origin:Customer@516,
+        exempt_code:-1@519, SMART/USD/mult-100 @ builders.rs:23-24/93-95/513).
+        VERIFY card-scoped: cargo build ✓; cargo test --test write_path_semantics_doc
+        ⇒ 4/4 pass ((a) structure, (b) required tokens, (c) anti-rot serde-diff,
+        (d) default-canary). Probes DEFERRED (D2) — recipes only, not executed.
+        PR #22 opened (gh authenticated, repo scope).
+output: docs/write-path-semantics.md (on feat/write-path-semantics); PR #22; .pipeline/write-path-semantics/tasks/01.md (status=review), .pipeline/current.json (stage=impl)
+--- handoff ---
+>>> NEXT
+Feature write-path-semantics has ONE card (this one); it is now status=review.
+        NO todo/in-progress cards remain ⇒ run pipeline-review ONCE on the complete feature.
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/write-path-semantics pr=#22
+Model: frontier SOTA recommended (review is a reasoning stage; semantic truth of each row is read-by-eye).
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2 — review needs no gateway, skip).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; write code ONLY in src/ib/trade.rs)
+  - .pipeline/write-path-semantics/PRD.md + arch.md + CONTEXT.md — WHAT + decisions D1-D6 + glossary
+  - .pipeline/write-path-semantics/docs/adr/0025-write-path-semantics-doc.md — §4 "Freeze coverage" = the review checklist
+  - .pipeline/write-path-semantics/tasks/01.md — the card (impl-paths, Freeze coverage section)
+  - tests/write_path_semantics_doc.rs — the FROZEN spec (4 guards; do NOT edit)
+  - docs/write-path-semantics.md — the deliverable under review (the diff is this one file)
+  - src/ib/trade.rs — READ ONLY cross-check for the doc's field citations
+Your task (concrete, numbered):
+  1. Diff feat/write-path-semantics against main: expect EXACTLY one new file (docs/write-path-semantics.md).
+     Any src/ or tests/ change ⇒ freeze-gate reject (impl-paths = the doc ONLY, D6).
+  2. SEMANTIC review (ADR 0025 §4 — NOT machine-checkable): for EACH row, the reference-semantics and
+     boundary columns are TRUE against ibapi source + IB TWS API reference; tier assignments are HONEST
+     (every 📖 has a real citation, ✅ has a real probe, ⚠️ has a real gap + recipe).
+  3. Every ⚠️ row (display_size=Some(0), combo net-credit sign) carries a RUNNABLE probe recipe on :4002
+     (exact omi command + the observable that confirms/refutes + the fallback). Probes are deferred (D2) —
+     review confirms the recipe is runnable, NOT that it was run.
+  4. Run full-verify (cargo build && cargo test) on the branch — the trunk suite was RED from the freeze
+     commit; this feature turning it GREEN is the final freeze gate (CONTRACT §State authority).
+  5. Human-confirm the merge. Only pipeline-review merges.
+Feature gotchas:
+  - DOC-ONLY feature: the diff is a Markdown doc, not Rust. Do not be surprised that cargo test passes
+    purely by the doc existing and naming the right tokens.
+  - account is stamped post-build (place_with_client choke point, trade.rs:317) — NOT builder output, so
+    invisible to the anti-rot serde-diff (c); covered by required-token (b) + this read-by-eye review.
+  - The ⚠️ probes are the deferred live acceptance (D2): they populate the risk register; running them is
+    an operator lifecycle in a US session, not a merge gate.
+Done when: full-verify GREEN on the branch; semantic review passes; human confirms ⇒ merge PR #22.
+On success: trunk GREEN (freeze red cleared); feature complete. On failure: review rejects with reasons;
+re-route to pipeline-impl (attempts<3) or pipeline-hunt (>=3 blocked).
+<<< END
