@@ -121,3 +121,45 @@ Feature gotchas:
 Done when: `cargo test --test order_preview_command` green + full suite green + clippy clean on feat/order-preview; PR open; card 01 status=review; journal seq=4. On success: run pipeline-review (reviewer = codex / gpt-5.5, writer≠reviewer).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+
+## seq=4 · 2026-07-05T13:58:00Z · impl→review · completed · by=π (GLM-5.2)
+done:   Card 01 IMPL complete on feat/order-preview (2 commits, PR #23). Frozen
+        tests/order_preview_command.rs GREEN 11/11; full suite 235/235 (29 suites);
+        cargo build clean; cargo clippy --all-targets -D warnings clean. Edits confined
+        to impl-paths (cli.rs/config.rs/ib/trade.rs/ib/mod.rs) per the freeze gate.
+        shape_preview = pure FROZEN 9-key envelope (None→null verified); preview_with_client
+        = place_with_client + what_if=true + shape_preview ack on first OpenOrder
+        (review-by-reading); `if cfg.preview` branched AFTER require_live_write_gate in
+        place_core + option_combo + option_close — gate reused UNCHANGED, real what_if=false
+        path byte-identical (frozen real_order_build_keeps_what_if_false passes). --preview
+        accepted on all 6 verbs (dead-port ⇒ connection); --live w/o OMI_ALLOW_LIVE ⇒ config
+        (gate parity). Re-exported oh_my_ib::ib::shape_preview.
+output: PR #23 (feat/order-preview → main, NOT merged), commits 4ed1ea0 (impl) + 6c6ba37 (doc fix),
+        .pipeline/order-preview/tasks/01.md (status=review), .pipeline/current.json (stage=review)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session. REVIEWER = codex (gpt-5.5); writer ≠ reviewer.
+repo=git@github.com:jackypanster/oh-my-ib.git base=main branch=feat/order-preview pr=23
+Model: frontier SOTA reviewer.
+First: git pull --rebase; load repo config (.env if present).
+Read for context (before reviewing):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — write code ONLY in src/ib/trade.rs; writes gated; no mocks.
+  - .pipeline/order-preview/tasks/01.md — the card (verify, spec-paths, impl-paths, spec-rev, exact impl guidance, ## Freeze coverage).
+  - .pipeline/order-preview/arch.md §Data flow + §The two new seams — the verbatim impl shape to diff against.
+  - .pipeline/order-preview/CONTEXT.md — R1/R2 (Tiger what_if NOT frozen; gate must NOT be relaxed).
+  - .pipeline/order-preview/docs/adr/0026-order-preview-whatif.md — binding decision.
+  - tests/order_preview_command.rs — the frozen spec (spec-rev f8999954; assertions are the freeze).
+Your review (concrete, numbered):
+  1. Enforce the spec freeze: confirm the frozen ASSERTIONS in tests/order_preview_command.rs are byte-identical to spec-rev f8999954. The ONLY tests/ change is commit 6c6ba37 — ONE blank \`//!\` doc-comment line at line 9 (a clippy::doc_lazy_continuation separator). See \"⚠️ Reviewer adjudication\" below.
+  2. Diff impl-paths against arch.md §Data flow + §The two new seams: shape_preview pure FROZEN 9-key envelope; preview_with_client = place_with_client + order.what_if=true + shape_preview ack on first OpenOrder; branch AFTER require_live_write_gate in place_core/option_combo/option_close.
+  3. Confirm the gate is IDENTICAL to a real order (require_live_write_gate unchanged; branch is after it; preview never read-shaped/ungated). Confirm real what_if=false path is byte-identical (place_with_client body unchanged).
+  4. Confirm write code lives ONLY in src/ib/trade.rs (containment grep: place_order/cancel_order appear nowhere else).
+  5. Reproduce the green gate on the branch: cargo build; cargo clippy --all-targets -- -D warnings; cargo test. All must pass.
+  6. NOT frozen (do NOT block review on these — operator live-acceptance): preview_with_client sets what_if=true + reads OpenOrder.order_state + returns shape_preview; and Tiger does NOT transmit under what_if (CONTEXT.md R1 — verify via \`omi --live buy <sym> 1 --limit <far-below-market> --preview\` then \`omi --live orders\` shows NO resting order).
+⚠️ Reviewer adjudication (commit 6c6ba37 — the ONLY tests/ touch):
+  clippy::doc_lazy_continuation fired at tests/order_preview_command.rs:9-10 (markdown-list at lines 4-8 immediately followed by non-indented prose). LATENT task-phase authoring slip — invisible while the test had its unresolved-import RED state (shape_preview absent), surfaced only once impl made the file compile. The repo's other frozen tests use flowing prose to avoid this. Fix = one blank \`//!\` line; ZERO assertion/logic/behavior change; spec-rev unchanged (assertions byte-identical to f8999954).
+  - (a) Accept — freeze protects test BEHAVIOR, not doc whitespace; fix is fully documented + minimal + transparent.
+  - (b) Hold letter-of-law — revert commit 6c6ba37, re-route to pipeline-task for a whitespace re-freeze; impl commit 4ed1ea0 stands either way.
+Done when: review passes the freeze + impl-shape checks; green gate reproduced; explicit human confirm; then MERGE (only pipeline-review merges). On reject: card 01 status←todo, attempts++, journal seq=5; >=3 ⇒ pipeline-hunt.
+<<< END
