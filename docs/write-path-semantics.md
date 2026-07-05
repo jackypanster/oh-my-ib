@@ -23,7 +23,7 @@ send-meaningful for our order shapes.
 
 | field | our value | ibapi type/behavior | Tiger/IB reference semantics | why this value / deliberate divergence | boundary cases | verification tier |
 |---|---|---|---|---|---|---|
-| `action` | `Action::Buy`/`Sell` (verb-derived) | `Action` enum (`mod.rs:88`); default `Buy` (`:485`) | BUY/SELL side. SELL auto-shorts if qty > long (ibapi doc). | verb (`buy`/`option-sell`/…) is the only side authority; option-close DERIVES side from held position sign (ADR 0022, never user-declared). | SSHORT/SLONG are institution-only; never emitted. | 📖 doc-cite |
+| `action` | `Action::Buy`/`Sell` (verb-derived) | `Action` enum (`mod.rs:88`); default `Buy` (`:485`) | BUY/SELL side. SELL auto-shorts if qty > long (ibapi doc). | verb (`buy`/`option-sell`/…) is the only side authority; option-close DERIVES side from held position sign (ADR 0022, never user-declared). | SSHORT/SLONG are institution-only; never emitted. **combo scalar-vector**: `Order.action` is a SCALAR that IBKR multiplies into each `ComboLeg.action` to get the effective leg position — `--action buy` keeps leg actions as-written, `--action sell` INVERTS them (see `credit` row + risk register). | 📖 doc-cite |
 | `total_quantity` | `f64`, user `--qty` (e.g. `1.0`) | `f64` (`mod.rs:90`); default `0.0` (`:486`) | shares (STK) / contracts (OPT) / combo units (BAG). | passed through verbatim; option-close derives `|position|` or bounded sub-qty (ADR 0022 §2). | fractional qty rejected upstream; over-close capped at `|position|`. | 📖 doc-cite |
 | `order_type` | `"LMT"` (option/combo always; STK when `--limit` given) else `"MKT"` (STK only) | `String` (`mod.rs:92`); default `""` (`:487`) | LMT = limit_price is the cap; MKT = immediate market. | single-leg option is LMT-only (ADR 0020 D2); combo is LMT-only (ADR 0021). STK supports MKT. | no STOP/STP_LMT emission. | 📖 doc-cite |
 | `tif` | `TimeInForce::Day` | `TimeInForce` (`mod.rs:101`); default `Day` (`:490`) | order alive for the trading day. | always Day (v1; ADR 0020 D2, ADR 0021). NOT explicit in `Order { .. }` literal — inherited from custom Default. | no GTC/IOC/FOK/OPG emission. | 📖 doc-cite |
@@ -42,7 +42,7 @@ send-meaningful for our order shapes.
 | `multiplier` | `"100"` (options) | `String` on Contract; OptionBuilder default `100` (`builders.rs:95`/`:110`), serialized via `.to_string()` at `build()` (`:213`) | IB option contract multiplier (shares per contract). | fixed `100`; STK/BAG leave it as Contract default (empty). | never overridden; US equity options are 100. | 📖 doc-cite |
 | `strike` | `f64`, e.g. `240.0` (options only) | `f64` on Contract (`OptionBuilder.strike`, `builders.rs:120-124`); serialized at `build()` (`:208`) | option strike price. | passed through from `--strike`; positive-finite validated upstream. | STK/BAG: Contract default (0.0), inert. | 📖 doc-cite |
 | `right` | `Some(OptionRight::Call)`/`Put` (options only) | `Option<OptionRight>` on Contract; set at `build()` (`:209`) | C = call, P = put. | derived from verb (`option-call`/`option-put`/leg DSL); option-close takes it from the matched position. | STK/BAG: `None`, inert. | 📖 doc-cite |
-| `credit` (combo net-limit sign) | combo `limit_price` is SIGN-FREE: `build_combo_order` passes `Some(limit)` unchanged (`trade.rs:577`); `--limit` accepts negative/zero/positive finite (CLI `allow_hyphen_values`, `cli.rs:237`) | `Option<f64>` (`mod.rs:95`); default `None` (`:488`) | **IBKR reference = ACTION-RELATIVE** (TWS "Notes on Combination Orders"): the net-limit sign is read TOGETHER with `action`. Buying a credit spread ⇒ negative limit; selling a credit spread (receiving cash) ⇒ **positive** limit; selling a debit spread (owing cash) ⇒ negative. There is NO global "negative = credit" rule. | omi's CLI help string `--limit ... negative = credit` (`cli.rs:236`) is a SIMPLIFICATION that only matches the BUY-action case and is misleading for SELL-action combos. omi passes `--limit` through verbatim, so the OPERATOR must supply the correctly-signed value for their chosen `--action` per IBKR. | single-leg paths never emit a negative limit (validated upstream). Whether Tiger enforces the IBKR action-relative convention — and whether omi's help-string simplification misleads operators into placing inverted-sign SELL-combos — is UNVERIFIED. See risk register. | ⚠️ UNVERIFIED |
+| `credit` (combo net-limit sign) | combo `limit_price` is SIGN-FREE: `build_combo_order` passes `Some(limit)` unchanged (`trade.rs:577`); `--limit` accepts negative/zero/positive finite (CLI `allow_hyphen_values`, `cli.rs:237`) | `Option<f64>` (`mod.rs:95`); default `None` (`:488`) | **IBKR reference = ACTION-RELATIVE** (TWS "Notes on Combination Orders"): the net-limit sign is read TOGETHER with `Order.action`, and `Order.action` ALSO multiplies each `ComboLeg.action` (scalar-vector). Concretely, for a call credit spread with strikes L<H (bear call = SELL L / BUY H): **BUY-credit** = `--action buy` + `SELL L / BUY H` legs + **negative** limit (effective legs unchanged); **SELL-credit** = `--action sell` + `BUY L / SELL H` legs + **positive** limit (effective legs inverted to `SELL L / BUY H`). There is NO global "negative = credit" rule. | omi's CLI help string `--limit ... negative = credit` (`cli.rs:236`) is a SIMPLIFICATION that only matches the BUY-action case; it does NOT mention the scalar-vector leg inversion nor the positive-limit SELL-credit case. omi passes `--limit` and the leg DSL through verbatim, so the OPERATOR must supply a coherent action/leg-vector/sign triple per IBKR. | single-leg paths never emit a negative limit (validated upstream). Whether Tiger enforces IBKR's action-relative sign convention AND the scalar-vector leg inversion — and whether omi's help-string simplification misleads operators — is UNVERIFIED. See risk register. | ⚠️ UNVERIFIED |
 | inert tail (~70 remaining `Order` fields) | ibapi `Default::default()` each: empty string / `0` / `0.0` / `false` / `None` / `vec![]` | full list `mod.rs:73-476`; defaults `:478-624` | not send-meaningful for our shapes (no OCA, no algo, no trailing, no delta-neutral, no volatility, …). | inherited en masse via `..Default::default()`; never named in the write path. | a future verb that sets one of these MUST add a row here (anti-rot guard (c) fires on builder output diff). | 📖 doc-cite |
 
 ## Placement choke point
@@ -72,28 +72,42 @@ DEFERRED (D2): the doc ships with recipes; executing them is an operator lifecyc
 - **Fallback (if `0` triggers iceberg semantics)**: a separate feature sets `display_size = None` in
   the builders (D6 — do NOT fix here). Record the observed Tiger behavior in that feature's ADR.
 
-### combo net-limit sign (credit) — action-relative
+### combo net-limit sign (credit) — action-relative + scalar-vector
 
-- **Concern**: omi's CLI passes `--limit` through verbatim and the help string says `negative = credit`
-  (`cli.rs:236`), but IBKR's TWS combination-order convention is ACTION-RELATIVE: selling a credit
-  spread (receiving cash) takes a **positive** net limit; only BUYing a credit spread takes a negative
-  one. Two distinct things are unverified against Tiger: (a) does Tiger enforce the IBKR
-  action-relative sign convention at all? (b) does omi's `negative = credit` help-string
-  simplification mislead an operator into placing an inverted-sign SELL-combo (e.g. `--action sell
-  --limit -0.05`), which under IBKR convention is a SELL-debit (you pay cash), not the intended credit?
-- **Probe recipe** (`:4002`, paper, US session so the option chain resolves). Two probes — one per
-  coherent action/sign pairing — to distinguish "Tiger follows IBKR" from "Tiger follows omi's
-  simplification":
-  1. **SELL-credit per IBKR** (positive limit, the convention-correct shape):
-     `omi option-combo --action sell --leg "SELL 1 AAPL 20260918 240 C" --leg "BUY 1 AAPL 20260918 250 C" --qty 1 --limit 0.05 --exchange SMART --currency USD`
-     then `omi orders`. **Confirms Tiger follows IBKR** if the BAG rests at the intended net credit
-     (you receive $0.05) with no sign rejection.
-  2. **Inverted-sign SELL** (negative limit — omi's help-string literal, but IBKR SELL-debit):
-     `omi option-combo --action sell --leg "SELL 1 AAPL 20260918 240 C" --leg "BUY 1 AAPL 20260918 250 C" --qty 1 --limit -0.05 --exchange SMART --currency USD`
-     then `omi orders`. **Confirms the help-string divergence is real** if Tiger rejects, re-prices,
-     or fills this as a debit (you pay) rather than a credit.
-  3. `omi cancel <id>` after each to clean up.
-- **Fallback (if Tiger rejects/misprices either)**: record the sign convention Tiger actually
+- **Concern**: two independent things are unverified against Tiger. (a) **Sign convention**: does
+  Tiger enforce IBKR's action-relative net-limit sign (BUY-credit ⇒ negative; SELL-credit ⇒ positive)?
+  (b) **Scalar-vector**: does Tiger compute the effective leg position as `Order.action × ComboLeg.action`
+  (so `--action sell` INVERTS the leg vector) per IBKR's TWS combo lesson? omi's CLI help string
+  `--limit ... negative = credit` (`cli.rs:236`) is a simplification that ignores both subtleties —
+  it only matches the BUY-credit case and silently inverts meaning for SELL-action combos.
+- **Probe recipe** (`:4002`, paper, US session so the option chain resolves). Three probes on a call
+  credit spread with strikes L=240 < H=250 (bear call = `SELL 240 / BUY 250`). Each probe NAMES the
+  effective position it actually creates under the IBKR scalar-vector model, so the operator can read
+  off which convention Tiger follows:
+  1. **BUY-credit per IBKR** — coherent baseline (negative limit, BUY-action, legs as-written):
+     `omi option-combo --action buy --leg "SELL 1 AAPL 20260918 240 C" --leg "BUY 1 AAPL 20260918 250 C" --qty 1 --limit -0.05 --exchange SMART --currency USD`
+     Effective legs (×+1) = `SELL 240 / BUY 250` = bear call = credit spread, **bought**. This is the
+     same shape the frozen test `negative_net_limit_is_a_credit_and_builds` asserts at build time.
+     `omi orders`. **Confirms Tiger accepts BUY-credit at a negative limit** if the BAG rests without a
+     sign rejection.
+  2. **SELL-credit per IBKR** — coherent opposite (positive limit, SELL-action, inverted leg vector):
+     `omi option-combo --action sell --leg "BUY 1 AAPL 20260918 240 C" --leg "SELL 1 AAPL 20260918 250 C" --qty 1 --limit 0.05 --exchange SMART --currency USD`
+     Effective legs (×−1) = `SELL 240 / BUY 250` = same bear call = credit spread, **sold**.
+     `omi orders`. **Confirms Tiger follows IBKR's scalar-vector + positive-limit SELL-credit** if the
+     BAG rests at the intended net credit (you receive $0.05) with no sign rejection.
+  3. **Divergence probe** — the omi help-string literal applied to a SELL-credit leg vector
+     (negative limit, SELL-action, inverted leg vector — same legs as probe 2):
+     `omi option-combo --action sell --leg "BUY 1 AAPL 20260918 240 C" --leg "SELL 1 AAPL 20260918 250 C" --qty 1 --limit -0.05 --exchange SMART --currency USD`
+     Effective legs (×−1) = `SELL 240 / BUY 250` = credit spread sold, BUT the negative limit is the
+     IBKR SELL-debit sign (you pay). **Confirms the help-string divergence is real** if Tiger rejects,
+     re-prices, or fills this as a debit where probe 2 (positive limit, same legs) was accepted.
+  4. `omi cancel <id>` after each to clean up.
+- **Reading the triplet**: probes 1+2 both green ⇒ Tiger follows IBKR (action-relative sign +
+  scalar-vector). Probe 3 rejected where probe 2 accepted ⇒ Tiger enforces the sign convention and
+  omi's `negative = credit` help string misleads for SELL-combos (separate feature to fix, D6). Probe 2
+  rejected/repriced ⇒ Tiger does NOT follow the scalar-vector inversion, or uses a different sign rule;
+  record what it does.
+- **Fallback (any rejection/misprice)**: record the sign + scalar-vector convention Tiger actually
   enforces in a new ADR; fix is either the `build_combo_order` sign handling (`trade.rs:577`) or the
   CLI help string (`cli.rs:236`) — a separate feature (D6). Do NOT change the sign here.
 
