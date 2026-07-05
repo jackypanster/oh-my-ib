@@ -41,6 +41,8 @@ pub struct Config {
     pub client_id: i32,
     pub account: Option<String>,
     pub md_type: MdType,
+    /// CLI-only: `--preview` mirrors `g.preview` (no config-file key).
+    pub preview: bool,
 }
 
 impl Default for Config {
@@ -51,6 +53,7 @@ impl Default for Config {
             client_id: 100,
             account: None,
             md_type: MdType::Delayed,
+            preview: false,
         }
     }
 }
@@ -128,6 +131,7 @@ impl Config {
         if let Some(md) = &g.md_type {
             self.md_type = MdType::parse(md)?;
         }
+        self.preview = g.preview;
 
         // Live-account safety (CLAUDE.md hard rule): the live port is reachable ONLY
         // via an explicit --live. A config value or `--port 4001` without --live is refused.

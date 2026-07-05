@@ -31,6 +31,10 @@ pub struct GlobalOpts {
     /// Use the LIVE account (port 4001) instead of paper
     #[arg(long, global = true)]
     pub live: bool,
+    /// Preview the order via IB whatIf (no transmit): resolved contract + margin/commission,
+    /// no order placed.
+    #[arg(long, global = true)]
+    pub preview: bool,
     /// API client id (default: 100)
     #[arg(long, global = true)]
     pub client_id: Option<i32>,
