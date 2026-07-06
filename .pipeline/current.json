@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "live-write-guardrail",
-  "stage": "prd",
+  "stage": "arch",
   "pr": "none",
   "full-verify": [
     "cargo build",

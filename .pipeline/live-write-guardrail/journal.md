@@ -63,3 +63,66 @@ Done when: arch.md + CONTEXT.md + ADR 0030 exist; mechanism + error kinds + cap-
 current.json stage=arch; journal seq=2 appended + pushed. On success: arch→task, run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-06T09:33:03Z · arch→task · completed · by=claude-opus-4-8
+done:   Arch + ADR 0030 accepted (all D1-D5 confirmed with operator incl D5 exempt=close). Shape: 4 PURE
+        seams in trade.rs + thin wiring. Frozen seams: compute_notional(qty,limit:Option,mult)->Option
+        (mirror shape_preview); resolve_max_notional(Option<&str>)->Result (None⇒500.0 DEFAULT; parse,
+        finite∧>0 else Err — fail-closed); check_live_write_posture(is_live,is_mkt,notional,cap)->Result
+        (!live⇒Ok; mkt⇒Err LMT; >cap⇒Err naming notional/cap/OMI_MAX_NOTIONAL; else Ok);
+        refuse_live_combo_on_live(is_live)->Result. const DEFAULT_MAX_NOTIONAL=500.0. All refuses=
+        AppError::config (exit5). Wiring (review-by-reading): place_core (468) posture check AFTER gate,
+        BEFORE connect (multiplier from contract.security_type; is_mkt from order.order_type; env read
+        inline like the gate); option_combo (766) refuse_live_combo before the gate on the real path.
+        UNTOUCHED: require_live_write_gate body, place_with_client (⇒ option-close exempt structurally),
+        option_close, cancel, shape_preview JSON (order-preview tests must stay green), config.rs (env
+        primary, no toml key this card). Freezable (refuses offline-deterministic) — NEW spec file, no
+        re-freeze. Live-pass path = operator live acceptance (first trial order).
+output: .pipeline/live-write-guardrail/{arch.md,CONTEXT.md,docs/adr/0030-live-write-guardrail.md}
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase.
+Read: .pipeline/live-write-guardrail/{PRD.md,arch.md,CONTEXT.md,docs/adr/0030-*}; src/ib/trade.rs
+      (shape_preview 79/85 the notional math; place_core 468; place_with_client 349; option_combo 713/766;
+      build_stk_order 31/44 MKT signal); src/ib/mod.rs:45 (re-export line); src/config.rs LIVE_PORT 14;
+      tests/order_preview_command.rs (shape_preview JSON must stay green); an existing pure-seam test file
+      for style (e.g. tests/option_chain_filter.rs).
+Your task (concrete, numbered):
+  1. Write ONE red spec file tests/live_write_guardrail.rs importing
+     oh_my_ib::ib::{compute_notional, resolve_max_notional, check_live_write_posture,
+     refuse_live_combo_on_live}. It MUST compile-fail NOW (unresolved imports — the seams don't exist yet)
+     — that is the genuine RED. Assertions (~appropriate, not 100%):
+       - compute_notional: LMT value uses |limit| (e.g. 2×|3.0|×100=600; STK mult 1); MKT (None)⇒None.
+       - resolve_max_notional: None⇒500.0; Some("1000")⇒1000.0; Some("abc")/Some("0")/Some("-5")/
+         Some("")⇒Err (fail-closed). (Some("inf") — decide + assert per ADR: finite required ⇒ Err.)
+       - check_live_write_posture: paper (is_live=false) ⇒ Ok even for is_mkt=true / huge notional; live
+         MKT (is_mkt=true) ⇒ Err; live over-cap (Some(600),cap 500) ⇒ Err; live within-cap (Some(300),cap
+         500) ⇒ Ok; boundary Some(500)==cap ⇒ Ok (> is the refuse, not >=).
+       - refuse_live_combo_on_live: true⇒Err, false⇒Ok.
+     Card 01 is a SINGLE card (one observable behaviour: "the live write posture guardrail").
+  2. Freeze in TWO commits (CONTRACT §spec-rev double-commit): (a) freeze commit = ONLY
+     tests/live_write_guardrail.rs → its sha = spec-rev; (b) record commit = tasks/01.md frontmatter
+     (status: todo, attempts: 0, verify: [cargo build, cargo test --test live_write_guardrail],
+     spec-paths: [tests/live_write_guardrail.rs], impl-paths: [src/ib/trade.rs, src/ib/mod.rs, src/cli.rs],
+     spec-rev: <sha from a>) + current.json stage=task (full-verify [cargo build, cargo test]) + journal
+     seq=3. NEVER mix the test and the card in one commit.
+  3. In the card's `## Freeze coverage`: FROZEN = the 4 pure seams (above); REVIEW-BY-READING = the
+     place_core/option_combo wiring (per ADR 0030 §Seams); OPERATOR LIVE ACCEPTANCE = the refuse commands
+     exit 5 / the within-cap first trial order.
+Feature gotchas:
+  - spec-paths ∩ impl-paths = ∅ (test file vs src). The seams are NEW pub fns in trade.rs re-exported at
+    mod.rs:45 — the coder adds them; the red is the unresolved import.
+  - shape_preview JSON output must stay byte-identical (order-preview frozen tests) whether or not the
+    coder routes it through compute_notional. Flag this in the card.
+  - option-close / cancel / preview / paper MUST stay unchanged — the check lives in place_core (NOT
+    place_with_client) precisely so closes stay exempt.
+  - Do NOT freeze the within-cap→place path (would place a real live order) — that is operator acceptance.
+  - Safe to develop with the Tiger gateway UP: every guardrail refuse is offline (no connect); the frozen
+    tests are pure (no gateway).
+Done when: tests/live_write_guardrail.rs frozen (compiles+FAILS on unresolved imports); card 01 recorded;
+current.json stage=task; journal seq=3 pushed. On success: task→impl, run pipeline-impl (assign π/OMP).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
