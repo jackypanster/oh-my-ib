@@ -122,6 +122,21 @@ See reviews/review-01.md §OPERATOR LIVE ACCEPTANCE. NEXT feature (operator-deci
 trade log (~/.local/state/oh-my-ib/trades.jsonl, repo-external) — start with /pipeline-prd when ready.
 <<< END
 
+## seq=5 · 2026-07-06 · live-acceptance → broker-blocked · by=claude-opus-4-8
+done:   Operator-authorized first live combo on :4001 (account U20230856). Preview-confirmed the BAG
+        (--live --preview, transmits:false): SELL 185P conid 897191251 / BUY 180P conid 897191240, limit
+        -0.6 credit, qty 1, net-premium notional $60. Real placement REJECTED by the gateway:
+        {"error":{"code":"data","context":"option-combo","message":"order stream: [460] No trading
+        permissions."}}. Read: code=data (order-stream/broker-side, NOT code=config/exit5) ⇒ the order
+        PASSED the ADR 0031 width breaker ($500==cap⇒allowed) + live gate + connected to :4001 and reached
+        the broker — the guardrail chain is END-TO-END VALIDATED. Broker refused: account lacks
+        options/spread entitlement on Tiger. NO order placed (omi --live orders shows only the pre-existing
+        BUY 1 NVDA LMT 195, order_id 2). BLOCKER = Tiger account permission, not a code fix. Re-run the
+        identical command once options/combo trading is enabled. Recorded in reviews/review-01.md
+        §LIVE-ACCEPTANCE RESULT + memory project_live-combo-unlock-acceptance-pending.
+output: reviews/review-01.md (live-acceptance result appended)
+<<< END
+
 ## seq=2 · 2026-07-06 · arch→task · completed · by=claude-opus-4-8
 done:   ADR 0031 emitted (docs/adr/0031-live-combo-unlock.md) + CONTEXT.md + arch.md. Code-first verified
         every PRD claim: LegSpec fields (trade.rs:684); specs OWNED at the :852-856 rewire point (into_iter

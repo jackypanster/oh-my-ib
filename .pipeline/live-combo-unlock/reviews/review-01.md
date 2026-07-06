@@ -47,3 +47,19 @@ Flip Tiger gateway to live `:4001`. Then, on `:4001`:
   if desired. Confirm `omi --live orders` shows the BAG; cancel to verify-by-cancel if not intending to
   hold.
 - **Paper unaffected:** `omi option-combo` on `:4002` still places any combo shape.
+
+## LIVE-ACCEPTANCE RESULT (2026-07-06)
+
+First live combo attempted end-to-end on `:4001` (account `U20230856`), operator-authorized. The exact
+order was preview-confirmed first (`--live --preview`, `transmits:false`): BAG `SELL 185P` (conid
+897191251) / `BUY 180P` (conid 897191240), `limit -0.6` credit, qty 1, notional (net-premium) $60.
+
+Real placement (`OMI_ALLOW_LIVE=1 omi --live option-combo --action BUY --qty 1 --limit -0.60 --leg
+"SELL 1 NVDA 20260715 185 P" --leg "BUY 1 NVDA 20260715 180 P"`) → **REJECTED by the gateway:
+`{"error":{"code":"data","context":"option-combo","message":"order stream: [460] No trading
+permissions."}}`**. Read of `code=data` (order-stream, i.e. broker-side): the order PASSED the ADR 0031
+width-risk breaker ($500 == cap ⇒ allowed) + the live gate + connected to `:4001` and reached the broker
+— the guardrail chain is validated end-to-end. The BROKER refused: account `U20230856` lacks
+options/spread trading entitlement on Tiger. **NO order placed** (post-check `omi --live orders` shows
+only the pre-existing `BUY 1 NVDA LMT 195`, order_id 2). BLOCKER is a Tiger account permission, NOT a
+code fix — re-run the identical command once options/combo trading is enabled on the account.
