@@ -126,3 +126,55 @@ Done when: tests/live_write_guardrail.rs frozen (compiles+FAILS on unresolved im
 current.json stage=task; journal seq=3 pushed. On success: task→impl, run pipeline-impl (assign π/OMP).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-06T09:35:54Z · task→impl · completed · by=claude-opus-4-8
+done:   Card 01 frozen + recorded. FREEZE commit 817c7d8 = tests/live_write_guardrail.rs ONLY (spec-rev);
+        verified RED (E0432 unresolved imports for all 4 seams — the genuine pre-impl red, per the
+        option_chain_filter.rs precedent). RECORD commit = card 01 + current.json stage=task + this entry.
+        Card frontmatter: spec-paths [tests/live_write_guardrail.rs], impl-paths [src/ib/trade.rs,
+        src/ib/mod.rs, src/cli.rs] (disjoint), verify [cargo build, cargo test --test live_write_guardrail]
+        (card-scoped), spec-rev 817c7d8. Freeze coverage: 4 pure seams FROZEN; place_core/option_combo
+        wiring review-by-reading; live refuses + within-cap place = operator acceptance. Doc comments
+        written clippy-clean (blank //! before lists, one-line bullets — avoids the doc_lazy_continuation
+        that forced last feature's re-freeze).
+output: .pipeline/live-write-guardrail/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session — ASSIGN TO π / OMP.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only).
+First: git pull --rebase.
+Read: .pipeline/live-write-guardrail/tasks/01.md (THE CARD — verbatim seam signatures + wiring); arch.md
+      §Write-set; docs/adr/0030-*; CONTEXT.md. In src: src/ib/trade.rs (shape_preview 79/85 the notional
+      math to mirror; place_core 468 the wire point; place_with_client 349 do-NOT-touch; option_combo
+      713/766; build_stk_order 31/44; LIVE_PORT imported line 25; SecurityType line 20); src/ib/mod.rs:45
+      (re-export line); src/cli.rs Buy/Sell docs.
+Your task (concrete, numbered):
+  1. git checkout -b feat/live-write-guardrail (cut from trunk — inherits the live-gate guard 5b5b59b).
+  2. Add the 4 pure seams + `pub const DEFAULT_MAX_NOTIONAL: f64 = 500.0;` to src/ib/trade.rs (exact
+     signatures/bodies in the card). Re-export the 4 fns at src/ib/mod.rs:45.
+  3. Wire: place_core (468) posture check AFTER require_live_write_gate, BEFORE connect (is_live from
+     cfg.port==LIVE_PORT; cap from env OMI_MAX_NOTIONAL via resolve_max_notional; multiplier from
+     contract.security_type; is_mkt from order.order_type=="MKT"; notional from compute_notional). Map
+     every Err → AppError::config(msg, ctx). option_combo (766) refuse_live_combo_on_live before the gate
+     on the !cfg.preview path. Update src/cli.rs Buy/Sell docs.
+  4. Green gates: cargo build / cargo test --test live_write_guardrail (card-scoped — must go GREEN) /
+     cargo clippy --all-targets -- -D warnings. Also confirm tests/order_preview_command.rs stays green
+     (shape_preview JSON unchanged) — run cargo test locally (SAFE: guardrail refuses are offline, the
+     frozen tests are pure, no live-placing test in this feature).
+  5. Open PR feat→main; set current.json.pr; journal seq=4 (impl→review); print pipeline-review handoff.
+Feature gotchas:
+  - Do NOT edit tests/live_write_guardrail.rs (frozen, spec-rev 817c7d8). Make it green by adding the
+    seams, not by changing the test.
+  - Do NOT touch place_with_client / option_close / cancel — the check lives in place_core precisely so
+    option-close stays EXEMPT (never block an exit). Do NOT touch require_live_write_gate's body.
+  - shape_preview JSON MUST stay byte-identical (order-preview frozen tests). If you route it through
+    compute_notional, verify the emitted numbers are unchanged.
+  - Fail-closed: a bad OMI_MAX_NOTIONAL must REFUSE (config error), never default to 500.
+  - Shared worktree: you own it during impl; cc/codex won't run git here until your PR is up.
+Done when: 4 seams + wiring added, card-scoped test + build + clippy green, order-preview tests still
+green, diff = impl-paths only (spec untouched), PR open, current.json stage=impl + pr set, journal seq=4
+pushed. On success: impl→review, run pipeline-review (codex semantic review; cc runs full-suite gate +
+operator live acceptance + merges).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
