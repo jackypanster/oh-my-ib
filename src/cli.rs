@@ -80,9 +80,11 @@ pub enum Command {
     Search(SearchArgs),
     /// Today's completed orders (filled/cancelled) with status
     CompletedOrders,
-    /// Place a BUY order (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Place a BUY order (paper by default; live needs --live + OMI_ALLOW_LIVE=1).
+    /// Live orders must be LMT; notional capped at OMI_MAX_NOTIONAL (default $500).
     Buy(OrderArgs),
-    /// Place a SELL order (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Place a SELL order (paper by default; live needs --live + OMI_ALLOW_LIVE=1).
+    /// Live orders must be LMT; notional capped at OMI_MAX_NOTIONAL (default $500).
     Sell(OrderArgs),
     /// Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
     Cancel(CancelArgs),
