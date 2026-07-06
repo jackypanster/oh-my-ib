@@ -55,6 +55,45 @@ Your task (concrete):
   5. Emit CONTEXT.md. Hand off to pipeline-task.
 <<< END
 
+## seq=3 · 2026-07-06 · task→impl · completed · by=claude-opus-4-8
+done:   FROZEN spec tests/live_combo_unlock.rs (spec-rev e2f2b171c01ca992829243c4b241e75f21847856) —
+        combo_live_max_risk: 3 Ok (put credit / call qty2 / debit vertical; debit==credit⇒500 proves
+        premium-proof) + 8 Err (1 leg, 3 legs, diff expiry, diff right, same action, ratio≠1, equal
+        strikes, diff underlying). RED = unresolved import oh_my_ib::ib::combo_live_max_risk. Ran the
+        MANDATORY verbatim-compile pre-check: scratch-stubbed the seam in trade.rs + mod.rs re-export,
+        `cargo test --test live_combo_unlock --no-run` compiled clean AND `cargo clippy --all-targets -D
+        warnings` clean (module-doc written as plain prose, no bullet-before-prose ⇒ no
+        doc_lazy_continuation; float asserts via assert_eq! like live_write_guardrail.rs ⇒ no float_cmp),
+        then `git checkout src/` reverted the stub — freeze commit contains ONLY the test. Card 01:
+        impl-paths = src/ib/trade.rs + src/ib/mod.rs (cli.rs excluded — combo help has no "paper-only"
+        text); spec-paths = tests/live_combo_unlock.rs ONLY; card carries a clippy-clean reference impl +
+        the float_cmp gotcha (strike-equality via `width == 0.0`, comparison-to-zero is float_cmp-exempt;
+        direct a.strike==b.strike would trip -D warnings) + the KEEP-but-UNWIRE rule for
+        refuse_live_combo_on_live (D6). full-verify now includes clippy. Two-commit freeze protocol
+        honored (freeze commit = test only; this record commit = card + current.json + journal).
+output: tests/live_combo_unlock.rs (spec-rev e2f2b17) · .pipeline/live-combo-unlock/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on OMP (impl slot = goal-driven-impl-claude). repo=git@github.com:jackypanster/oh-my-ib.git
+branch=main → cut feat/live-combo-unlock. pr=none. card=01.
+First: git pull --rebase; branch feat/live-combo-unlock off main.
+Read (before coding): .pipeline/live-combo-unlock/tasks/01.md (the card — §Scope is verbatim-enough to
+implement; §Out-of-scope is load-bearing), arch.md §Chosen-shape + §Write-set, ADR 0031 §Seams, AGENTS.md
+(agent-first; write code ONLY in src/ib/trade.rs for the write path; 4 verify gates).
+Do (goal = make the frozen RED green, editing ONLY impl-paths):
+  1. Add `pub fn combo_live_max_risk(specs: &[LegSpec], qty: f64) -> Result<f64, String>` to
+     src/ib/trade.rs (7-condition clean-vertical predicate + width×100×qty; reference body in the card;
+     compare strikes via `width == 0.0`, NOT `a.strike == b.strike`).
+  2. Re-export it at src/ib/mod.rs:45.
+  3. Rewire option_combo: REPLACE the single `refuse_live_combo_on_live(...)` call (inside `if
+     !cfg.preview`, before `require_live_write_gate`) with the is_live→risk→cap→check_live_write_posture
+     block from the card. KEEP refuse_live_combo_on_live DEFINED + re-exported (do NOT delete it).
+  4. Do NOT touch tests/ (both live_combo_unlock.rs and live_write_guardrail.rs stay byte-identical).
+Verify before PR: `cargo build` · `cargo test --test live_combo_unlock` GREEN · full `cargo test`
+(live_write_guardrail still GREEN) · `cargo clippy --all-targets -- -D warnings` clean. Open PR from
+feat/live-combo-unlock. Then hand to pipeline-review on codex (writer≠reviewer); cc merges + deploys.
+<<< END
+
 ## seq=2 · 2026-07-06 · arch→task · completed · by=claude-opus-4-8
 done:   ADR 0031 emitted (docs/adr/0031-live-combo-unlock.md) + CONTEXT.md + arch.md. Code-first verified
         every PRD claim: LegSpec fields (trade.rs:684); specs OWNED at the :852-856 rewire point (into_iter
