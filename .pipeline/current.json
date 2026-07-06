@@ -1,9 +1,9 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "option-chain-default-exchange",
-  "stage": "done",
-  "pr": "https://github.com/jackypanster/oh-my-ib/pull/25",
+  "feature": "live-write-guardrail",
+  "stage": "prd",
+  "pr": "none",
   "full-verify": [
     "cargo build",
     "cargo test"
