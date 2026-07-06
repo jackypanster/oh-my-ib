@@ -94,6 +94,34 @@ Verify before PR: `cargo build` · `cargo test --test live_combo_unlock` GREEN �
 feat/live-combo-unlock. Then hand to pipeline-review on codex (writer≠reviewer); cc merges + deploys.
 <<< END
 
+## seq=4 · 2026-07-06 · review→done · completed · by=claude-opus-4-8
+done:   MERGED. PR #28 squash-merged to main (6de5354) after operator confirm (gated on CodeRabbit
+        SUCCESS). Writer=OMP(π,GLM-5.2), reviewer=codex(gpt-5.5) — writer≠reviewer. codex ACCEPT, no
+        findings: verified the live combo path feeds width-based combo_live_max_risk(&specs,args.qty)
+        into the cap check (NOT net-premium — the #1 regression check); refuse_live_combo_on_live
+        kept+re-exported+unwired; both frozen specs byte-identical (git diff --exit-code clean); diff =
+        the two impl-path files only; self-ran build/test/clippy green. cc gates: freeze diff
+        e2f2b17..branch over tests/ EMPTY; containment = trade.rs + mod.rs (+43/-5), refuse_live_combo_
+        on_live defined but 0 callers in src; CodeRabbit pass; mergeStateStatus CLEAN. Trunk full-verify
+        post-merge (6de5354): cargo build OK, full cargo test all green (live_combo_unlock 11/11,
+        live_write_guardrail still green), clippy --all-targets -D warnings clean. OMP opened the PR
+        itself (poll missed it by timing); cc gate-checked the branch before dispatching codex. Card 01
+        done. FEATURE DONE — live combo (clean 2-leg 1:1 vertical) UNLOCKED under the ADR 0030 gate + cap.
+output: main 6de5354 (#28); .pipeline/live-combo-unlock/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Feature live-combo-unlock is DONE (current.json stage=done). No feature in flight. The ADR 0030 combo
+lockout is replaced by a pure-width defined-risk breaker: `omi --live option-combo` now admits a clean
+2-leg 1:1 vertical whose max risk (|Δstrike|×100×qty) is ≤ OMI_MAX_NOTIONAL (default $500), gated by
+--live + OMI_ALLOW_LIVE=1; every other combo shape refuses exit 5 before connect; paper/preview/
+single-leg/close/cancel unchanged.
+OPERATOR LIVE ACCEPTANCE (the trial): flip Tiger to :4001; the first live combo is the NVDA 20260715
+185/180 put credit (width $5 ⇒ risk $500 == default cap ⇒ passes; set OMI_MAX_NOTIONAL=600 for headroom).
+Over-cap (185/175) and non-vertical live combos must refuse exit 5 with no order (verifiable :4001 down).
+See reviews/review-01.md §OPERATOR LIVE ACCEPTANCE. NEXT feature (operator-decided): the append-only
+trade log (~/.local/state/oh-my-ib/trades.jsonl, repo-external) — start with /pipeline-prd when ready.
+<<< END
+
 ## seq=2 · 2026-07-06 · arch→task · completed · by=claude-opus-4-8
 done:   ADR 0031 emitted (docs/adr/0031-live-combo-unlock.md) + CONTEXT.md + arch.md. Code-first verified
         every PRD claim: LegSpec fields (trade.rs:684); specs OWNED at the :852-856 rewire point (into_iter

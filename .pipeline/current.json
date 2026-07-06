@@ -2,8 +2,8 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "live-combo-unlock",
-  "stage": "task",
-  "pr": null,
+  "stage": "done",
+  "pr": "28",
   "full-verify": [
     "cargo build",
     "cargo test",
