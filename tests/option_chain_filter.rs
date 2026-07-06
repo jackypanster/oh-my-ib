@@ -1,19 +1,21 @@
 //! FROZEN SPEC — option-chain-default-exchange (card 01): the pure client-side exchange
 //! filter seam `filter_chain_rows` (ADR 0028). Offline. The coder must NOT edit this file.
 //!
-//! Freezes `filter_chain_rows(rows: Vec<ChainRow>, exchange: &str) -> Vec<ChainRow>`:
-//!   - `exchange == ""`  ⇒ passthrough — ALL rows, input order preserved.
-//!   - `exchange == <EX>` ⇒ retain rows where `row.exchange == EX` (exact-string, CASE-SENSITIVE),
-//!     input order of the retained subset preserved; ALL matching rows kept (no dedup).
-//!   - no matching row ⇒ empty vec ⇒ upstream `shape_option_chain` yields honest `chains: []`.
-//! RED until impl adds `filter_chain_rows` and re-exports `oh_my_ib::ib::filter_chain_rows`
-//! (the import below won't resolve until then).
+//! Freezes `filter_chain_rows(rows: Vec<ChainRow>, exchange: &str) -> Vec<ChainRow>`. Rules:
+//!
+//! - `""` is passthrough — every row is returned, input order preserved.
+//! - a non-empty `<EX>` retains only rows whose `exchange` equals it (exact string, case sensitive).
+//! - all matching rows are kept (never deduped); the retained subset keeps its input order.
+//! - no matching row yields an empty vec, so upstream `shape_option_chain` returns honest `chains: []`.
+//!
+//! RED until impl adds `filter_chain_rows` and re-exports `oh_my_ib::ib::filter_chain_rows` (the
+//! import below will not resolve until then).
 //!
 //! NOT frozen (reviewed-by-reading + operator LIVE acceptance, PRD criteria 1-3): the gateway-fn
-//! wiring (reqSecDefOptParams called with "" ALWAYS; the seam insertion point between the drain and
-//! `shape_option_chain`), the CLI `--exchange` help text, and the doc comments. Tiger `:4001`
-//! behavior (server-side SMART ⇒ empty; `""` ⇒ 20 identical rows incl a SMART row) is a journaled
-//! observation, NEVER asserted here. The `shape_option_chain` seam is a SEPARATE frozen spec
+//! wiring (reqSecDefOptParams called with `""` always, and the seam insertion point between the drain
+//! and `shape_option_chain`), the CLI `--exchange` help text, and the doc comments. Tiger `:4001`
+//! behavior (server-side SMART yields empty; `""` yields 20 identical rows including a SMART row) is a
+//! journaled observation, never asserted here. The `shape_option_chain` seam is a SEPARATE frozen spec
 //! (tests/option_chain_command.rs) and is UNCHANGED by this feature.
 
 use oh_my_ib::ib::{filter_chain_rows, ChainRow};
@@ -67,7 +69,7 @@ fn no_matching_exchange_yields_empty() {
     let out = filter_chain_rows(rows, "NASDAQ_NOPE");
     assert!(
         out.is_empty(),
-        "an exchange present in no row ⇒ empty ⇒ upstream chains:[] (honest empty, not a crash)"
+        "an exchange present in no row yields empty, so upstream chains:[] (honest empty, not a crash)"
     );
 }
 
@@ -77,7 +79,7 @@ fn match_is_exact_string_case_sensitive() {
     let out = filter_chain_rows(rows, "smart");
     assert!(
         out.is_empty(),
-        "exact-string, case-sensitive: 'smart' must NOT match 'SMART'"
+        "exact string, case sensitive: 'smart' must NOT match 'SMART'"
     );
 }
 
