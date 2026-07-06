@@ -79,3 +79,38 @@ Done when: card 01 exists (spec-paths empty); current.json stage=task; journal s
 On success: task→impl, run pipeline-impl (assign π/OMP).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-06T06:37:03Z · task→impl · completed · by=claude-opus-4-8
+done:   Card 01 recorded (single metadata commit — NO freeze commit; spec-paths EMPTY per ADR 0029).
+        impl-paths = [tests/stk_orders_command.rs], verify = [cargo build, cargo test --test
+        stk_orders_command] (card-scoped), freeze coverage = NONE (reviewed-by-reading + operator live
+        acceptance). Guard-skip edit spelled out verbatim in the card.
+output: .pipeline/live-gate-test-safety/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session — ASSIGN TO π / OMP.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only).
+First: git pull --rebase.
+Read: .pipeline/live-gate-test-safety/tasks/01.md (THE CARD, verbatim guard edit); arch.md; ADR 0029;
+      tests/stk_orders_command.rs (the target; the dangerous test at line 117; the 4 SAFE reject tests).
+Your task (concrete, numbered):
+  1. git checkout -b feat/live-gate-test-safety (cut from trunk).
+  2. Edit ONLY tests/stk_orders_command.rs per the card: add `use std::net::TcpStream; use
+     std::time::Duration;`, add `live_gateway_reachable()`, guard the dangerous test (reachable ⇒
+     eprintln + return; else the unchanged assertion). Touch NOTHING else — no src, no other tests.
+  3. Green gates: cargo build / cargo test --test stk_orders_command (card-scoped) / cargo clippy
+     --all-targets -- -D warnings. SAFETY: only run the stk_orders test AFTER your guard is in place
+     (or confirm :4001 is down first) — the un-guarded test places a real live order.
+  4. Open PR feat→main; set current.json.pr; journal seq=4 (impl→review); print pipeline-review handoff.
+Feature gotchas:
+  - Test-only. spec-paths is EMPTY — there is NO freeze gate to trip; just don't touch src or the other
+    tests. The diff MUST be tests/stk_orders_command.rs only.
+  - The gate/require_live_write_gate is UNCHANGED. The 4 gate-REJECT tests are UNCHANGED.
+  - Shared worktree: you own it during impl; cc/codex won't run git here until your PR is up.
+Done when: guard added, card-scoped test + clippy + build green, diff = the test file only, PR open,
+current.json stage=impl + pr set, journal seq=4 pushed.
+On success: impl→review, run pipeline-review (codex reads the diff; cc runs the SAFE full-suite gate +
+operator live acceptance + merges).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
