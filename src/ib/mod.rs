@@ -37,7 +37,7 @@ pub use orders::orders;
 pub use pnl::{pnl, pnl_number};
 pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
 pub use positions::{position_row, positions};
-pub use option_chain::{option_chain, shape_option_chain, ChainRow};
+pub use option_chain::{filter_chain_rows, option_chain, shape_option_chain, ChainRow};
 pub use option_quote::{option_quote, option_quote_greeks, shape_option_quote, GreeksRow};
 pub use quote::{quote, quote_price_tick, shape_quotes};
 pub use search::{search, shape_search, SearchRow};
