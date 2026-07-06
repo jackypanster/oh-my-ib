@@ -54,3 +54,49 @@ Your task (concrete):
      shapes); wiring is review-by-reading; within-cap→place is operator live acceptance.
   5. Emit CONTEXT.md. Hand off to pipeline-task.
 <<< END
+
+## seq=2 · 2026-07-06 · arch→task · completed · by=claude-opus-4-8
+done:   ADR 0031 emitted (docs/adr/0031-live-combo-unlock.md) + CONTEXT.md + arch.md. Code-first verified
+        every PRD claim: LegSpec fields (trade.rs:684); specs OWNED at the :852-856 rewire point (into_iter
+        consume at :872, after) ⇒ &specs borrow valid; check_live_write_posture over-cap msg = "live
+        notional {n} exceeds cap {cap}" (:236); sole production caller of refuse_live_combo_on_live is :856
+        (mod.rs:45 re-export + tests/live_write_guardrail.rs:120 test) ⇒ unwiring = delete that ONE line,
+        fn stays pub+tested ⇒ no dead_code; ADR next number 0031. Pinned: (1) NEW pure seam
+        `combo_live_max_risk(specs:&[LegSpec], qty:f64) -> Result<f64,String>` = D3 7-condition
+        clean-vertical predicate + D2 width×100×qty (premium-proof — net limit NOT a param); (2)
+        option_combo rewire: replace :856 lockout line with `is_live` block → combo_live_max_risk →
+        resolve_max_notional(env) → check_live_write_posture(true,false,Some(risk),cap), all Err→
+        AppError::config(exit5), THEN unchanged require_live_write_gate; paper/preview skip. (3) D5
+        RESOLVED: reuse check_live_write_posture verbatim; over-cap msg keeps "notional" wording (it IS the
+        risk-notional; CC's action unchanged) ⇒ combo_live_max_risk is the ONLY new frozen surface. (4) D6
+        RESOLVED: refuse_live_combo_on_live stays defined+re-exported+frozen, only unwired;
+        tests/live_write_guardrail.rs byte-identical. (5) NEW deliberate decision: posture-BEFORE-gate for
+        combo (differs from place_core gate-first) — a shape/cap refusal holds regardless of
+        OMI_ALLOW_LIVE, so it must report before the env gate (else misdirect). Reference-behavior
+        artifact: N/A (pure arithmetic over already-parsed LegSpec; no new external dependency). No
+        blocking ambiguity ⇒ no human grill needed.
+output: .pipeline/live-combo-unlock/docs/adr/0031-live-combo-unlock.md · CONTEXT.md · arch.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task (cc, this feature). repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+First: git pull --rebase.
+Read: .pipeline/live-combo-unlock/arch.md (§Freeze plan = the exact assertions) + ADR 0031 §Seams &
+§Freeze-coverage + CONTEXT.md + src/ib/trade.rs (LegSpec:684, combo_live_max_risk does not exist yet,
+option_combo:799) + tests/live_write_guardrail.rs (the frozen-spec authoring style to mirror; leave it
+untouched).
+Your task (single atomic card, single spec-rev):
+  1. Author NEW frozen spec tests/live_combo_unlock.rs — RED (import `oh_my_ib::ib::combo_live_max_risk`,
+     which does not resolve yet). Assert ONLY combo_live_max_risk per arch.md §Freeze plan:
+     Ok — put credit vertical (SELL 185P/BUY 180P qty1)⇒500.0; call vertical 250/240 qty2⇒2000.0; debit
+     vertical (BUY 180P/SELL 185P qty1)⇒500.0 (premium-proof: same width as credit). Err (8, each a
+     distinct reason) — 1 leg; 3 legs; diff expiry; diff right; same action; ratio 2; equal strikes; diff
+     underlying. Construct LegSpec literals (pub fields).
+  2. PRE-FREEZE CLIPPY GATE (learned rule): before freezing, stub the seam in a scratch build and run
+     `cargo clippy --all-targets -- -D warnings` on the test file so the frozen spec is clippy-clean —
+     a clippy-dirty frozen test would corner the coder into a freeze violation.
+  3. impl-paths for card 01 = src/ib/trade.rs + src/ib/mod.rs (+ src/cli.rs help if present). spec-paths
+     = tests/live_combo_unlock.rs ONLY. Do NOT list tests/live_write_guardrail.rs anywhere.
+  4. Record card 01 (frozen spec-rev), set current.json stage=task, journal the task→impl handoff to OMP.
+Handoff target: pipeline-impl on OMP (Claude-native goal-driven-impl) — make the RED green by editing
+ONLY impl-paths; codex reviews; cc merges.
+<<< END
