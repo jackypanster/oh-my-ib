@@ -256,3 +256,28 @@ env-sensitive failure, cc-adjudicated); operator live acceptance passes; PR #25 
 human confirm; card 01 done; journal seq=6 appended.
 On failure: attempts++ (card 01 → todo, route impl; or ≥ 3 → blocked → pipeline-hunt).
 <<< END
+
+## seq=6 · 2026-07-06T06:05:00Z · review→review · HELD · by=claude-opus-4-8
+done:   REVIEW HELD (NOT a card rejection — card 01 stays todo, attempts=0). cc pre-checks all PASS:
+        freeze gate empty (`git diff 620362c 2b40e13 -- tests/` = ∅); diff = 3 impl-paths only; codex
+        ACCEPT (matches ADR 0028; read-path polarity clean — trade.rs/gate/OMI_ALLOW_LIVE untouched;
+        option_chain_filter 6/6 + option_chain_command 8/8 + build + clippy green in codex's detached
+        PR worktree). BLOCKER: the full-suite merge gate (current.json.full-verify=`cargo test`) is
+        UNSAFE while Tiger `:4001` is UP — tests/stk_orders_command.rs::live_buy_with_env_passes_gate_
+        and_fails_on_dead_gateway runs `buy AAPL 1 --limit 1 --live` and, because :4001 is live, PLACES
+        a REAL order (cc found + cancelled 3 such far-$1 orders on acct U20230856; no fill, contained).
+        Operator directive: land a test-safety fix FIRST. PARKING option-chain (PR #25 stays OPEN);
+        current.json repointed to feature=live-gate-test-safety.
+output: PR #25 open @ 2b40e13 (HELD); blocker fix tracked in .pipeline/live-gate-test-safety/
+--- handoff ---
+>>> NEXT (RESUME — only AFTER live-gate-test-safety is merged to main)
+Run pipeline-review to FINISH option-chain once the test fix is on main.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-chain-default-exchange pr=https://github.com/jackypanster/oh-my-ib/pull/25
+First: git checkout feat/option-chain-default-exchange; git fetch origin main; git rebase origin/main
+(absorbs the merged test fix); git push --force-with-lease.
+Then: re-run the FOUR gates INCLUDING the now-safe full `cargo test` (must be green); operator live
+acceptance criteria 1-3 on Tiger :4001 (omi --live option-chain AAPL ⇒ the SMART row; --exchange "" ⇒
+all rows; --exchange AMEX ⇒ AMEX only); squash-merge #25 after human confirm; card 01 → done;
+current.json repointed back to option-chain-default-exchange stage=done; journal seq=7.
+Blocked on: live-gate-test-safety merged to main.
+<<< END
