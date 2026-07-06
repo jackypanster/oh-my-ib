@@ -254,3 +254,28 @@ Done when: semantic review passes (seams + wiring + red lines); full-suite green
 acceptance signed off (refuses exit 5, first trial order places); merged to main; current.json stage=done;
 journal seq=5 pushed. On failure: PR comments; attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-06T11:00:39Z · review→done · completed · by=claude-opus-4-8
+done:   MERGED. PR #27 squash-merged to main (a843a08) after operator confirm. codex ACCEPT (no semantic
+        findings): 4 pure seams match ADR 0030 (trade.rs:195/200/208/223/247); place_core gate→posture→
+        connect w/ correct is_live/is_mkt/multiplier/notional + AppError::config (:545); option_combo
+        refuses live combo before the gate on !preview (:852); require_live_write_gate body + place_with_
+        client + option_close + cancel + shape_preview all UNCHANGED; seams contained (no read import).
+        cc gates: freeze diff 817c7d8..718d261 EMPTY; full cargo test 257/0; clippy --all-targets clean;
+        order_preview_command 12/12 (shape_preview JSON byte-identical); CodeRabbit SUCCESS. cc offline
+        live acceptance (Tiger :4001 CLOSED=paper, full safety): over-cap/MKT/combo/bad-env ALL exit 5
+        before connect w/ correct messages; pass-through (cap-raise 100k, boundary ==25000) reach connect
+        (exit 2, :4001 down) — proving within-cap orders pass the guardrail. Card 01 done. Network stall
+        hit OMP mid-wiring (completions stream dropped after the 4 seams landed); cc nudged it to resume
+        from wiring — seams preserved, no rework. FEATURE DONE — live trial UNBLOCKED.
+output: main a843a08 (#27); .pipeline/live-write-guardrail/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Feature live-write-guardrail is DONE. No feature in flight (current.json stage=done). The live-trial
+economic guardrail is live: `omi --live` opening orders must be LMT and ≤ OMI_MAX_NOTIONAL (default $500);
+option-combo is paper-only; option-close/cancel/paper/preview unaffected. Operator may now open the
+real-money trial — first live order is a within-cap 1-share LMT buy on :4001 (flip the gateway back to
+live). NEXT feature (operator-decided): the trade log — append-only per-order black box at
+~/.local/state/oh-my-ib/trades.jsonl (repo-external; public-repo rule). Start it with /pipeline-prd when
+the operator is ready.
+<<< END
