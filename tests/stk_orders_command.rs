@@ -20,12 +20,27 @@ use predicates::prelude::*;
 use serde_json::{json, Value};
 
 use oh_my_ib::ib::{build_stk_order, shape_order_ack};
+use std::net::TcpStream;
+use std::time::Duration;
 
 fn omi() -> Command {
     let mut cmd = Command::cargo_bin("omi").expect("the `omi` binary should build");
     // The gate reads the environment: start every test from a clean slate.
     cmd.env_remove("OMI_ALLOW_LIVE");
     cmd
+}
+
+/// Detect whether a live gateway is listening on 127.0.0.1:4001 (ADR 0029). The dangerous
+/// live-buy test below assumes a DEAD live port (it asserts a `connection` error); if a real
+/// gateway is up it would PLACE A LIVE ORDER. Guard-skip when reachable so the test never
+/// places an order regardless of gateway state, and still exercises the dead-gateway branch
+/// when nothing is listening. 300ms so a genuinely-dead port fails fast in CI.
+fn live_gateway_reachable() -> bool {
+    "127.0.0.1:4001"
+        .parse()
+        .ok()
+        .and_then(|addr| TcpStream::connect_timeout(&addr, Duration::from_millis(300)).ok())
+        .is_some()
 }
 
 // ---- pure order-building seam (params → exact ibapi Order/Contract) ----
@@ -115,6 +130,13 @@ fn hand_set_live_port_without_env_is_also_gated() {
 
 #[test]
 fn live_buy_with_env_passes_gate_and_fails_on_dead_gateway() {
+    if live_gateway_reachable() {
+        eprintln!(
+            "skip live_buy_with_env_passes_gate_and_fails_on_dead_gateway: live gateway on :4001 \
+             — cannot safely exercise a live connect (the test would place a real order)"
+        );
+        return;
+    }
     // Gate satisfied ⇒ the command proceeds to connect (dead live port ⇒ connection error).
     let mut cmd = omi();
     cmd.env("OMI_ALLOW_LIVE", "1");
