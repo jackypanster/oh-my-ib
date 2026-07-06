@@ -99,3 +99,52 @@ recorded, card-scoped verify set; current.json stage=task; journal seq=3 appende
 On success: transition task→impl, run pipeline-impl (assign to π/OMP).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-06T05:20:17Z · task→impl · completed · by=claude-opus-4-8
+done:   Single card frozen. FREEZE commit spec-rev=bb7336a (tests/option_chain_filter.rs, spec-paths
+        only) — RED via unresolved oh_my_ib::ib::filter_chain_rows; 6 assertions ("" passthrough+order,
+        SMART⇒1 row, named⇒that row, no-match⇒empty, case-sensitive, all-matches-no-dedup). Existing
+        shape spec (option_chain_command) stays GREEN (separate target, 8 passed). Card 01 records
+        spec-paths/impl-paths (disjoint), verify=[cargo build, cargo test --test option_chain_filter],
+        freeze-coverage. current.json stage=task, full-verify=[cargo build, cargo test].
+output: .pipeline/option-chain-default-exchange/tasks/01.md ; spec-rev bb7336a
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+ASSIGN TO π / OMP (the impl bot).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; READ path so trade.rs/write-gate
+    are NOT involved; stay in your stage write-set)
+  - .pipeline/option-chain-default-exchange/tasks/01.md — THE CARD (scope, impl-paths, freeze coverage)
+  - .pipeline/option-chain-default-exchange/arch.md — §Data flow + §Component boundaries = verbatim impl
+  - .pipeline/option-chain-default-exchange/docs/adr/0028-* — the binding decision
+  - src/ib/option_chain.rs (target) ; tests/option_chain_filter.rs (the FROZEN red spec — READ, do NOT edit)
+Your task (concrete, numbered):
+  1. git checkout -b feat/option-chain-default-exchange (cut from trunk).
+  2. Make `cargo test --test option_chain_filter` GREEN using impl-paths ONLY
+     (src/ib/option_chain.rs, src/ib/mod.rs, src/cli.rs). Add the pure seam
+     `pub fn filter_chain_rows(rows: Vec<ChainRow>, exchange: &str) -> Vec<ChainRow>`
+     ("" ⇒ passthrough; else exact-string case-sensitive retain on row.exchange, order preserved),
+     re-export it from src/ib/mod.rs, wire the gateway fn (server call `""`; seam before shape),
+     update the cli --exchange help + the module/fn doc comments.
+  3. Do NOT create/modify/delete anything under spec-paths (tests/option_chain_filter.rs) — freeze gate.
+  4. Green-gate before PR: `cargo build`, `cargo test --test option_chain_filter`, full `cargo test`,
+     and `cargo clippy --all-targets -- -D warnings` (repo gate — clippy is part of Verify in AGENTS.md).
+  5. Open the PR from feat/option-chain-default-exchange → main; set current.json.pr; set card status
+     field only per your write-set; journal seq=4 (impl→review). Print handoff to pipeline-review.
+Feature gotchas (project-specific traps the next node MUST know):
+  - SHARED WORKTREE: cc/OMP/codex share /Users/user/workspace/oh-my-ib. Work SEQUENTIALLY — only YOU
+    touch the tree during impl; do NOT let another agent run git here concurrently. Branch checkout
+    affects the shared tree.
+  - shape_option_chain + ChainRow are UNTOUCHED — the filter is a SEPARATE seam. spec-paths ∩ impl-paths = ∅.
+  - The RED is an unresolved import — it goes green the moment filter_chain_rows is exported AND the 6
+    assertions hold. Don't just add the export; satisfy case-sensitivity + order + no-dedup too.
+  - Tiger behavior is NOT tested — it is operator live acceptance at review (criteria 1-3).
+Done when: card-scoped test + full suite + clippy all green on feat/option-chain-default-exchange, PR
+open, current.json stage=impl + pr set, journal seq=4 appended + pushed.
+On success: transition impl→review, run pipeline-review (semantic review by codex, cc merges).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
