@@ -45,3 +45,37 @@ Done when: arch.md + CONTEXT.md + ADR 0029 exist; mechanism decided; current.jso
 seq=2 appended + pushed. On success: arch→task, run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-06T06:35:52Z · arch→task · completed · by=claude-opus-4-8
+done:   Arch + ADR 0029 accepted. Guard-skip: add std-only `live_gateway_reachable()`
+        (TcpStream::connect_timeout 127.0.0.1:4001, 300ms) to tests/stk_orders_command.rs; guard the ONE
+        dangerous test (reachable ⇒ eprintln+return; else assert `connection`). Test-only, no src.
+        Pipeline handling: spec-paths EMPTY (can't-freeze case), impl-paths = the test file itself
+        (coder-editable this feature; was frozen under DONE stk-orders 3692c71 — freeze gate only checks
+        THIS feature's spec-paths = ∅). Safety proven by reviewed-by-reading + operator live acceptance
+        (omi --live orders empty before+after a full cargo test with gateway UP).
+output: .pipeline/live-gate-test-safety/{arch.md,CONTEXT.md,docs/adr/0029-live-gate-test-guard-skip.md}
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase.
+Read: .pipeline/live-gate-test-safety/{PRD.md,arch.md,CONTEXT.md,docs/adr/0029-*}; tests/stk_orders_command.rs.
+Your task (concrete, numbered):
+  1. Author card 01 (single card, test-only). NO freeze commit — spec-paths is EMPTY (ADR 0029 §Freeze
+     coverage: the meaningful test can't be frozen). Record card frontmatter:
+     status: todo, attempts: 0, spec-paths: [] , impl-paths: [tests/stk_orders_command.rs],
+     verify: [cargo build, cargo test --test stk_orders_command], spec-rev: "" (none — no freeze commit),
+     and a `## Freeze coverage` note (NONE frozen; reviewed-by-reading + operator live acceptance).
+  2. Advance current.json stage=task (full-verify stays [cargo build, cargo test]). Journal seq=3.
+     Since there is no freeze commit, this is a SINGLE metadata commit (card + current.json + journal).
+Feature gotchas:
+  - Test-only fix; NO src. The freeze/red-test ceremony does NOT apply (nothing to freeze).
+  - impl-paths is a TEST file — that is intentional (the fix edits a test). spec-paths ∩ impl-paths = ∅
+    holds trivially (spec-paths empty).
+  - Do NOT run full `cargo test` while the Tiger gateway is UP until the fix lands — card-scoped only.
+Done when: card 01 exists (spec-paths empty); current.json stage=task; journal seq=3 pushed.
+On success: task→impl, run pipeline-impl (assign π/OMP).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
