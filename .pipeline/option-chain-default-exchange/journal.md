@@ -100,6 +100,47 @@ On success: transition task→impl, run pipeline-impl (assign to π/OMP).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
 
+## seq=4 · 2026-07-06T05:48:45Z · task→impl · completed(RE-FREEZE) · by=claude-opus-4-8
+done:   RE-FREEZE. impl (OMP/π) escalated correctly: `cargo clippy --all-targets -- -D warnings`
+        failed on the FROZEN spec (`clippy::doc_lazy_continuation` in the doc comment) — a spec defect
+        the coder cannot fix (freeze gate). cc re-froze: rewrote tests/option_chain_filter.rs
+        clippy-clean (single-line bullets + blank line before the list), SAME 6 assertions. New
+        spec-rev=620362c (freeze commit). VERIFIED in an isolated worktree: `cargo clippy --test
+        option_chain_filter -- -D warnings` clean AND `cargo test --test option_chain_filter` GREEN
+        against OMP's impl (03a0fa4). card 01 spec-rev bumped. Root cause: this manual pipeline-task
+        run skipped the clippy-on-stub freeze pre-check (pipeline PR #33 added it to the automated task
+        skill; the Claude-runtime skill lacks it).
+output: tests/option_chain_filter.rs (spec-rev 620362c); .pipeline/option-chain-default-exchange/tasks/01.md
+SKILL-PROPOSAL: pipeline-task (Claude runtime) — during freeze, stub the impl on a scratch and run
+        `cargo clippy --all-targets -- -D warnings` so a clippy-dirty frozen spec is caught BEFORE the
+        freeze commit, not by impl (mirrors pipeline PR #33 for the Hermes task skill).
+--- handoff ---
+>>> NEXT
+Run pipeline-impl CONTINUATION on the SAME π/OMP session (it already holds the impl) — rebase to absorb the re-freeze.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only).
+First: git fetch origin main.
+Your task (concrete, numbered):
+  1. git rebase origin/main — rebase feat/option-chain-default-exchange onto the new main tip
+     (re-freeze spec-rev 620362c). Your impl commit 03a0fa4 replays cleanly (it does not touch tests/).
+  2. git push --force-with-lease — YOUR OWN branch (sanctioned per CONTRACT §State authority; NOT trunk).
+  3. Re-run the four green gates: cargo build / cargo test --test option_chain_filter /
+     cargo test (full) / cargo clippy --all-targets -- -D warnings.
+  4. Open PR feat→main; set current.json.pr; journal seq=5 (impl→review); print pipeline-review handoff.
+Feature gotchas (project-specific traps the next node MUST know):
+  - spec-rev is now 620362c (NOT bb7336a). The rebase brings the clippy-clean frozen test in.
+  - Do NOT touch tests/option_chain_filter.rs (freeze gate). It is already green against your impl.
+  - FULL-SUITE env-sensitive test: tests/stk_orders_command.rs::live_buy_with_env_passes_gate_and_fails_
+    on_dead_gateway is pre-existing and sensitive to the Tiger live gateway being UP on :4001 (it expects
+    a dead gateway). It is UNRELATED to this read-only change — report it to cc, do NOT fix it here. cc
+    handles it at review (run the full-suite gate with the gateway state that makes it pass, or document).
+  - Shared worktree: you own it now; cc/codex won't run git in it until your PR is up.
+Done when: rebased onto 620362c, gates green (modulo the flagged env-sensitive stk test), PR open,
+current.json.pr set, journal seq=5 appended + pushed.
+On success: impl→review, run pipeline-review (codex reviews the diff, cc merges after human confirm).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
+
 ## seq=3 · 2026-07-06T05:20:17Z · task→impl · completed · by=claude-opus-4-8
 done:   Single card frozen. FREEZE commit spec-rev=bb7336a (tests/option_chain_filter.rs, spec-paths
         only) — RED via unresolved oh_my_ib::ib::filter_chain_rows; 6 assertions ("" passthrough+order,
