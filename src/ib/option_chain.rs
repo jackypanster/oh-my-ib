@@ -60,10 +60,27 @@ pub fn shape_option_chain(underlying: &str, conid: i32, mut rows: Vec<ChainRow>)
     })
 }
 
+/// Pure, frozen-testable seam (ADR 0028): client-side exchange filter over chain rows.
+/// `exchange == ""` ⇒ passthrough (ALL rows, input order preserved); else retain rows
+/// where `row.exchange == exchange` (exact-string, CASE-SENSITIVE), input order of the
+/// retained subset preserved, no dedup. Applied in `option_chain` AFTER the drain and
+/// BEFORE `shape_option_chain` — reqSecDefOptParams is queried unfiltered (Tiger's server
+/// filter drops SMART; ADR 0028), so `--exchange` filters locally here. No match ⇒ empty
+/// vec ⇒ `shape_option_chain` yields honest `chains: []`.
+pub fn filter_chain_rows(rows: Vec<ChainRow>, exchange: &str) -> Vec<ChainRow> {
+    if exchange.is_empty() {
+        return rows;
+    }
+    rows.into_iter().filter(|r| r.exchange == exchange).collect()
+}
+
 /// Read-only option-chain drain: connect → resolve the underlying conid via
-/// `contract_details` FIRST row (ADR 0019 D4) → reqSecDefOptParams → timeout-wrapped
-/// End-bounded drain → shape. `--exchange` is a server-side passthrough ("" = all
-/// exchanges). Empty contract_details ⇒ `not_found`.
+/// `contract_details` FIRST row (ADR 0019 D4) → reqSecDefOptParams (queried with NO
+/// server-side exchange filter) → timeout-wrapped End-bounded drain → client-side
+/// `filter_chain_rows` → shape. `--exchange` is a CLIENT-SIDE filter (ADR 0028): `""`
+/// ⇒ all exchanges; `<EX>` ⇒ only that exchange (default `SMART` ⇒ the single
+/// consolidated row). The server call is ALWAYS unfiltered — Tiger's server-side
+/// exchange filter drops SMART (ADR 0028). Empty contract_details ⇒ `not_found`.
 ///
 /// ADR 0016 drain posture (live-proven wedge): `timeout_iter_data(TAKE_FIRST_TIMEOUT)`
 /// with Instant-classified `None` arms. A terminating `None` that starved the window is a
@@ -86,7 +103,7 @@ pub fn option_chain(cfg: &Config, args: &OptionChainArgs) -> Result<Value, AppEr
     })?;
 
     let subscription = client
-        .option_chain(&args.symbol, &args.exchange, SecurityType::Stock, conid)
+        .option_chain(&args.symbol, "", SecurityType::Stock, conid)
         .map_err(|e| AppError::data(format!("option_chain failed: {e}"), "option-chain"))?;
 
     let mut rows = Vec::new();
@@ -122,5 +139,6 @@ pub fn option_chain(cfg: &Config, args: &OptionChainArgs) -> Result<Value, AppEr
         }
     }
 
+    let rows = filter_chain_rows(rows, &args.exchange);
     Ok(shape_option_chain(&args.symbol, conid, rows))
 }

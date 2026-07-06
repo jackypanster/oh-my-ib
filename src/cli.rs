@@ -165,7 +165,7 @@ pub struct HistoryArgs {
 pub struct OptionChainArgs {
     /// Underlying ticker symbol, e.g. AAPL
     pub symbol: String,
-    /// Exchange filter (server-side reqSecDefOptParams param); "" = all exchanges
+    /// Client-side exchange filter; `SMART` (default) = consolidated view, `''` = all exchanges
     #[arg(long, default_value = "SMART")]
     pub exchange: String,
 }
