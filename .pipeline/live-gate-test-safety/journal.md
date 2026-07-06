@@ -114,3 +114,63 @@ On success: impl→review, run pipeline-review (codex reads the diff; cc runs th
 operator live acceptance + merges).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-06T08:05:00Z · impl→review · completed · by=π/OMP (glm-5.2)
+done:   Guard added; PR #26 open. tests/stk_orders_command.rs: new `use std::net::{TcpStream,Duration}`;
+        new helper `live_gateway_reachable()` (connect_timeout 127.0.0.1:4001, 300ms); guard at the top of
+        `live_buy_with_env_passes_gate_and_fails_on_dead_gateway` (reachable ⇒ eprintln+return; else the
+        existing connection-error assertion unchanged). Test-only; diff = the one test file; 4 gate-REJECT
+        tests + paper dead-port test + pure-seam tests + ALL src/ UNCHANGED.
+output: feat/live-gate-test-safety @ 5601e54 → PR #26
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (codex semantic review; cc merges on safe-gate + live acceptance).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/live-gate-test-safety pr=https://github.com/jackypanster/oh-my-ib/pull/26
+Model: frontier SOTA required for semantic review — operator assigns codex; cc merges.
+First: git pull --rebase; git fetch origin feat/live-gate-test-safety; load repo config (.env if present).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (Verify = 4 gates)
+  - .pipeline/live-gate-test-safety/tasks/01.md — THE CARD (verbatim guard edit; empty spec-paths)
+  - .pipeline/live-gate-test-safety/arch.md + docs/adr/0029-* — the binding decision
+  - PR #26 diff: `gh pr diff 26` or `git diff 718e412...feat/live-gate-test-safety`
+Your task (concrete, numbered):
+  1. DIFF-SCOPE GATE (no frozen spec — spec-paths empty): `git diff 718e412 5601e54 --name-only` must be
+     `tests/stk_orders_command.rs` ONLY. `git diff 718e412 5601e54 -- src/` MUST be empty. Confirm the 4
+     gate-REJECT tests + paper dead-port test + pure-seam tests are byte-identical to trunk.
+  2. SEMANTIC REVIEW (codex) of the guard against ADR 0029 + arch.md:
+     - `live_gateway_reachable()` = TcpStream::connect_timeout on 127.0.0.1:4001 with a 300ms timeout
+       (std-only, no new deps); returns bool.
+     - The dangerous test guards FIRST: reachable ⇒ eprintln + return (skip); else the EXISTING
+       `expect_error_code(..., "connection")` body runs unchanged.
+     - `require_live_write_gate` and every src/ file UNCHANGED.
+  3. CARD-SCOPED GATES (the merge basis for ② per cc's plan — all GREEN on feat HEAD 5601e54):
+     - `cargo build` ✅ OK
+     - `cargo test --test stk_orders_command` ✅ 16/16 passed
+     - `cargo clippy --test stk_orders_command -- -D warnings` ✅ clean (scoped to the card's target)
+     - GUARD PROVEN (Tiger :4001 UP): skip message surfaced via `--nocapture`, no order placed.
+  4. ⚠ KNOWN PRE-EXISTING — NOT this card, does NOT block ②:
+     `cargo clippy --all-targets -- -D warnings` is RED on this branch with the SOLE error
+     `tests/option_chain_filter.rs:21: unresolved import oh_my_ib::ib::filter_chain_rows`. That impl lives
+     ONLY on the unmerged PR #25 (feature ①, option-chain-default-exchange). Stash-verified IDENTICAL on
+     clean trunk (718e412) — this is pre-existing trunk-red, NOT introduced by this card. This card (②)
+     exists to unblock ①; the full --all-targets gate cannot compile on ② in isolation until ① lands
+     (chicken-and-egg). cc merges ② on its card-scoped gates; then ① rebases onto the new trunk.
+  5. OPERATOR LIVE ACCEPTANCE (cc at merge, Tiger :4001 UP — the SAFETY PROOF, never a unit test):
+     `omi --live orders` empty → run full `cargo test` → `omi --live orders` STILL empty (ZERO orders
+     placed). cc runs this; it is the load-bearing safety evidence.
+  6. On approve + human confirm: SQUASH-MERGE PR #26 into main (only pipeline-review merges). Then card 01
+     → done; current.json.stage → done; journal seq=5 (review→done, merge sha). On reject: attempts++ on
+     card 01 (currently 0); review → todo; route impl (<3) or hunt (≥3).
+Feature gotchas (project-specific traps the next node MUST know):
+  - This is the CANT-FREEZE case (spec-paths empty): freeze gate does not apply; correctness = review-by-
+    reading + operator live acceptance. Do not look for a spec-rev (there is none).
+  - The --all-targets clippy red is CROSS-FEATURE (PR #25's filter_chain_rows), stash-verified pre-existing
+    on trunk. cc adjudicates; do NOT flip this card for it. The card-scoped clippy on stk_orders_command
+    IS clean.
+  - cc's merge order: ② first (this card, on card-scoped gates + codex review + live safety) → rebase ①
+    (PR #25) onto new trunk → ①'s full gate turns green (filter_chain_rows compiles + guard present) →
+    merge ①. The full green suite is verified once BOTH land.
+Done when: diff = the test file only; guard present + correct; card-scoped gates green; operator live
+acceptance passes (zero orders placed with :4001 UP); PR #26 squash-merged by cc after human confirm.
+On failure: attempts++ (card 01 → todo, route impl; or ≥3 → blocked → pipeline-hunt).
+<<< END
