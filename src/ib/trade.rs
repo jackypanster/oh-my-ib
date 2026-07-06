@@ -183,6 +183,76 @@ pub fn require_live_write_gate(cfg: &Config) -> Result<(), AppError> {
 }
 
 // ---------------------------------------------------------------------------
+// Live write posture guardrail (ADR 0030) — pure seams. Enforced ALONGSIDE the
+// port gate (never weakening it), offline before connect. Binds OPENING orders
+// only (buy/sell/option-buy/option-sell via `place_core`) + `option-combo`;
+// `option-close` is EXEMPT (routes through `place_with_client`, bypassing
+// `place_core` — never block an exit). `cancel`/`--preview`/paper are N/A or exempt.
+// ---------------------------------------------------------------------------
+
+/// The default live notional cap (ADR 0030 D3): `$500`. Overridden per-command by
+/// `OMI_MAX_NOTIONAL`; a present-but-invalid value fails closed (see [`resolve_max_notional`]).
+pub const DEFAULT_MAX_NOTIONAL: f64 = 500.0;
+
+/// Pure, FROZEN seam (ADR 0030): `quantity × |limit| × multiplier`. MKT (`limit` `None`) ⇒
+/// `None`. Mirrors the [`shape_preview`] notional math — STK ×1, OPT ×100 (combo ×100 on the
+/// net leg). Kept as a pure seam so the wiring and the preview share one definition.
+pub fn compute_notional(quantity: f64, limit: Option<f64>, multiplier: f64) -> Option<f64> {
+    limit.map(|l| quantity * l.abs() * multiplier)
+}
+
+/// Pure, FROZEN seam (ADR 0030): resolve the live notional cap. `None` ⇒ [`DEFAULT_MAX_NOTIONAL`];
+/// `Some` ⇒ a finite, strictly-positive `f64`, else `Err`. Fail-closed: a typo'd
+/// `OMI_MAX_NOTIONAL` REFUSES (never silently falls back to the default). Reads like the
+/// gate's `OMI_ALLOW_LIVE`.
+pub fn resolve_max_notional(raw: Option<&str>) -> Result<f64, String> {
+    match raw {
+        None => Ok(DEFAULT_MAX_NOTIONAL),
+        Some(s) => match s.trim().parse::<f64>() {
+            Ok(v) if v.is_finite() && v > 0.0 => Ok(v),
+            _ => Err(format!("invalid OMI_MAX_NOTIONAL '{s}': expected a positive number")),
+        },
+    }
+}
+
+/// Pure, FROZEN seam (ADR 0030): the live write posture decision for an OPENING order
+/// (the verbs that route through `place_core`). Paper (`!is_live`) is always `Ok`; live MKT
+/// (`is_mkt`) ⇒ `Err` (live must be LMT — price protection); live notional `> cap` ⇒ `Err`
+/// (boundary `== cap` is `Ok` — `>` is the refuse, not `>=`). `notional` `None` (a live MKT
+/// already refused by `is_mkt`) falls through to `Ok` only after the MKT arm.
+pub fn check_live_write_posture(
+    is_live: bool,
+    is_mkt: bool,
+    notional: Option<f64>,
+    cap: f64,
+) -> Result<(), String> {
+    if !is_live {
+        return Ok(());
+    }
+    if is_mkt {
+        return Err("live orders must be LMT — pass --limit (MKT is paper-only)".into());
+    }
+    match notional {
+        Some(n) if n > cap => Err(format!(
+            "live notional {n} exceeds cap {cap} — raise OMI_MAX_NOTIONAL to override"
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// Pure, FROZEN seam (ADR 0030 D4): a live `option-combo` ⇒ `Err`. Combo is paper-only
+/// during the trial (the operator's interlock posture: STK + single-leg live, combo paper);
+/// paper ⇒ `Ok`. Wired in `option_combo` BEFORE the gate so `omi --live option-combo`
+/// reports "combo is paper-only" directly.
+pub fn refuse_live_combo_on_live(is_live: bool) -> Result<(), String> {
+    if is_live {
+        Err("option-combo is paper-only during the trial (interlock posture) — use paper :4002".into())
+    } else {
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Option-close (close-by-conid) — pure seams (ADR 0022). Gateway fn below.
 // ---------------------------------------------------------------------------
 
@@ -477,6 +547,22 @@ fn place_core(
         return preview_stk_option(&client, ctx, contract, order);
     }
     require_live_write_gate(cfg)?;
+    // Write posture guardrail (ADR 0030): offline, before connect. Refuse a live opening
+    // order that is MKT (no price protection) or over the notional cap (fat-finger breaker).
+    // Paper (cfg.port != LIVE_PORT ⇒ is_live=false) is exempt. A bad OMI_MAX_NOTIONAL fails
+    // closed — refuse, never default — mirroring the gate's fail-closed posture.
+    let is_live = cfg.port == LIVE_PORT;
+    let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
+        .map_err(|m| AppError::config(m, ctx))?;
+    let multiplier = if matches!(contract.security_type, SecurityType::Option) {
+        100.0
+    } else {
+        1.0
+    };
+    let is_mkt = order.order_type == "MKT";
+    let notional = compute_notional(order.total_quantity, order.limit_price, multiplier);
+    check_live_write_posture(is_live, is_mkt, notional, cap)
+        .map_err(|m| AppError::config(m, ctx))?;
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
     place_with_client(&client, ctx, contract, order, &account, ack)
@@ -764,6 +850,10 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
     //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
     if !cfg.preview {
+        // Combo lockout (ADR 0030 D4): refuse a live combo BEFORE the gate so
+        // `omi --live option-combo` reports "combo is paper-only" directly. Combo is
+        // paper-only during the trial (interlock posture); paper ⇒ Ok.
+        refuse_live_combo_on_live(cfg.port == LIVE_PORT).map_err(|m| AppError::config(m, ctx))?;
         require_live_write_gate(cfg)?;
     }
 
