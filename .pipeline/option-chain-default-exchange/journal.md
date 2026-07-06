@@ -189,3 +189,70 @@ open, current.json stage=impl + pr set, journal seq=4 appended + pushed.
 On success: transition impl→review, run pipeline-review (semantic review by codex, cc merges).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=5 · 2026-07-06T07:42:00Z · impl→review · completed · by=π/OMP (glm-5.2)
+done:   Impl green; PR #25 open. Pure seam `filter_chain_rows` added ("" ⇒ passthrough; else
+        exact-string case-sensitive retain on row.exchange, no dedup) + re-exported at
+        `oh_my_ib::ib::filter_chain_rows`; gateway fn rewired (reqSecDefOptParams called with "" ALWAYS
+        per ADR 0028; seam inserted AFTER drain, BEFORE the untouched `shape_option_chain`); cli
+        --exchange help + module/fn doc comments updated (server passthrough → client filter). Impl-paths
+        only; spec-paths untouched (freeze-gate diff `git diff 620362c 2b40e13 -- tests/` = empty).
+        Rebased onto trunk `cdfecec` (absorbs re-freeze `620362c`); feat branch force-pushed.
+output: feat/option-chain-default-exchange @ 2b40e13 → PR #25
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (semantic review; cc merges).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=feat/option-chain-default-exchange pr=https://github.com/jackypanster/oh-my-ib/pull/25
+Model: frontier SOTA required for semantic review — operator assigns codex; cc merges.
+First: git pull --rebase; git fetch origin feat/option-chain-default-exchange; load repo config (.env if
+present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (Verify section = the four-gate standard)
+  - .pipeline/option-chain-default-exchange/tasks/01.md — THE CARD (scope, freeze coverage, what IS
+    frozen vs reviewed-by-reading)
+  - .pipeline/option-chain-default-exchange/arch.md — §Data flow + §Component boundaries = the spec the
+    impl must match (verbatim)
+  - .pipeline/option-chain-default-exchange/docs/adr/0028-* — the binding decision
+  - PR #25 diff: `gh pr diff 25` or `git diff cdfecec...feat/option-chain-default-exchange`
+Your task (concrete, numbered):
+  1. FREEZE GATE (deterministic, FIRST): `git diff 620362c 2b40e13 -- tests/` MUST be empty
+     (spec-paths untouched). Non-empty ⇒ reject (re-route to impl). Confirm spec-rev on card = 620362c.
+  2. SEMANTIC REVIEW (codex) of the impl-paths diff against arch.md §Data flow + §Component boundaries
+     and ADR 0028:
+     - `filter_chain_rows`: "" ⇒ passthrough (order kept); else exact-string case-sensitive retain on
+       row.exchange; no dedup; input subset order preserved. (Frozen — already covered by the 6 tests.)
+     - Gateway fn `option_chain`: reqSecDefOptParams called with "" (NOT &args.exchange); seam inserted
+       BETWEEN the drain loop and `Ok(shape_option_chain(...))`. (Reviewed-by-reading.)
+     - `shape_option_chain` + `ChainRow` UNCHANGED — verify by diff (no edits to those symbols).
+     - Re-export `filter_chain_rows` present in `src/ib/mod.rs`.
+     - cli `--exchange` default stays "SMART"; help text describes client-side semantics.
+     - Module + fn doc comments describe the client-side filter (no stale "server-side passthrough").
+  3. FOUR-GATE GREEN on feat HEAD 2b40e13 (per AGENTS.md Verify): `cargo build`;
+     `cargo test --test option_chain_filter`; `cargo clippy --all-targets -- -D warnings`; full
+     `current.json.full-verify` = [cargo build, cargo test].
+     ⚠ KNOWN ENV-SENSITIVE FAILURE (do NOT flip the card for this): the full-suite
+     `tests/stk_orders_command.rs::live_buy_with_env_passes_gate_and_fails_on_dead_gateway` fails when
+     the live Tiger gateway `:4001` is UP — the test asserts a `connection` error assuming a dead live
+     port, but a live gateway accepts the order (`PreSubmitted`). Proven identical on clean trunk
+     (stash → same failure). It is a WRITE-path (STK buy) test, unrelated to this READ path. cc handles
+     at review: run with gateway DOWN, or mark known env-sensitive. All other 15 tests in the file pass;
+     every option-chain test passes. The three OTHER gates (build, card-scoped, clippy) are fully green.
+  4. OPERATOR LIVE ACCEPTANCE (PRD criteria 1-3, Tiger :4001, journaled — never asserted in a test):
+     `omi --live option-chain AAPL` ⇒ exactly the SMART row; `--exchange ""` ⇒ all rows (≈20);
+     `--exchange AMEX` ⇒ only AMEX. cc runs these live.
+  5. On approve + human confirm: SQUASH-MERGE PR #25 into main (only pipeline-review merges). Then card
+     01 → done; current.json.stage → done; append journal seq=6 (review→done, merge sha). On reject:
+     attempts++ on card 01 (currently 0); review → todo; route impl (< 3) or hunt (≥ 3).
+Feature gotchas (project-specific traps the next node MUST know):
+  - The one full-suite failure is ENV-SENSITIVE and PRE-EXISTING (live gateway up), NOT a regression.
+     Do not let it block merge — cc adjudicates. The feature's own gates (build, card test, clippy) are
+     green and the option-chain READ path is fully verified.
+  - Freeze gate is the deterministic two-commit diff over tests/ (empty ⇒ pass); semantic review is
+     against arch.md, not vibes. shape_option_chain + ChainRow MUST show no diff.
+  - Operator live acceptance is the ONLY coverage for Tiger's server-filter behavior — it is never a
+     test assertion (the options-read precedent).
+Done when: freeze gate empty; semantic review approves; four gates green on feat HEAD (modulo the known
+env-sensitive failure, cc-adjudicated); operator live acceptance passes; PR #25 squash-merged by cc after
+human confirm; card 01 done; journal seq=6 appended.
+On failure: attempts++ (card 01 → todo, route impl; or ≥ 3 → blocked → pipeline-hunt).
+<<< END
