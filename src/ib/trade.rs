@@ -252,6 +252,36 @@ pub fn refuse_live_combo_on_live(is_live: bool) -> Result<(), String> {
     }
 }
 
+/// Pure, FROZEN seam (ADR 0031): the live combo defined-risk breaker. Admits ONLY a clean 2-leg
+/// 1:1 vertical spread and returns its PURE-WIDTH max risk `|Δstrike| × 100 × qty` (premium-proof:
+/// the net limit is NOT read). Every other shape ⇒ `Err(reason)` (stays paper-only).
+pub fn combo_live_max_risk(specs: &[LegSpec], qty: f64) -> Result<f64, String> {
+    if specs.len() != 2 {
+        return Err("live combo is limited to 2-leg vertical spreads; other structures are paper-only".into());
+    }
+    let (a, b) = (&specs[0], &specs[1]);
+    if a.symbol != b.symbol {
+        return Err("live combo legs must share one underlying".into());
+    }
+    if a.expiry != b.expiry {
+        return Err("live combo must be a vertical (same expiry); calendars are paper-only".into());
+    }
+    if a.right != b.right {
+        return Err("live combo must be a vertical (same right); diagonals are paper-only".into());
+    }
+    if a.action == b.action {
+        return Err("live combo must be a spread (opposite BUY/SELL legs)".into());
+    }
+    if a.ratio != 1 || b.ratio != 1 {
+        return Err("live combo must be 1:1 (ratio spreads are paper-only)".into());
+    }
+    let width = (a.strike - b.strike).abs();
+    if width == 0.0 {
+        return Err("live combo legs must have distinct strikes".into());
+    }
+    Ok(width * 100.0 * qty)
+}
+
 // ---------------------------------------------------------------------------
 // Option-close (close-by-conid) — pure seams (ADR 0022). Gateway fn below.
 // ---------------------------------------------------------------------------
@@ -850,10 +880,18 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
     //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
     if !cfg.preview {
-        // Combo lockout (ADR 0030 D4): refuse a live combo BEFORE the gate so
-        // `omi --live option-combo` reports "combo is paper-only" directly. Combo is
-        // paper-only during the trial (interlock posture); paper ⇒ Ok.
-        refuse_live_combo_on_live(cfg.port == LIVE_PORT).map_err(|m| AppError::config(m, ctx))?;
+        // Combo defined-risk breaker (ADR 0031): a clean 2-leg 1:1 vertical is
+        // admitted onto live; every other shape refuses BEFORE the gate (a shape
+        // refusal holds regardless of OMI_ALLOW_LIVE, so it reports first). Risk =
+        // pure width |Δstrike|×100×qty (premium-proof); the cap + posture reuse the
+        // ADR 0030 seams. Paper skips the whole block ⇒ any combo still places :4002.
+        let is_live = cfg.port == LIVE_PORT;
+        if is_live {
+            let max_risk = combo_live_max_risk(&specs, args.qty).map_err(|m| AppError::config(m, ctx))?;
+            let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
+                .map_err(|m| AppError::config(m, ctx))?;
+            check_live_write_posture(true, false, Some(max_risk), cap).map_err(|m| AppError::config(m, ctx))?;
+        }
         require_live_write_gate(cfg)?;
     }
 
