@@ -281,3 +281,20 @@ all rows; --exchange AMEX ⇒ AMEX only); squash-merge #25 after human confirm; 
 current.json repointed back to option-chain-default-exchange stage=done; journal seq=7.
 Blocked on: live-gate-test-safety merged to main.
 <<< END
+
+## seq=7 · 2026-07-06T07:21:24Z · review→done · completed · by=claude-opus-4-8
+done:   MERGED. PR #25 squash-merged to main (550619e) after operator confirm — RESUMED after the
+        live-gate-test-safety blocker (PR #26) landed. Rebased feat onto the guard (1dcd532, freeze
+        620362c intact). cc full-suite merge gate GREEN: cargo test 242/30, clippy --all-targets
+        -D warnings clean, omi --live orders 0 after the run (guard held). Operator LIVE ACCEPTANCE on
+        Tiger :4001 PASS: `omi --live option-chain AAPL` ⇒ 1 SMART row (25 expiries; was chains:[]);
+        `--exchange ""` ⇒ 20 rows; `--exchange AMEX` ⇒ 1 AMEX row. codex ACCEPT (semantic). card 01
+        done. review-01.md written. FEATURE DONE — out-of-box option-chain now returns the clean SMART
+        view on the Tiger gateway.
+output: main 550619e (#25); .pipeline/option-chain-default-exchange/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Feature option-chain-default-exchange is DONE (and so is live-gate-test-safety). No pipeline in flight.
+Backlog (operator-directed): option MKT/GTC, modify verb, combo named-structure sugar; Hermes/TG wiring
+DEFERRED. reqPnLSingle rows + executions commission join still need a live trading day with activity.
+<<< END
