@@ -174,3 +174,21 @@ Done when: diff = the test file only; guard present + correct; card-scoped gates
 acceptance passes (zero orders placed with :4001 UP); PR #26 squash-merged by cc after human confirm.
 On failure: attempts++ (card 01 → todo, route impl; or ≥3 → blocked → pipeline-hunt).
 <<< END
+
+## seq=5 · 2026-07-06T07:02:08Z · review→done · completed · by=claude-opus-4-8
+done:   MERGED. PR #26 squash-merged to main (5b5b59b) after operator confirm. codex ACCEPT (guard
+        correct; zero src diff; require_live_write_gate + 4 reject tests untouched). cc SAFETY PROOF
+        (Tiger :4001 UP): omi --live orders 0 before → ran the GUARDED cargo test --test
+        stk_orders_command (dangerous test SKIPPED) → omi --live orders 0 after = ZERO orders placed
+        (vs a real order before the fix). card 01 done. The dangerous test can no longer place a live
+        order; the full cargo test suite is now safe to run with the gateway up. review-01.md written.
+        FEATURE DONE. current.json repointed to option-chain-default-exchange to RESUME its review→merge.
+output: main 5b5b59b (#26); .pipeline/live-gate-test-safety/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Feature live-gate-test-safety is DONE. RESUME option-chain-default-exchange (PR #25, parked at its
+journal seq=6 HELD): git checkout feat/option-chain-default-exchange; git fetch origin main; git rebase
+origin/main (absorbs the guard); git push --force-with-lease; re-run the FOUR gates incl the now-SAFE
+full cargo test; operator live acceptance criteria 1-3 on Tiger :4001; squash-merge #25 after human
+confirm. See .pipeline/option-chain-default-exchange/journal.md seq=6 for the full resume handoff.
+<<< END

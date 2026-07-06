@@ -1,9 +1,9 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "live-gate-test-safety",
+  "feature": "option-chain-default-exchange",
   "stage": "impl",
-  "pr": "https://github.com/jackypanster/oh-my-ib/pull/26",
+  "pr": "https://github.com/jackypanster/oh-my-ib/pull/25",
   "full-verify": [
     "cargo build",
     "cargo test"
