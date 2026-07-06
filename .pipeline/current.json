@@ -1,9 +1,9 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "live-write-guardrail",
-  "stage": "done",
-  "pr": "27",
+  "feature": "live-combo-unlock",
+  "stage": "prd",
+  "pr": null,
   "full-verify": [
     "cargo build",
     "cargo test"
