@@ -178,3 +178,79 @@ pushed. On success: impl→review, run pipeline-review (codex semantic review; c
 operator live acceptance + merges).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-06T10:51:10Z · impl→review · completed · by=omp
+done:   Card 01 implemented. 4 pure seams + DEFAULT_MAX_NOTIONAL const added to src/ib/trade.rs,
+        re-exported at src/ib/mod.rs:45. Wiring: place_core posture check AFTER require_live_write_gate,
+        BEFORE connect (is_live=cfg.port==LIVE_PORT; cap=resolve_max_notional(env OMI_MAX_NOTIONAL);
+        multiplier from contract.security_type — Option⇒100 else 1; is_mkt=order.order_type=="MKT";
+        notional=compute_notional; check_live_write_posture → AppError::config on Err). option_combo:
+        refuse_live_combo_on_live(cfg.port==LIVE_PORT) BEFORE the gate on the !cfg.preview path. Every Err
+        → AppError::config (exit 5). cli.rs Buy/Sell docs note LMT + OMI_MAX_NOTIONAL cap. RED LINES
+        HELD: tests/live_write_guardrail.rs untouched (spec-rev 817c7d8); require_live_write_gate body,
+        place_with_client, option_close, cancel, shape_preview JSON, config.rs all untouched. Fail-closed
+        on bad OMI_MAX_NOTIONAL (parse fails or ≤0 or non-finite ⇒ Err, never 500). option-close EXEMPT
+        by construction (routes through place_with_client, bypasses place_core).
+gates:  cargo build OK · cargo test --test live_write_guardrail 15/15 GREEN (frozen spec unfrozen) ·
+        cargo test --test order_preview_command 12/12 (shape_preview JSON byte-identical) · cargo test
+        full-suite 257/257 · cargo clippy --all-targets -- -D warnings clean. Diff = impl-paths only
+        (src/cli.rs +6/-3, src/ib/mod.rs +1/-1, src/ib/trade.rs +90/-0); spec-paths untouched.
+output: PR #27 (feat/live-write-guardrail → main) — https://github.com/jackypanster/oh-my-ib/pull/27
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session — ASSIGN TO CODEX (semantic review); CC runs the full-suite gate
++ operator live acceptance + merges.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=27
+base=main head=feat/live-write-guardrail
+Model: frontier SOTA required for semantic review (operator assigns the bot; the pipeline can't verify).
+First: git pull --rebase; gh pr checkout 27 (or read the diff on GitHub).
+Read for context (before reviewing):
+  - .pipeline/live-write-guardrail/tasks/01.md (THE CARD — verbatim seam signatures + wiring +
+    Freeze coverage: FROZEN=4 pure seams; REVIEW-BY-READING=place_core/option_combo wiring;
+    OPERATOR LIVE ACCEPTANCE=the refuse commands + the within-cap first trial order)
+  - .pipeline/live-write-guardrail/{PRD.md,arch.md,CONTEXT.md,docs/adr/0030-live-write-guardrail.md}
+  - The diff (3 files, +95/-3): src/ib/trade.rs (seams at ~185-252, place_core wiring ~549-565,
+    option_combo wiring ~853-856), src/ib/mod.rs:45 (re-export), src/cli.rs:83-88 (Buy/Sell docs)
+Your task (concrete, numbered):
+  1. SEMANTIC REVIEW (the spec freeze is already GREEN — do NOT edit tests/live_write_guardrail.rs):
+     verify the 4 pure seams match the card's verbatim bodies EXACTLY (compute_notional mirror of
+     shape_preview; resolve_max_notional fail-closed incl. non-finite; check_live_write_posture — !live
+     ⇒ Ok, is_mkt ⇒ Err, notional > cap ⇒ Err, boundary == cap ⇒ Ok; refuse_live_combo_on_live). Verify
+     the wiring: place_core ordering gate → posture → connect (all offline before connect); multiplier
+     from contract.security_type via matches!(SecurityType::Option); is_mkt from order.order_type=="MKT";
+     every Err → AppError::config; option_combo refuse BEFORE the gate on !cfg.preview. Verify the RED
+     LINES held: require_live_write_gate body unchanged; place_with_client untouched (⇒ option-close
+     EXEMPT); option_close/cancel/shape_preview JSON/config.rs untouched; fail-closed on bad
+     OMI_MAX_NOTIONAL (never defaults to 500). Confirm containment: write code still ONLY in trade.rs.
+  2. FULL-SUITE GATE (CC): cargo build · cargo test (all) · cargo clippy --all-targets -- -D warnings.
+     All were green at impl (257/257); re-confirm on the review checkout.
+  3. OPERATOR LIVE ACCEPTANCE (CC + operator, Tiger :4001 — never asserted in CI): with the gateway up,
+     confirm each refuse exits 5 with NO order placed (verifiable with :4001 DOWN too — refuses are
+     pre-connect): `omi --live buy AAPL 100 --limit 250` (over $500 cap) ⇒ exit 5; `omi --live buy AAPL 1`
+     (MKT, no --limit) ⇒ exit 5; `omi --live option-combo …` ⇒ exit 5 (combo paper-only); a bad
+     OMI_MAX_NOTIONAL (e.g. =abc) ⇒ exit 5 (fail-closed). Then the within-cap path:
+     `OMI_MAX_NOTIONAL=100000 omi --live buy AAPL 100 --limit 250` passes the guardrail (reaches the gate,
+     which needs OMI_ALLOW_LIVE=1); the first trial order (1 share, within cap) actually places. Verify
+     `omi --live orders` is empty before+after each refuse (no order leaked).
+  4. MERGE: only pipeline-review merges, after explicit human confirmation. On approve: squash/merge
+     feat/live-write-guardrail → main, set current.json stage=review then =done post-merge, journal seq=5
+     (review→done). The next feature (operator-decided) is the trade log — NOT this card.
+Feature gotchas (reviewer traps):
+  - The check lives in place_core (NOT place_with_client) PRECISELY so option-close stays EXEMPT —
+    verify the close path is unchanged and would NOT be caught. A check in place_with_client would block
+    exits (rejected alt, ADR 0030).
+  - shape_preview JSON must be byte-identical — order_preview_command tests are the canary (12/12 green).
+    compute_notional mirrors shape_preview's `order.limit_price.map(|l| order.total_quantity * l.abs() *
+    multiplier)` exactly; preview was NOT routed through compute_notional (kept independent to avoid any
+    shape change).
+  - Fail-closed is the core safety property: resolve_max_notional on a non-numeric/≤0/non-finite value
+    MUST return Err (⇒ AppError::config ⇒ exit 5), never fall back to 500. The "inf"/"nan" cases parse to
+    f64 but is_finite() refuses them.
+  - The within-cap→place path is NOT freezable (places a real live order) — it is operator live
+    acceptance, the trial itself. Do not attempt to assert it in CI.
+  - Paper (:4002) and --preview are entirely unaffected (is_live=false ⇒ Ok; preview short-circuits
+    before the guardrail).
+Done when: semantic review passes (seams + wiring + red lines); full-suite green; operator live
+acceptance signed off (refuses exit 5, first trial order places); merged to main; current.json stage=done;
+journal seq=5 pushed. On failure: PR comments; attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
