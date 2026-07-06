@@ -46,3 +46,56 @@ Done when: arch.md + CONTEXT.md + the ADR exist; the filter seam signature is de
 stage=arch; journal seq=2 appended + pushed. On success: transition arch→task, run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-06T05:17:00Z · arch→task · completed · by=claude-opus-4-8
+done:   Arch decided + ADR 0028 accepted. Move `--exchange` client-side: call reqSecDefOptParams with
+        "" ALWAYS (Tiger's server filter is unreliable — drops SMART), then a NEW pure seam
+        `filter_chain_rows(rows, exchange)` ("" ⇒ all; else exact-string case-sensitive retain on
+        row.exchange) between drain and shape_option_chain. Default "SMART" ⇒ 1 clean row. shape seam
+        UNTOUCHED; option-quote OUT (routing exchange, not a filter). Code-verified: next ADR=0028,
+        ChainRow.exchange:String, frozen test builds ChainRow via row() helper (filter seam frozen-
+        testable the same way), option_quote exchange is the MD contract routing field.
+output: .pipeline/option-chain-default-exchange/{arch.md,CONTEXT.md,docs/adr/0028-option-chain-client-side-exchange-filter.md}
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions (agent-first; pipeline invariants; read path so
+    trade.rs/write-gate are NOT involved)
+  - .pipeline/option-chain-default-exchange/PRD.md — what + HITL decision
+  - .pipeline/option-chain-default-exchange/arch.md — the chosen shape + write-set + what-to-freeze
+  - .pipeline/option-chain-default-exchange/docs/adr/0028-* — the binding decision
+  - src/ib/option_chain.rs — target; tests/option_chain_command.rs — the EXISTING frozen shape spec
+    (its `row()` helper + `use oh_my_ib::ib::{shape_option_chain, ChainRow}` is the pattern to mirror)
+Your task (concrete, numbered):
+  1. This is a SINGLE-CARD feature (one atomic change). Author card 01: the client-side `--exchange`
+     filter via the new pure seam `filter_chain_rows`.
+  2. FREEZE (ONE commit, spec-paths only, must COMPILE + FAIL): a red test for `filter_chain_rows`
+     re-exported at `oh_my_ib::ib::filter_chain_rows`. Assert: `""` ⇒ all rows unchanged (passthrough);
+     `"SMART"` over a mixed set ⇒ only the SMART row; `"AMEX"` ⇒ only AMEX; a no-match exchange ⇒ empty
+     vec; exact-string case-sensitivity (`"smart"` ≠ `"SMART"` ⇒ empty); input-subset order preserved.
+     Build `ChainRow`s directly (mirror the existing `row()` helper). Add to tests/option_chain_command.rs
+     (sibling) OR a new tests/option_chain_filter.rs — your choice; if sibling, the SHARED spec-rev rule
+     still holds (whole feature = one freeze commit). It is RED because `filter_chain_rows` isn't exported yet.
+  3. Record card 01 frontmatter: spec-paths (the test file[s]), impl-paths (src/ib/option_chain.rs,
+     src/ib/mod.rs, src/cli.rs), the shared spec-rev (the freeze commit sha), a CARD-SCOPED verify
+     (a `cargo test` name-filter over the filter_chain_rows tests — NOT the full suite), and a
+     `## Freeze coverage` note (frozen: filter_chain_rows pure logic + re-export; review-by-reading:
+     the gateway-fn wiring ["" to server + seam insertion], cli help text, doc comments, + operator
+     live acceptance criteria 1–3 on Tiger :4001).
+  4. Keep current.json.full-verify = [cargo build, cargo test]. Advance stage=task; journal seq=3.
+Feature gotchas (project-specific traps the next node MUST know):
+  - DO NOT freeze `shape_option_chain` behavior changes — it doesn't change. Freeze ONLY the new seam.
+  - The freeze test must COMPILE and FAIL (green spec = no-op). It fails at link time (missing export)
+    and/or on the assertions — that's the intended red.
+  - spec-paths ∩ impl-paths = ∅. The test file is spec; option_chain.rs/mod.rs/cli.rs are impl.
+  - Tiger-specific behavior (empty-on-SMART, 20 rows on "") is NEVER asserted in a test — it's the
+    operator live-acceptance criteria, journaled only.
+Done when: card 01 exists with a frozen RED filter_chain_rows test (compiles+fails), shared spec-rev
+recorded, card-scoped verify set; current.json stage=task; journal seq=3 appended + pushed.
+On success: transition task→impl, run pipeline-impl (assign to π/OMP).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
