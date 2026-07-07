@@ -171,3 +171,43 @@ On success: status→review (card), then run pipeline-review (codex / check): fr
 <branch-tip> -- tests/grid_tick.rs must be EMPTY) + full-suite green + paper acceptance + human-confirm merge.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-07 · task→impl · completed · by=omp/π (GLM)
+done:   Implemented card 01 per tasks/01.md §1–§5. src/grid.rs = pure planner + config (frozen
+        surface): Side/Action/AccountSnap/PositionLite/OpenOrderLite types, GridConfig (serde
+        defaults lot=100, cash_floor_pct=50, drop/rise=2%, max_shares=300) + validate (exit 5),
+        plan_grid_tick pure reconcile (Sell@+rise% + Buy@-drop% iff cash>=floor ∧ qty+lot<=max;
+        keep ±0.005 else cancel+replace; flat cancels lingering; unconfigured invisible; all
+        Cancels before all Places). src/ib/grid.rs = paper-only driver: load config → refuse live
+        offline (cfg.port==LIVE_PORT ⇒ config/exit5, pre-connect) → single connect → resolve_account
+        → read_account_positions (one drain, snap+positions) → open_orders_with_client → plan →
+        execute Cancels-first/Places-next stop-on-first-error (no retry); --dry-run returns plan.
+        trade.rs: place_with_client → pub(crate); cancel_with_client extracted (cancel delegates,
+        byte-identical). account.rs: read_account_positions + net_liq_and_cash accessor. cli.rs:
+        GridTick(GridTickArgs{--config,--dry-run}). main.rs + ib/mod.rs wired.
+containment: NO raw place_order/cancel_order in src/ib/grid.rs — composes build_stk_order +
+        place_with_client + cancel_with_client only (ADR 0017 holds; review greps this). Passes the
+        resolved &account to place_with_client (already stamps per ADR 0024 — no double-stamp).
+output: PR #30 (feat/grid-tick → main), commit c2147f9
+verify: cargo build OK · cargo test --test grid_tick 15/15 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN (no float_cmp — mirrors the spec's <1e-6 / <=0.005 tolerances) ·
+        cargo test (full suite) all-green, 0 failures (4 prior write suites green + byte-identical;
+        build_stk_order / place / place_core / shape_order_ack / cancel public signature untouched).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (only card is 01, now status=review ⇒ feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=30
+Operator: review = codex (pipeline-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/grid-tick/tasks/01.md — the card (impl-paths, out-of-scope byte-identical list).
+  - tests/grid_tick.rs — the frozen spec (spec-rev 4b83d2a); freeze gate diffs spec-paths.
+  - PR #30 diff — 8 files +507 -12.
+Review checks: freeze gate (git diff 4b83d2a <branch-tip> -- tests/grid_tick.rs must be EMPTY);
+grep src/ib/grid.rs for place_order|cancel_order ⇒ 0 hits (ADR 0017 containment); build_stk_order /
+cancel / place_with_client public surface byte-identical (4 prior write suites green); full-suite gate;
+review-by-reading the driver (one-drain read, Action→execution, Cancels-first + stop-on-first-error,
+live-refusal guard, JSON envelope).
+OPERATOR ACCEPTANCE (post-merge, paper :4002, journaled — never asserted by review): seed a position;
+--dry-run shows the intended pair; a real tick places both (omi orders); re-run ⇒ idempotent; cancel
+one + re-run ⇒ re-placed; sell to flat + re-run ⇒ lingering cancelled + idle. Live = deferred (own ADR).
+<<< END
