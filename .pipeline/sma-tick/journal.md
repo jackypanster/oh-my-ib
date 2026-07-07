@@ -116,3 +116,90 @@ On success: status→review, run pipeline-review (codex): freeze gate (git diff 
 tests/sma_tick.rs EMPTY) + full-suite + paper-only grep + containment grep + paper acceptance.
 On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-07 · task→impl · completed · by=omp/π (GLM)
+done:   Implemented card 01 per tasks/01.md §1–§5. src/ib/sma_tick.rs = TickAction{Buy,Sell,Noop} +
+        pure plan_sma_tick (binary target: HOLD⇒lot, EXIT⇒0, INSUFFICIENT⇒Noop; delta=target-
+        current_qty ⇒ Buy(delta)/Sell(-delta)/Noop; uses >/< vs 1e-9, no f64 ==) + gateway sma_tick_cmd
+        (paper-only guard LIVE_PORT⇒config/exit5 offline pre-connect; --sma>=1 guard; connect;
+        signal_for; positions read for current qty; plan; --dry-run returns signal+plan no order; else
+        ONE marketable LMT Buy@round2(latest_close*1.02)/Sell@round2(latest_close*0.98) via
+        build_stk_order + place_with_client, not MKT). signal.rs: extracted pub(crate) signal_for
+        (fetch-2Y-Day + map-to-Bar + sma_signal); sma_signal_cmd delegates (byte-identical,
+        tests/sma_signal.rs GREEN). mod.rs re-exports; cli.rs SmaTick(SmaTickArgs{symbol default QQQ,
+        --lot 10.0, --sma 200, --dry_run}); main.rs dispatch.
+containment: NO raw place_order/cancel_order in src/ib/sma_tick.rs — composes build_stk_order +
+        place_with_client only (ADR 0017 holds; review greps). Passes resolved &account to
+        place_with_client (ADR 0024 stamp; no double-stamp). Paper-only: LIVE_PORT refused offline.
+output: PR #32 (feat/sma-tick → main), commit 3409b0c
+verify: cargo build OK · cargo test --test sma_tick 7/7 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN (no float_cmp — pure fn uses >/< vs 1e-9) · cargo test (full suite)
+        all-green, 0 failures (sma_signal + grid_tick + 4 prior write suites green + byte-identical;
+        signal_for extraction left sma-signal byte-identical).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (only card is 01, now status=review ⇒ feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=32
+Operator: review = codex (pipeline-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/sma-tick/tasks/01.md — the card (impl-paths, out-of-scope byte-identical list).
+  - tests/sma_tick.rs — frozen spec (spec-rev 22b1a9e); freeze gate diffs spec-paths.
+  - PR #32 diff — 5 files +217 -16.
+Review checks: freeze gate (git diff 22b1a9e <branch-tip> -- tests/sma_tick.rs must be EMPTY);
+containment grep (sma_tick.rs ⇒ no place_order/cancel_order); paper-only guard (LIVE_PORT ⇒ config
+offline); signal_for extraction left sma-signal byte-identical (tests/sma_signal.rs GREEN); marketable
+LMT not MKT (Buy@*1.02, Sell@*0.98, round2); full-suite gate.
+OPERATOR ACCEPTANCE (post-merge, paper :4002): omi sma-tick QQQ --lot 10 --dry-run shows signal +
+current/target/action; a real run places the reconcile LMT; omi --live sma-tick QQQ refused paper-only.
+<<< END
+
+## seq=5 · 2026-07-07 · impl · note · by=omp/π (GLM)
+done:   Operator decision: passive default symbol QQQ → QQQM (Nasdaq-100 same-index, lower expense
+        ratio). Two default-value edits on feat/sma-tick:
+        - src/ib/sma_tick.rs:78  unwrap_or_else(|| "QQQ".into()) → "QQQM".into()
+        - src/cli.rs:307         doc "default QQQ" → "default QQQM"
+        Pure default change; plan_sma_tick frozen test is symbol-agnostic (unaffected); callers passing
+        an explicit symbol see no behavior change.
+output: PR #32 (feat/sma-tick) update commit 9a71bfb (c34c9b5..9a71bfb)
+verify: cargo build OK · cargo test (full suite) all-green, 0 failures · cargo clippy --all-targets
+        -D warnings CLEAN. tests/ untouched (freeze gate empty). Card remains status=review.
+<<< END
+
+## seq=6 · 2026-07-07T12:30:25Z · review→impl · failed · by=codex
+done:   Review verdict written: REJECT for card 01. Freeze gate passed, full verify passed, containment
+        grep passed, paper-only guard passed, and default QQQM was confirmed. Semantic review found two
+        write-path fail-closed issues: position-read errors are treated as flat, and `--lot` is not
+        validated as finite/positive before it can drive a placement.
+output: .pipeline/sma-tick/reviews/review-01.md · .pipeline/sma-tick/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing -- rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=32 card=01
+Model: capable-local OK (impl) -- operator assigns the bot.
+First: git pull --rebase. Reuse the existing feat/sma-tick branch / PR #32.
+Read for context:
+  - oh-my-ib/AGENTS.md + CLAUDE.md -- repo conventions; write safety and structured errors.
+  - .pipeline/sma-tick/tasks/01.md -- card 01, now attempts=1/status=todo, plus Review rejection 01.
+  - .pipeline/sma-tick/reviews/review-01.md -- blocking findings and verification already run.
+  - .pipeline/sma-tick/docs/adr/0035-sma-tick.md + arch.md + CONTEXT.md -- binding design.
+  - tests/sma_tick.rs -- frozen spec; DO NOT edit (spec-rev 22b1a9e).
+Your task:
+  1. Fix position-read fail-closed behavior. `current_position_qty` must not swallow `positions(cfg)`
+     errors. Return `Result<f64, AppError>` and propagate, or read positions through the already-resolved
+     account/client so signal, position, and placement share one account authority. Only absent symbol in
+     a successful positions payload may map to 0.0.
+  2. Validate `--lot` before any gateway work: finite and > 0.0, else structured usage/config error with
+     context `sma-tick`. Cover negative, zero, and non-finite inputs in implementation-owned tests or CLI
+     tests without touching `tests/sma_tick.rs`.
+  3. Preserve ADR 0017 containment: no raw `place_order` / `cancel_order` in `src/ib/sma_tick.rs`; keep
+     marketable LMT pricing and QQQM default unchanged.
+  4. Verify on `feat/sma-tick`: `cargo build`; `cargo test --test sma_tick`; `cargo test`;
+     `cargo clippy --all-targets -- -D warnings`. Re-run freeze gate:
+     `git diff 22b1a9e origin/feat/sma-tick -- tests/sma_tick.rs` must be empty.
+Feature gotchas:
+  - The branch currently contains expected `.pipeline` metadata skew from the QQQM default sync commit.
+    Do not "fix" frozen tests or trunk metadata in implementation; keep product-code changes scoped.
+  - This is a paper-only write command. Unknown position state must fail closed, not plan from 0.
+Done when: PR #32 is updated, card 01 is back at review, full verify is green, and review can rerun.
+On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
+<<< END
