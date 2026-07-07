@@ -75,11 +75,20 @@ pub fn sma_tick_cmd(cfg: &Config, args: &SmaTickArgs) -> Result<Value, AppError>
             "sma-tick",
         ));
     }
+    // Validate the target lot BEFORE connect: a non-positive or non-finite lot makes the binary
+    // target nonsensical (e.g. --lot=-10 flips HOLD into a short; --lot=inf reaches the builder).
+    // build_stk_order is a pure builder with no validation, so the gateway must guard here.
+    if !args.lot.is_finite() || args.lot <= 0.0 {
+        return Err(AppError::config(
+            format!("--lot must be a positive number, got {}", args.lot),
+            "sma-tick",
+        ));
+    }
     let symbol = args.symbol.clone().unwrap_or_else(|| "QQQM".into());
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
     let sig = super::signal::signal_for(&client, &symbol, args.sma)?;
-    let current_qty = current_position_qty(cfg, &symbol);
+    let current_qty = current_position_qty(cfg, &symbol)?;
     let action = plan_sma_tick(sig.state, current_qty, args.lot);
     let target_qty = match sig.state {
         SignalState::Hold => args.lot,
@@ -148,23 +157,24 @@ pub fn sma_tick_cmd(cfg: &Config, args: &SmaTickArgs) -> Result<Value, AppError>
     }))
 }
 
-/// Read the current held qty for `symbol` from the read-only `positions` drain (0.0 if absent).
-/// Reuses the same `positions(cfg)` path as the read commands — a second short-lived connection,
-/// acceptable for a single-tick paper command (mirrors the card's note).
-fn current_position_qty(cfg: &Config, symbol: &str) -> f64 {
-    match super::positions(cfg) {
-        Ok(val) => val["positions"]
-            .as_array()
-            .and_then(|rows| {
-                rows.iter().find_map(|r| {
-                    if r["symbol"].as_str() == Some(symbol) {
-                        r["qty"].as_f64()
-                    } else {
-                        None
-                    }
-                })
+/// Read the current held qty for `symbol` from the read-only `positions` drain. Fail-closed: a read
+/// ERROR propagates (a write command must not fabricate a flat position from unknown state — HOLD
+/// would double-buy, EXIT would skip the close). Only "symbol absent from a SUCCESSFUL payload" is
+/// treated as 0.0. Reuses the `positions(cfg)` path (a second short-lived connection, acceptable for
+/// a single-tick paper command).
+fn current_position_qty(cfg: &Config, symbol: &str) -> Result<f64, AppError> {
+    let val = super::positions(cfg)?;
+    let qty = val["positions"]
+        .as_array()
+        .and_then(|rows| {
+            rows.iter().find_map(|r| {
+                if r["symbol"].as_str() == Some(symbol) {
+                    r["qty"].as_f64()
+                } else {
+                    None
+                }
             })
-            .unwrap_or(0.0),
-        Err(_) => 0.0,
-    }
+        })
+        .unwrap_or(0.0);
+    Ok(qty)
 }
