@@ -97,8 +97,10 @@ pub fn sma_signal(bars: &[Bar], n: usize) -> SmaSignal {
     if bars.is_empty() {
         return insufficient((0, 0), 0);
     }
-    // Fewer than n bars total — can't form even a single n-day SMA.
-    if bars.len() < n {
+    // A non-positive SMA window is nonsensical; treat it as Insufficient so the pure seam is
+    // total and can never reach `sma_at` with a window that would slice start>end (n==0 ⇒
+    // start = i+1 > i). Also covers `bars.len() < n` — can't form even one n-day SMA.
+    if n == 0 || bars.len() < n {
         return insufficient(bars[bars.len() - 1].ym, bars_used);
     }
 
@@ -170,6 +172,14 @@ fn ym_of_date(d: Date) -> (i32, u32) {
 /// The gateway command: resolve symbols (positions fallback when none given), fetch 2Y of daily
 /// bars per symbol, run the pure signal, emit the JSON envelope. Read-only — no gate, no writes.
 pub fn sma_signal_cmd(cfg: &Config, args: &SmaSignalArgs) -> Result<Value, AppError> {
+    // Validate the SMA window BEFORE any gateway work (held_symbols/connect) so a bad --sma is a
+    // structured config error (exit 5), not a silent panic deep in the pure seam.
+    if args.sma < 1 {
+        return Err(AppError::config(
+            format!("--sma must be >= 1, got {}", args.sma),
+            "sma-signal",
+        ));
+    }
     let syms = if args.symbols.is_empty() {
         held_symbols(cfg)?
     } else {
