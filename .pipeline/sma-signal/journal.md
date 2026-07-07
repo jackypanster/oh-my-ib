@@ -146,3 +146,71 @@ On success: status→review (card), then run pipeline-review (codex / check): fr
 <branch-tip> -- tests/sma_signal.rs EMPTY) + full-suite green + read-only grep + paper acceptance + human-confirm merge.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-07 · task→impl · completed · by=omp/π (GLM)
+done:   Implemented card 01 per tasks/01.md §1–§5. src/ib/signal.rs = SignalState/Bar/SmaSignal
+        types + pure sma_signal (Faber rule: as_of_idx = last bar whose month < the in-progress
+        final month, else the final bar; HOLD if month-end close >= n-day SMA, else EXIT;
+        INSUFFICIENT on empty/<n/not-enough-up-to-month-end; numeric 0.0, never panics; latest_*
+        drift reflects final bar) + gateway sma_signal_cmd (resolve symbols — positions fallback
+        when none given; fetch 2Y daily bars via historical_data; ym_of strips BarTimestamp to
+        (year,month); JSON envelope) + held_symbols helper. mod.rs re-exports; cli.rs
+        SmaSignal(SmaSignalArgs{symbols, --sma 200}); main.rs dispatch; Cargo.toml adds time=0.3
+        (transitive via ibapi, version-matched 0.3.51).
+posture: READ-ONLY — signal.rs has NO require_live_write_gate / place_order / cancel_order
+        (review greps). ADR 0017 does not apply. Default paper port.
+output: PR #31 (feat/sma-signal → main), commit b2a040b
+verify: cargo build OK · cargo test --test sma_signal 5/5 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN (no float_cmp — pure fn uses only >= on floats) · cargo test (full
+        suite) all-green, 0 failures (all prior suites byte-identical).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (only card is 01, now status=review ⇒ feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=31
+Operator: review = codex (pipeline-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/sma-signal/tasks/01.md — the card (impl-paths, out-of-scope).
+  - tests/sma_signal.rs — the frozen spec (spec-rev 58f31d4); freeze gate diffs spec-paths.
+  - PR #31 diff — 6 files +245 -0.
+Review checks: freeze gate (git diff 58f31d4 <branch-tip> -- tests/sma_signal.rs must be EMPTY);
+read-only grep (signal.rs ⇒ no require_live_write_gate / place_order / cancel_order); full-suite
+gate; review-by-reading the gateway (symbol resolution incl. no-args→positions, historical_data
+fetch, ym_of strip, JSON shape).
+OPERATOR ACCEPTANCE (post-merge, paper :4002): omi sma-signal NVDA MU QQQ → HOLD/EXIT per name;
+omi sma-signal (no args) → signals held positions.
+<<< END
+
+## seq=5 · 2026-07-07T08:03:20Z · review→impl · failed · by=codex
+done:   Review verdict written: REJECT for card 01. Freeze gate passed, full verify passed, read-only
+        posture passed, but semantic review found a user-input boundary panic: `--sma 0` can reach
+        `sma_signal(&bars, 0)` and panic after any non-empty historical-data response.
+output: .pipeline/sma-signal/reviews/review-01.md · .pipeline/sma-signal/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing -- rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=31 card=01
+Model: capable-local OK (impl) -- operator assigns the bot.
+First: git pull --rebase; no .env needed for build/test. Reuse the existing feat/sma-signal branch / PR #31.
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md -- repo conventions; CLI errors must be structured JSON envelopes.
+  - .pipeline/sma-signal/tasks/01.md -- card 01, now attempts=1/status=todo, plus Review rejection 01.
+  - .pipeline/sma-signal/reviews/review-01.md -- blocking finding and verification already run.
+  - .pipeline/sma-signal/docs/adr/0034-sma-signal.md + arch.md + CONTEXT.md -- binding design.
+  - tests/sma_signal.rs -- frozen spec; DO NOT edit (spec-rev 58f31d4).
+Your task (concrete, numbered):
+  1. Fix the `--sma 0` boundary. Reject zero at the public command boundary before gateway work
+     (for example `AppError::config` with context `sma-signal`, or an equivalent clap positive range).
+  2. Make the pure `sma_signal(bars, n)` total for `n == 0` as defensive library behavior, e.g. return
+     `SignalState::Insufficient` with deterministic zero numeric fields rather than slicing.
+  3. Do not touch `tests/sma_signal.rs` or other spec-paths. Preserve read-only posture: no
+     `require_live_write_gate`, `OMI_ALLOW_LIVE`, `place_order`, or `cancel_order` code in signal.rs.
+  4. Verify on `feat/sma-signal`: `cargo build`; `cargo test --test sma_signal`; `cargo test`;
+     `cargo clippy --all-targets -- -D warnings`. Re-run the freeze gate locally:
+     `git diff 58f31d4 origin/feat/sma-signal -- tests/sma_signal.rs` must be empty.
+Feature gotchas:
+  - The bug is an input-validation/totality bug, not the positive-window Faber month-end math. Do not
+    change the frozen D-RULE behavior for positive `n`.
+  - The command is read-only. Do not add live/write gates or touch `trade.rs`.
+Done when: PR #31 is updated, card 01 is back at review, full verify is green, and review can rerun.
+On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
+<<< END
