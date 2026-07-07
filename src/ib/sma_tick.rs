@@ -75,7 +75,7 @@ pub fn sma_tick_cmd(cfg: &Config, args: &SmaTickArgs) -> Result<Value, AppError>
             "sma-tick",
         ));
     }
-    let symbol = args.symbol.clone().unwrap_or_else(|| "QQQ".into());
+    let symbol = args.symbol.clone().unwrap_or_else(|| "QQQM".into());
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
     let sig = super::signal::signal_for(&client, &symbol, args.sma)?;

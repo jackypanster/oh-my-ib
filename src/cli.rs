@@ -304,7 +304,7 @@ pub struct SmaSignalArgs {
 /// omi sma-tick [SYMBOL] [--lot N] [--sma N] [--dry-run]
 #[derive(Args, Debug)]
 pub struct SmaTickArgs {
-    /// Ticker symbol (default QQQ).
+    /// Ticker symbol (default QQQM).
     pub symbol: Option<String>,
     /// Target share count when HOLD (the binary target; default 10).
     #[arg(long, default_value_t = 10.0)]
