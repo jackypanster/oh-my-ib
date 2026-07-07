@@ -171,3 +171,78 @@ On success: status→review (card), then run pipeline-review (codex / check): fr
 <branch-tip> -- tests/grid_tick.rs must be EMPTY) + full-suite green + paper acceptance + human-confirm merge.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-07 · task→impl · completed · by=omp/π (GLM)
+done:   Implemented card 01 per tasks/01.md §1–§5. src/grid.rs = pure planner + config (frozen
+        surface): Side/Action/AccountSnap/PositionLite/OpenOrderLite types, GridConfig (serde
+        defaults lot=100, cash_floor_pct=50, drop/rise=2%, max_shares=300) + validate (exit 5),
+        plan_grid_tick pure reconcile (Sell@+rise% + Buy@-drop% iff cash>=floor ∧ qty+lot<=max;
+        keep ±0.005 else cancel+replace; flat cancels lingering; unconfigured invisible; all
+        Cancels before all Places). src/ib/grid.rs = paper-only driver: load config → refuse live
+        offline (cfg.port==LIVE_PORT ⇒ config/exit5, pre-connect) → single connect → resolve_account
+        → read_account_positions (one drain, snap+positions) → open_orders_with_client → plan →
+        execute Cancels-first/Places-next stop-on-first-error (no retry); --dry-run returns plan.
+        trade.rs: place_with_client → pub(crate); cancel_with_client extracted (cancel delegates,
+        byte-identical). account.rs: read_account_positions + net_liq_and_cash accessor. cli.rs:
+        GridTick(GridTickArgs{--config,--dry-run}). main.rs + ib/mod.rs wired.
+containment: NO raw place_order/cancel_order in src/ib/grid.rs — composes build_stk_order +
+        place_with_client + cancel_with_client only (ADR 0017 holds; review greps this). Passes the
+        resolved &account to place_with_client (already stamps per ADR 0024 — no double-stamp).
+output: PR #30 (feat/grid-tick → main), commit c2147f9
+verify: cargo build OK · cargo test --test grid_tick 15/15 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN (no float_cmp — mirrors the spec's <1e-6 / <=0.005 tolerances) ·
+        cargo test (full suite) all-green, 0 failures (4 prior write suites green + byte-identical;
+        build_stk_order / place / place_core / shape_order_ack / cancel public signature untouched).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (only card is 01, now status=review ⇒ feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=30
+Operator: review = codex (pipeline-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/grid-tick/tasks/01.md — the card (impl-paths, out-of-scope byte-identical list).
+  - tests/grid_tick.rs — the frozen spec (spec-rev 4b83d2a); freeze gate diffs spec-paths.
+  - PR #30 diff — 8 files +507 -12.
+Review checks: freeze gate (git diff 4b83d2a <branch-tip> -- tests/grid_tick.rs must be EMPTY);
+grep src/ib/grid.rs for place_order|cancel_order ⇒ 0 hits (ADR 0017 containment); build_stk_order /
+cancel / place_with_client public surface byte-identical (4 prior write suites green); full-suite gate;
+review-by-reading the driver (one-drain read, Action→execution, Cancels-first + stop-on-first-error,
+live-refusal guard, JSON envelope).
+OPERATOR ACCEPTANCE (post-merge, paper :4002, journaled — never asserted by review): seed a position;
+--dry-run shows the intended pair; a real tick places both (omi orders); re-run ⇒ idempotent; cancel
+one + re-run ⇒ re-placed; sell to flat + re-run ⇒ lingering cancelled + idle. Live = deferred (own ADR).
+<<< END
+
+## seq=5 · 2026-07-07T05:22:32Z · review→impl · failed · by=codex
+done:   Review verdict written: REJECT for card 01. Freeze gate passed and full verify passed, but
+        semantic review found a cross-account cancel risk in grid_tick open-order scoping.
+output: .pipeline/grid-tick/reviews/review-01.md · .pipeline/grid-tick/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=30 card=01
+Model: capable-local OK (impl) — operator assigns the bot.
+First: git pull --rebase; no .env needed for build/test. Reuse the existing feat/grid-tick branch / PR #30.
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions; write safety and pipeline rules.
+  - .pipeline/grid-tick/tasks/01.md — card 01, now attempts=1/status=todo, plus Review rejection 01.
+  - .pipeline/grid-tick/reviews/review-01.md — blocking finding and verification already run.
+  - .pipeline/grid-tick/docs/adr/0033-grid-tick.md + arch.md + CONTEXT.md — binding design.
+  - tests/grid_tick.rs — frozen spec; DO NOT edit (spec-rev 4b83d2a).
+Your task (concrete, numbered):
+  1. Fix `src/ib/grid.rs`: after resolving `account`, pass the resolved account to
+     `open_orders_with_client` instead of `cfg.account.as_deref()`, so open orders, positions, and
+     placements are all scoped to the same single resolved account even when `--account` is omitted.
+  2. Do not touch `tests/grid_tick.rs` or other spec-paths. Preserve ADR 0017 containment: no raw
+     `place_order` / `cancel_order` outside `src/ib/trade.rs`.
+  3. Verify on `feat/grid-tick`: `cargo build`; `cargo test --test grid_tick`; `cargo test`;
+     `cargo clippy --all-targets -- -D warnings`. Re-run the freeze gate locally before handing back:
+     `git diff 4b83d2a origin/feat/grid-tick -- tests/grid_tick.rs` must be empty.
+  4. Push the PR update and set card 01 back to `review`; append the next journal entry.
+Feature gotchas:
+  - The bug is cross-account, not planner math. Do not change the frozen planner unless a new frozen spec
+    is routed through pipeline-task.
+  - `open_orders_with_client` intentionally does not auto-filter for read-only commands when passed None;
+    grid is a write orchestrator, so it must pass the resolved account explicitly.
+Done when: PR #30 is updated, card 01 is back at review, full verify is green, and review can rerun.
+On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
+<<< END
