@@ -99,3 +99,49 @@ Feature gotchas (project-specific traps):
 Done when: tests/outside_rth.rs frozen+RED, tasks/01.md recorded, stage=task, journal seq=3.
 On success: hand impl to omp (π) — run pipeline-impl. On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-07T01:36:33Z · arch→task · completed · by=cc/claude-opus-4.8
+done:   Froze tests/outside_rth.rs (spec-rev bd9a1e8) — 8 tests: 4 seam, 2 preview-echo, 2 CLI black-box.
+        Ran the clippy-on-stub pre-check MANUALLY (stubbed apply_outside_rth, cargo test --no-run +
+        clippy --all-targets -D warnings CLEAN, reverted stub) so the frozen test can't sandbag impl.
+        Recorded tasks/01.md (impl-paths cli.rs/trade.rs/mod.rs; spec-paths∩impl-paths=∅). RED now
+        (unresolved import). full-verify unchanged [cargo build, cargo test, cargo clippy].
+output: tests/outside_rth.rs (frozen), .pipeline/outside-rth/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none  card=01
+Model: capable-local OK (impl only) — this is omp (π/GLM). Operator assigns the bot.
+First: git pull --rebase; load repo config (.env if present, per CONTRACT step 2).
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions; ADR 0017 write containment (writes ONLY in
+    src/ib/trade.rs). Read FIRST.
+  - .pipeline/outside-rth/tasks/01.md — YOUR card: exact impl-paths, the 5 edits with reference bodies,
+    the out-of-scope byte-identical list, and Done-when. This is the spec for what to build.
+  - .pipeline/outside-rth/{arch.md, CONTEXT.md, PRD.md} + docs/adr/0032-outside-rth.md — the why.
+  - tests/outside_rth.rs — the FROZEN red test you must make green (do NOT edit it — spec-paths).
+Your task (concrete, numbered):
+  1. Cut feat/outside-rth from trunk (main). Card 01 verify = `cargo test --test outside_rth`.
+  2. Apply the 5 edits in tasks/01.md exactly: (a) cli.rs OrderArgs +--outside-rth bool; (b) trade.rs
+     NEW apply_outside_rth seam after build_stk_order; (c) trade.rs place() wire (bind mut order +
+     apply_outside_rth before place_core, Err→AppError::config); (d) trade.rs shape_preview echo
+     "outside_rth" INSIDE the "order" object; (e) mod.rs:45 re-export apply_outside_rth.
+  3. Make it green: `cargo test --test outside_rth` GREEN; `cargo build` OK; `cargo clippy --all-targets
+     -- -D warnings` CLEAN.
+  4. Confirm the four prior frozen suites still GREEN + byte-identical (you did NOT touch build_stk_order's
+     signature, shape_preview's top-level keys, or shape_order_ack): run the whole suite once
+     (`cargo test`) — but ONLY if the Tiger gateway is not mid-live-order; the live-gate guard is on trunk
+     so branches inherit it (dead-port tests are safe).
+  5. Open the PR from feat/outside-rth. Set card 01 status → review (impl-paths only; NEVER edit
+     tests/outside_rth.rs — the freeze gate diffs spec-paths and rejects any change).
+Feature gotchas (project-specific traps):
+  - #1 TRAP: do NOT change build_stk_order's signature — 3 other frozen tests call it 4-arg; a 5th param
+    breaks their compilation. Apply the flag via the NEW post-build seam only.
+  - shape_preview: add outside_rth INSIDE "order", never a new top-level key (order_preview_command.rs
+    asserts the exact 8 top-level keys and must stay green).
+  - Guard is config/exit 5 (flag combination), offline, BEFORE place_core.
+  - STK-only: do NOT add the flag to any option/combo/close verb.
+  - You must NOT create/modify/delete anything under spec-paths (tests/outside_rth.rs). Freeze gate enforces it.
+Done when: cargo test --test outside_rth GREEN, full suite GREEN, clippy clean, PR open, card→review.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt. Then review = codex (pipeline-review).
+<<< END
