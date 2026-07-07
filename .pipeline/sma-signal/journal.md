@@ -146,3 +146,36 @@ On success: status→review (card), then run pipeline-review (codex / check): fr
 <branch-tip> -- tests/sma_signal.rs EMPTY) + full-suite green + read-only grep + paper acceptance + human-confirm merge.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=4 · 2026-07-07 · task→impl · completed · by=omp/π (GLM)
+done:   Implemented card 01 per tasks/01.md §1–§5. src/ib/signal.rs = SignalState/Bar/SmaSignal
+        types + pure sma_signal (Faber rule: as_of_idx = last bar whose month < the in-progress
+        final month, else the final bar; HOLD if month-end close >= n-day SMA, else EXIT;
+        INSUFFICIENT on empty/<n/not-enough-up-to-month-end; numeric 0.0, never panics; latest_*
+        drift reflects final bar) + gateway sma_signal_cmd (resolve symbols — positions fallback
+        when none given; fetch 2Y daily bars via historical_data; ym_of strips BarTimestamp to
+        (year,month); JSON envelope) + held_symbols helper. mod.rs re-exports; cli.rs
+        SmaSignal(SmaSignalArgs{symbols, --sma 200}); main.rs dispatch; Cargo.toml adds time=0.3
+        (transitive via ibapi, version-matched 0.3.51).
+posture: READ-ONLY — signal.rs has NO require_live_write_gate / place_order / cancel_order
+        (review greps). ADR 0017 does not apply. Default paper port.
+output: PR #31 (feat/sma-signal → main), commit b2a040b
+verify: cargo build OK · cargo test --test sma_signal 5/5 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN (no float_cmp — pure fn uses only >= on floats) · cargo test (full
+        suite) all-green, 0 failures (all prior suites byte-identical).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (only card is 01, now status=review ⇒ feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=31
+Operator: review = codex (pipeline-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/sma-signal/tasks/01.md — the card (impl-paths, out-of-scope).
+  - tests/sma_signal.rs — the frozen spec (spec-rev 58f31d4); freeze gate diffs spec-paths.
+  - PR #31 diff — 6 files +245 -0.
+Review checks: freeze gate (git diff 58f31d4 <branch-tip> -- tests/sma_signal.rs must be EMPTY);
+read-only grep (signal.rs ⇒ no require_live_write_gate / place_order / cancel_order); full-suite
+gate; review-by-reading the gateway (symbol resolution incl. no-args→positions, historical_data
+fetch, ym_of strip, JSON shape).
+OPERATOR ACCEPTANCE (post-merge, paper :4002): omi sma-signal NVDA MU QQQ → HOLD/EXIT per name;
+omi sma-signal (no args) → signals held positions.
+<<< END
