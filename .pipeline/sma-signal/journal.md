@@ -179,3 +179,38 @@ fetch, ym_of strip, JSON shape).
 OPERATOR ACCEPTANCE (post-merge, paper :4002): omi sma-signal NVDA MU QQQ → HOLD/EXIT per name;
 omi sma-signal (no args) → signals held positions.
 <<< END
+
+## seq=5 · 2026-07-07T08:03:20Z · review→impl · failed · by=codex
+done:   Review verdict written: REJECT for card 01. Freeze gate passed, full verify passed, read-only
+        posture passed, but semantic review found a user-input boundary panic: `--sma 0` can reach
+        `sma_signal(&bars, 0)` and panic after any non-empty historical-data response.
+output: .pipeline/sma-signal/reviews/review-01.md · .pipeline/sma-signal/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing -- rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=31 card=01
+Model: capable-local OK (impl) -- operator assigns the bot.
+First: git pull --rebase; no .env needed for build/test. Reuse the existing feat/sma-signal branch / PR #31.
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md -- repo conventions; CLI errors must be structured JSON envelopes.
+  - .pipeline/sma-signal/tasks/01.md -- card 01, now attempts=1/status=todo, plus Review rejection 01.
+  - .pipeline/sma-signal/reviews/review-01.md -- blocking finding and verification already run.
+  - .pipeline/sma-signal/docs/adr/0034-sma-signal.md + arch.md + CONTEXT.md -- binding design.
+  - tests/sma_signal.rs -- frozen spec; DO NOT edit (spec-rev 58f31d4).
+Your task (concrete, numbered):
+  1. Fix the `--sma 0` boundary. Reject zero at the public command boundary before gateway work
+     (for example `AppError::config` with context `sma-signal`, or an equivalent clap positive range).
+  2. Make the pure `sma_signal(bars, n)` total for `n == 0` as defensive library behavior, e.g. return
+     `SignalState::Insufficient` with deterministic zero numeric fields rather than slicing.
+  3. Do not touch `tests/sma_signal.rs` or other spec-paths. Preserve read-only posture: no
+     `require_live_write_gate`, `OMI_ALLOW_LIVE`, `place_order`, or `cancel_order` code in signal.rs.
+  4. Verify on `feat/sma-signal`: `cargo build`; `cargo test --test sma_signal`; `cargo test`;
+     `cargo clippy --all-targets -- -D warnings`. Re-run the freeze gate locally:
+     `git diff 58f31d4 origin/feat/sma-signal -- tests/sma_signal.rs` must be empty.
+Feature gotchas:
+  - The bug is an input-validation/totality bug, not the positive-window Faber month-end math. Do not
+    change the frozen D-RULE behavior for positive `n`.
+  - The command is read-only. Do not add live/write gates or touch `trade.rs`.
+Done when: PR #31 is updated, card 01 is back at review, full verify is green, and review can rerun.
+On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
+<<< END
