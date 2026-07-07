@@ -256,3 +256,19 @@ After explicit human confirm, pipeline-review may squash-merge PR #32, then set 
 current.json stage done, append the final journal entry, commit/push main, and run/operator-record paper
 acceptance as needed.
 <<< END
+
+## seq=9 · 2026-07-07T12:58:00Z · review→done · completed · by=cc/claude-opus-4-8
+done:   Human-confirmed merge. PR #32 was CONFLICTING only on .pipeline/sma-tick/tasks/01.md (card
+        metadata — a shared-worktree slip where cc's QQQM card-sync commit landed on the feature branch;
+        src/** merged clean). Resolved via LOCAL squash-merge onto main (5ee56cc): took the branch's src
+        + resolved the card to QQQM/status=done, kept trunk's newer metadata. PR #32 closed, feat/sma-tick
+        deleted. Post-merge full-verify on main GREEN (cargo build; cargo test all suites incl. 7 sma_tick;
+        cargo clippy --all-targets -- -D warnings). One reject→fix→accept cycle (review-01 positions-read-
+        fail-closed + --lot validation → daa6af2 → review-02), attempts 1/3. Default symbol QQQM (operator
+        decision, same Nasdaq-100 index, lower expense).
+output: main @ 5ee56cc (PR #32 merged) · current.json (stage=done) · tasks/01.md (status=done)
+sma-tick feature COMPLETE. The QQQM stack is whole: manual `omi sma-signal QQQM`, auto `omi sma-tick QQQM
+--lot 10` (paper-only), monthly Telegram notifier (SYMBOLS=QQQM). LESSON: verify `git branch --show-current`
+before any commit in the shared worktree — omp/codex switch it (cc's card-metadata slip caused the merge
+conflict). Live promotion of sma-tick + a Telegram confirmation of what it traded remain deferred.
+<<< END
