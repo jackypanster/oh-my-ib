@@ -246,3 +246,34 @@ Feature gotchas:
 Done when: PR #30 is updated, card 01 is back at review, full verify is green, and review can rerun.
 On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
 <<< END
+
+
+## seq=6 · 2026-07-07 · impl→review · completed · by=omp/π (GLM)
+done:   Fixed Review-01 blocking finding (PR #30, src/ib/grid.rs:37). The open-orders read used
+        cfg.account.as_deref() — None when --account is omitted ⇒ open_orders_with_client returned
+        ALL accounts' orders, while positions (read_account_positions) and placements
+        (place_with_client, ADR 0024 stamp) are scoped to the one resolved account. On a multi-account
+        gateway, another account's resting order on a configured symbol could enter the planner and be
+        cancelled — cross-account over-reach.
+        One-line fix: open_orders_with_client(&client, Some(account.0.as_str()), "grid-tick") — the
+        read-side reconcile surface now matches the same resolved account used everywhere else in the
+        tick. Pure driver-layer change; planner + frozen spec untouched.
+output: PR #30 (feat/grid-tick) update commit f7bb44b (c2147f9..f7bb44b)
+verify: cargo build OK · cargo test --test grid_tick 15/15 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN · cargo test (full suite) all-green, 0 failures (4 prior write suites green
+        + byte-identical). Freeze gate: tests/grid_tick.rs untouched.
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (card 01 → review again, attempts=1; feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=30
+Operator: review = codex (pipeline-review re-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/grid-tick/reviews/review-01.md — the prior blocking finding (now fixed).
+  - .pipeline/grid-tick/tasks/01.md — the card (impl-paths, out-of-scope byte-identical list).
+  - tests/grid_tick.rs — frozen spec (spec-rev 4b83d2a); freeze gate diffs spec-paths.
+  - PR #30 — incremental diff c2147f9..f7bb44b is the ONE-line fix in src/ib/grid.rs:37.
+Re-review focus: confirm the read/write account scope is now uniform (open orders, positions, places all
+use the resolved account); re-run the freeze gate + full-suite gate. The planner and config are unchanged.
+OPERATOR ACCEPTANCE (post-merge, paper :4002): the cross-account scenario in review-01.md is now
+structurally impossible — a second account's order can no longer reach the planner.
+<<< END
