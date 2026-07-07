@@ -152,3 +152,15 @@ LMT not MKT (Buy@*1.02, Sell@*0.98, round2); full-suite gate.
 OPERATOR ACCEPTANCE (post-merge, paper :4002): omi sma-tick QQQ --lot 10 --dry-run shows signal +
 current/target/action; a real run places the reconcile LMT; omi --live sma-tick QQQ refused paper-only.
 <<< END
+
+## seq=5 · 2026-07-07 · impl · note · by=omp/π (GLM)
+done:   Operator decision: passive default symbol QQQ → QQQM (Nasdaq-100 same-index, lower expense
+        ratio). Two default-value edits on feat/sma-tick:
+        - src/ib/sma_tick.rs:78  unwrap_or_else(|| "QQQ".into()) → "QQQM".into()
+        - src/cli.rs:307         doc "default QQQ" → "default QQQM"
+        Pure default change; plan_sma_tick frozen test is symbol-agnostic (unaffected); callers passing
+        an explicit symbol see no behavior change.
+output: PR #32 (feat/sma-tick) update commit 9a71bfb (c34c9b5..9a71bfb)
+verify: cargo build OK · cargo test (full suite) all-green, 0 failures · cargo clippy --all-targets
+        -D warnings CLEAN. tests/ untouched (freeze gate empty). Card remains status=review.
+<<< END
