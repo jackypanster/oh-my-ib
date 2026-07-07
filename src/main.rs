@@ -83,5 +83,6 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::OptionSell(args) => ib::option_sell(&config, args),
         Command::OptionCombo(args) => ib::option_combo(&config, args),
         Command::OptionClose(args) => ib::option_close(&config, args),
+        Command::GridTick(args) => ib::grid_tick(&config, args),
     }
 }

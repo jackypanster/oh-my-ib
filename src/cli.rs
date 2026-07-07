@@ -100,6 +100,10 @@ pub enum Command {
     OptionCombo(OptionComboArgs),
     /// Close a HELD option position by conid (side derived from held position; LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
     OptionClose(OptionCloseArgs),
+    /// Run one grid reconcile tick (paper-only). Reads the grid config, snapshots account +
+    /// positions + open orders, plans buy/sell rungs, and (unless --dry-run) executes on the
+    /// shared connection — Cancels first, then Places, stop on first error.
+    GridTick(GridTickArgs),
 }
 
 #[derive(Args, Debug)]
@@ -269,4 +273,15 @@ pub struct OptionCloseArgs {
     /// Quantity to close in whole contracts (>= 1); omit to close the full position
     #[arg(long)]
     pub qty: Option<f64>,
+}
+
+/// omi grid-tick --config grid.toml [--dry-run]
+#[derive(Args, Debug)]
+pub struct GridTickArgs {
+    /// Path to the grid TOML config file (lot, cash_floor_pct, [[symbol]] tables).
+    #[arg(long)]
+    pub config: std::path::PathBuf,
+    /// Plan only: print the planned actions without executing them.
+    #[arg(long)]
+    pub dry_run: bool,
 }

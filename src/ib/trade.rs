@@ -425,19 +425,18 @@ pub fn option_sell(cfg: &Config, args: &OptionOrderArgs) -> Result<Value, AppErr
     place_option(cfg, args, Action::Sell, "option-sell")
 }
 
-/// Cancel an order by id. Gate → connect → `cancel_order` → bounded first ack.
-pub fn cancel(cfg: &Config, args: &CancelArgs) -> Result<Value, AppError> {
-    require_live_write_gate(cfg)?;
-    let client = super::connect(cfg)?;
+/// Cancel an order by id on an already-connected client (the bounded-ack body, extracted so
+/// the grid driver can cancel on its shared connection without re-gating/re-connecting).
+/// Bounded first-ack: `CancelOrder` has only the `OrderStatus` variant (no events to skip),
+/// so a single `.next()` under `TAKE_FIRST_TIMEOUT` suffices. Any `None` before the ack =
+/// UNKNOWN state (the cancel MAY or MAY NOT have succeeded) — caller reports it as such.
+pub(crate) fn cancel_with_client(client: &Client, order_id: i32) -> Result<Value, AppError> {
     let subscription = client
-        .cancel_order(args.order_id, "")
+        .cancel_order(order_id, "")
         .map_err(|e| AppError::data(format!("cancel_order failed: {e}"), "cancel"))?;
-    // Bounded first-ack: CancelOrder has only the OrderStatus variant (no events to skip),
-    // so a single `.next()` under TAKE_FIRST_TIMEOUT suffices. Any None before the ack =
-    // UNKNOWN state (the cancel MAY or MAY NOT have succeeded).
     match subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT).next() {
         Some(Ok(CancelOrder::OrderStatus(os))) => Ok(json!({
-            "order_id": args.order_id,
+            "order_id": order_id,
             "status": format!("{:?}", os.status),
         })),
         Some(Err(e)) => Err(AppError::data(
@@ -448,7 +447,7 @@ pub fn cancel(cfg: &Config, args: &CancelArgs) -> Result<Value, AppError> {
             format!(
                 "cancel of order {} — no ack within {}s; the cancel MAY or MAY NOT have \
                  succeeded — verify with `omi orders`, do NOT retry blindly",
-                args.order_id,
+                order_id,
                 super::TAKE_FIRST_TIMEOUT.as_secs()
             ),
             "cancel",
@@ -456,11 +455,19 @@ pub fn cancel(cfg: &Config, args: &CancelArgs) -> Result<Value, AppError> {
     }
 }
 
+/// Cancel an order by id. Gate → connect → `cancel_with_client` (byte-identical behavior;
+/// the body was extracted unchanged into `cancel_with_client`).
+pub fn cancel(cfg: &Config, args: &CancelArgs) -> Result<Value, AppError> {
+    require_live_write_gate(cfg)?;
+    let client = super::connect(cfg)?;
+    cancel_with_client(&client, args.order_id)
+}
+
 /// Placement body (ADR 0020 D7 + review-01 fix): everything from `next_order_id()` onward,
 /// taking an already-connected client. Called by `place_core` (stk/option single-leg) and
 /// directly by `option_combo` (which needs the client for per-leg conid resolution first —
 /// never a second same-client-id connect).
-fn place_with_client(
+pub(crate) fn place_with_client(
     client: &Client,
     ctx: &str,
     contract: &Contract,
