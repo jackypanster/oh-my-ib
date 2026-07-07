@@ -268,3 +268,18 @@ Current review state:
 Done when: after explicit human confirmation, merge PR #31 and complete pipeline done-bookkeeping per
 CONTRACT (card->done, current.json stage->done, final journal entry). Do not merge without confirmation.
 <<< END
+
+## seq=8 · 2026-07-07T10:02:25Z · review→done · completed · by=cc/claude-opus-4-8
+done:   Human-confirmed merge. Squash-merged PR #31 → main as beefbeb (feat/sma-signal deleted). Post-merge
+        full-verify on main GREEN: cargo build; cargo test (all suites incl. 5 sma_signal tests); cargo
+        clippy --all-targets -- -D warnings clean. Card 01 → done; current.json stage=done. One
+        reject→fix→accept cycle (review-01 `--sma 0` panic → 5ea2a8b guard n==0 + CLI validate → review-02),
+        attempts 1/3. OPERATOR ACCEPTANCE (paper :4002, 2026-07-07): `omi sma-signal QQQ NVDA MU` returned
+        real signals — as_of 2026-06 month-end, all HOLD: QQQ +16.2% (mec 736.40 / sma 633.63), NVDA +4.8%
+        (200.09 / 190.84), MU +164.8% (1154.29 / 435.88, extremely extended). Read-only, no gate, delayed-
+        data account, 500 bars/symbol. Command works end-to-end.
+output: main @ beefbeb (PR #31 merged) · current.json (stage=done) · tasks/01.md (status=done)
+sma-signal feature COMPLETE. Next (ops glue, NOT pipeline): ops/sma-monthly — a macOS launchd monthly job
+running `omi sma-signal QQQ` and pushing HOLD/EXIT to Telegram (token/chat_id in ~/.config/oh-my-ib/
+sma-monthly.env, outside the public repo). Phase-2 active `sma-tick` (auto-trade) remains deferred.
+<<< END
