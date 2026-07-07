@@ -145,3 +145,33 @@ Feature gotchas (project-specific traps):
 Done when: cargo test --test outside_rth GREEN, full suite GREEN, clippy clean, PR open, card→review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt. Then review = codex (pipeline-review).
 <<< END
+
+
+## seq=4 · 2026-07-07 · task→impl · completed · by=omp/π (GLM)
+done:   Implemented card 01 — all 5 edits applied exactly per tasks/01.md. New pure seam
+        apply_outside_rth(order, outside_rth) added after build_stk_order (MKT+true refused,
+        msg names "limit"; else sets order.outside_rth verbatim). place() binds mut order +
+        applies the flag before place_core (Err→AppError::config / exit 5, offline pre-connect);
+        both --preview and transmit branches carry it. shape_preview echoes outside_rth INSIDE
+        the "order" object (8 top-level keys unchanged). mod.rs:45 re-exports the seam.
+        build_stk_order signature + shape_order_ack byte-identical (no arity bump). STK-only;
+        option/combo/close untouched.
+output: PR #29 (feat/outside-rth → main), commit b472873
+verify: cargo build OK · cargo test --test outside_rth 8/8 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN · cargo test (full suite) all-green, 0 failures (3 prior frozen suites
+        green + byte-identical).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (only card is 01, now status=review ⇒ feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=29
+Operator: review = codex (pipeline-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/outside-rth/tasks/01.md — the card (impl-paths, out-of-scope byte-identical list).
+  - tests/outside_rth.rs — the frozen spec (spec-rev bd9a1e8); freeze gate diffs spec-paths.
+  - PR #29 diff — 3 files +21 -2.
+Review checks: freeze gate (spec-paths unchanged), the four prior frozen suites green, full-suite
+gate, review-by-reading the place() wire + shape_preview source edit (effect frozen via echo asserts).
+OPERATOR ACCEPTANCE (post-merge, journaled — never asserted by review): paper :4002
+omi buy AAPL 1 --limit 150 --outside-rth --preview shows order.outside_rth: true; real place shows
+it in omi orders. Real post-market fill on :4001 = deferred (entitlement-gated at broker).
+<<< END
