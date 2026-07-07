@@ -6,7 +6,8 @@
 //! `SummaryAccumulator` so `brief`'s consolidated drain (ADR 0011) absorbs the SAME
 //! logic — the summary shape cannot drift between `account` and `brief`.
 
-use ibapi::accounts::AccountUpdate;
+use ibapi::accounts::{types::AccountId, AccountUpdate};
+use ibapi::client::blocking::Client;
 use serde_json::{json, Value};
 
 use crate::config::Config;
@@ -53,6 +54,14 @@ impl SummaryAccumulator {
             "currency": self.currency,
         })
     }
+    /// Parsed `NetLiquidation` and `TotalCashValue` as f64 (None if absent OR unparseable).
+    /// Used by the grid driver (`read_account_positions`) to feed `AccountSnap`.
+    pub(crate) fn net_liq_and_cash(&self) -> (Option<f64>, Option<f64>) {
+        (
+            self.net_liquidation.as_ref().and_then(|s| s.parse::<f64>().ok()),
+            self.total_cash.as_ref().and_then(|s| s.parse::<f64>().ok()),
+        )
+    }
 }
 
 pub fn account(cfg: &Config) -> Result<Value, AppError> {
@@ -78,6 +87,62 @@ pub fn account(cfg: &Config) -> Result<Value, AppError> {
         map.insert("account".to_string(), Value::from(account.0.clone()));
     }
     Ok(out)
+}
+
+/// One `account_updates` drain feeding BOTH the summary (`AccountSnap`) and the positions
+/// map — the grid driver's single read of account state (ADR 0033). `AccountValue`s route
+/// to `SummaryAccumulator` (reused), `PortfolioValue`s become `PositionLite` rows keyed by
+/// symbol. Break on `End`. A grid tick needs BOTH net-liq and cash; either missing ⇒
+/// `AppError::data` (fail loud — a planner blind to either number mis-prices the rungs).
+pub(crate) fn read_account_positions(
+    client: &Client,
+    account: &AccountId,
+) -> Result<
+    (
+        crate::grid::AccountSnap,
+        std::collections::HashMap<String, crate::grid::PositionLite>,
+    ),
+    AppError,
+> {
+    let subscription = client
+        .account_updates(account)
+        .map_err(|e| AppError::data(format!("account_updates failed: {e}"), "grid-tick"))?;
+    let mut acc = SummaryAccumulator::default();
+    let mut positions: std::collections::HashMap<String, crate::grid::PositionLite> =
+        std::collections::HashMap::new();
+    for update in subscription.iter_data() {
+        let update = update.map_err(|e| {
+            AppError::data(format!("account_updates stream: {e}"), "grid-tick")
+        })?;
+        match update {
+            AccountUpdate::AccountValue(v) => acc.absorb(&v.key, v.value, v.currency),
+            AccountUpdate::PortfolioValue(p) => {
+                positions.insert(
+                    p.contract.symbol.to_string(),
+                    crate::grid::PositionLite {
+                        qty: p.position,
+                        avg_cost: p.average_cost,
+                    },
+                );
+            }
+            AccountUpdate::End => break,
+            _ => {}
+        }
+    }
+    let (nl, cash) = acc.net_liq_and_cash();
+    let net_liquidation = nl.ok_or_else(|| {
+        AppError::data(
+            "account summary did not report NetLiquidation — cannot plan a grid tick",
+            "grid-tick",
+        )
+    })?;
+    let total_cash = cash.ok_or_else(|| {
+        AppError::data(
+            "account summary did not report TotalCashValue — cannot plan a grid tick",
+            "grid-tick",
+        )
+    })?;
+    Ok((crate::grid::AccountSnap { total_cash, net_liquidation }, positions))
 }
 
 /// Parse an IB string value into a JSON number, falling back to the raw string,

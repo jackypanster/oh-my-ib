@@ -18,6 +18,7 @@ mod contract;
 mod executions;
 mod history;
 mod orders;
+mod grid;
 mod option_chain;
 mod option_quote;
 mod pnl;
@@ -28,6 +29,7 @@ mod search;
 mod trade;
 
 pub use account::account;
+pub use grid::grid_tick;
 pub use brief::{assemble_brief, brief};
 pub use client::health;
 pub use contract::contract;
