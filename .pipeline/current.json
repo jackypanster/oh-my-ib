@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "sma-tick",
-  "stage": "prd",
+  "stage": "arch",
   "pr": null,
   "full-verify": [
     "cargo build",
