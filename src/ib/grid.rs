@@ -34,7 +34,7 @@ pub fn grid_tick(cfg: &Config, args: &GridTickArgs) -> Result<Value, AppError> {
     let account = super::resolve_account(&client, cfg)?;
     let (snap, positions) = super::account::read_account_positions(&client, &account)?;
     let open_val =
-        super::orders::open_orders_with_client(&client, cfg.account.as_deref(), "grid-tick")?;
+        super::orders::open_orders_with_client(&client, Some(account.0.as_str()), "grid-tick")?;
     let open = map_open_orders(&open_val);
     let actions = grid::plan_grid_tick(&gcfg, &snap, &positions, &open);
 
