@@ -203,3 +203,37 @@ Feature gotchas:
 Done when: PR #32 is updated, card 01 is back at review, full verify is green, and review can rerun.
 On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=7 · 2026-07-07 · impl→review · completed · by=omp/π (GLM)
+done:   Fixed Review-01's two write-safety bugs in sma_tick_cmd (PR #32, src/ib/sma_tick.rs):
+        (1) Position read was best-effort. current_position_qty treated any positions() FAILURE as
+            current_qty=0.0 — on a write command that fabricates a flat position: HOLD double-buys
+            when already at target; EXIT no-ops instead of closing. Now current_position_qty returns
+            Result<f64, AppError>; the caller propagates with ?; only 'symbol absent from a SUCCESSFUL
+            payload' is 0.0 (true flat). Fail-closed before plan/place.
+        (2) --lot accepted invalid values. --lot=-10 flipped HOLD into a short (target=-10, delta=-10,
+            planner Sell{qty:10}); --lot=inf reached build_stk_order (pure builder, no validation).
+            Now validated BEFORE connect: args.lot.is_finite() && args.lot > 0.0 else
+            AppError::config("--lot must be a positive number", "sma-tick") (exit 5, offline).
+        build_stk_order is reached only with a finite positive qty; positions() failure no longer
+        fabricates a target. plan_sma_tick frozen cases unaffected (symbol-agnostic, positive-lot).
+output: PR #32 (feat/sma-tick) update commit daa6af2 (9a71bfb..daa6af2)
+verify: cargo build OK · cargo test --test sma_tick 7/7 GREEN · cargo clippy --all-targets -D warnings
+        CLEAN · cargo test (full suite) all-green, 0 failures (sma_signal/grid_tick/4 write suites
+        byte-identical). Smoke: --lot 0 ⇒ config/exit5; --lot inf ⇒ config/exit5; --lot -10 ⇒ clap
+        rejects as a flag (stronger). tests/ untouched (freeze gate empty).
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (card 01 → review again, attempts=1; feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=32
+Operator: review = codex (pipeline-review re-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/sma-tick/reviews/review-01.md — the two prior blocking findings (now fixed).
+  - .pipeline/sma-tick/tasks/01.md — the card (impl-paths, out-of-scope).
+  - tests/sma_tick.rs — frozen spec (spec-rev 22b1a9e); freeze gate diffs spec-paths.
+  - PR #32 — incremental diff 9a71bfb..daa6af2 is the src/ib/sma_tick.rs fix (+29 -19).
+Re-review focus: confirm (1) positions() failure now propagates (? — only a successful-but-absent
+symbol is 0.0; never a fabricated flat from a read error); (2) --lot validated is_finite && > 0.0
+before connect. Re-run freeze gate + containment grep + paper-only guard + full-suite gate.
+The frozen planner, signal_for extraction, JSON shape, and marketable-LMT pricing are unchanged.
+<<< END
