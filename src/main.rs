@@ -85,5 +85,6 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::OptionClose(args) => ib::option_close(&config, args),
         Command::SmaSignal(args) => ib::sma_signal_cmd(&config, args),
         Command::GridTick(args) => ib::grid_tick(&config, args),
+        Command::SmaTick(args) => ib::sma_tick_cmd(&config, args),
     }
 }
