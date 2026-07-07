@@ -101,3 +101,48 @@ Done when: freeze commit (RED, compile-fail on import) + record commit (card + s
 on the card. On success: stage→task, then run pipeline-impl (omp / capable-local OK) on feat/sma-signal.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-07T07:42:27Z · task→impl · completed · by=cc/claude-opus-4-8
+done:   Two-commit freeze. FREEZE commit 58f31d4 = tests/sma_signal.rs ONLY (5 tests, n=3 hand-built Bar
+        arrays; RED via unresolved oh_my_ib::ib::sma_signal, verified single E0432, no src/ stub; approx
+        helper → clippy float_cmp-clean once green). RECORD commit (this) = tasks/01.md + current.json
+        (stage=task). ONE card: frozen pure sma_signal; gateway sma_signal_cmd + wiring review-by-reading.
+        spec-rev 58f31d4 on the card.
+output: .pipeline/sma-signal/tasks/01.md · current.json (stage=task) · spec-rev=58f31d4
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (omp / goal-driven-impl-claude). Make tests/sma_signal.rs GREEN.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl).
+First: git pull --rebase; no .env needed for build/test.
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md + AGENTS.md — conventions; freeze gate (never touch tests/); read-command pattern.
+  - .pipeline/sma-signal/tasks/01.md — THE CARD: exact types, the sma_signal algorithm pseudo, the gateway
+    steps (§1–§5), out-of-scope, freeze coverage. Follow closely.
+  - .pipeline/sma-signal/arch.md + docs/adr/0034-sma-signal.md + CONTEXT.md — boundaries + decisions.
+  - tests/sma_signal.rs — frozen spec (DO NOT edit; spec-rev 58f31d4).
+  - src/ib/history.rs (historical_data call + ibapi BarSize/BarTimestamp/WhatToShow/ToDuration imports to
+    mirror), src/ib/positions.rs (positions() for no-args symbols), src/ib/quote.rs (read-command shape),
+    src/cli.rs (Command enum + read args), src/main.rs (dispatch), src/ib/mod.rs (re-exports), Cargo.toml.
+Your task (concrete, numbered):
+  1. Cut feat/sma-signal from trunk (inherits spec-rev 58f31d4).
+  2. Implement per tasks/01.md §1–§5: src/ib/signal.rs (pure sma_signal + SignalState/Bar/SmaSignal +
+     gateway sma_signal_cmd + ym_of BarTimestamp→(i32,u32) helper + JSON shape); mod.rs mod+re-export;
+     cli.rs SmaSignal command; main.rs dispatch; Cargo.toml add `time` direct dep.
+  3. Verify: cargo test --test sma_signal GREEN; cargo build; cargo clippy --all-targets -- -D warnings
+     clean (no == on f64 in any new code); ALL prior suites GREEN and byte-identical; tests/sma_signal.rs
+     untouched (freeze gate).
+  4. Open PR from feat/sma-signal → set current.json.pr; append seq=4 handoff; push.
+Feature gotchas (project-specific traps you MUST know):
+  - READ-ONLY: NO gate / NO write symbols (place_order/cancel_order/require_live_write_gate) in signal.rs.
+  - Month-end = last bar of each (year,month) group; as_of = last month STRICTLY before the in-progress
+    final month (else final bar if only one month). SMA computed AS OF as_of, not just latest.
+  - Pure fn is ibapi-free (takes Bar{ym,close}); the gateway does the BarTimestamp strip via ym_of.
+  - Insufficient: empty/ <n / not-enough-up-to-month-end ⇒ state=Insufficient, numeric 0.0, no slice panic.
+  - clippy float_cmp: mirror grid_tick.rs's approach; the pure fn already avoids float == (uses >=).
+  - `time` is transitive via ibapi — add it directly so BarTimestamp inner accessors compile cleanly.
+Done when: tests/sma_signal.rs GREEN + build/clippy clean + prior suites green + PR opened.
+On success: status→review (card), then run pipeline-review (codex / check): freeze gate (git diff 58f31d4
+<branch-tip> -- tests/sma_signal.rs EMPTY) + full-suite green + read-only grep + paper acceptance + human-confirm merge.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
