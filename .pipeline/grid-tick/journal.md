@@ -121,3 +121,53 @@ spec-rev recorded on every card. On success: stage→task, then run pipeline-imp
 claude, capable-local OK) to make tests/grid_tick.rs green on a feat/grid-tick branch.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-07T03:33:22Z · task→impl · completed · by=cc/claude-opus-4-8
+done:   Two-commit freeze. FREEZE commit 4b83d2a = tests/grid_tick.rs ONLY (18 tests, RED via unresolved
+        oh_my_ib::grid import; verified compile-fails on that single E0432, no src/ stub — clippy-on-stub
+        trap avoided; test uses an `approx` helper so it stays clippy float_cmp-clean once green). RECORD
+        commit (this) = tasks/01.md + current.json (stage=task). ONE card (cohesive feature): frozen pure
+        planner+config, driver review-by-reading. spec-rev 4b83d2a on the card. Refinement vs arch.md
+        sketch: lot & max_shares are u32 (toml-clean integers), pcts/cash f64 — the FROZEN test is
+        authoritative.
+output: .pipeline/grid-tick/tasks/01.md · .pipeline/current.json (stage=task) · spec-rev=4b83d2a
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (omp / goal-driven-impl-claude). Make tests/grid_tick.rs GREEN.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl) — operator assigns the bot.
+First: git pull --rebase; no .env needed for the build/test.
+Read for context (before acting):
+  - oh-my-ib/CLAUDE.md + AGENTS.md — repo conventions; agent-first authoring; ADR 0017 write-containment.
+  - .pipeline/grid-tick/tasks/01.md — THE CARD: full scope, the exact types, the planner algorithm
+    pseudo, the driver steps, out-of-scope, freeze coverage, done-when. Follow it closely.
+  - .pipeline/grid-tick/arch.md + docs/adr/0033-grid-tick.md + CONTEXT.md — boundaries + binding decisions.
+  - tests/grid_tick.rs — the frozen spec you must satisfy (DO NOT edit it; spec-rev 4b83d2a).
+  - src/ib/trade.rs (place_with_client :463 → make pub(crate); cancel :429 → extract cancel_with_client;
+    build_stk_order reuse), src/ib/orders.rs (open_orders_with_client), src/ib/account.rs
+    (SummaryAccumulator, add read_account_positions), src/ib/positions.rs (p.position/p.average_cost),
+    src/config.rs (Config, LIVE_PORT), src/cli.rs (Command enum + args pattern), src/main.rs (dispatch).
+Your task (concrete, numbered):
+  1. Cut feat/grid-tick from trunk (main @ this record commit — inherits the frozen spec-rev 4b83d2a).
+  2. Implement per tasks/01.md §1–§5: src/grid.rs (pure planner + config, the frozen surface) + pub mod grid
+     in src/lib.rs; trade.rs pub(crate) place_with_client + new cancel_with_client (cancel delegates);
+     account.rs read_account_positions (one account_updates drain → AccountSnap + positions map);
+     src/ib/grid.rs driver grid_tick (+ mod/pub use in ib/mod.rs); cli.rs GridTick command; main.rs dispatch.
+  3. Verify: cargo test --test grid_tick GREEN; cargo build OK; cargo clippy --all-targets -- -D warnings
+     clean (mirror the test's `approx` helper for any f64 compare — never `==`); the four prior write suites
+     (stk_orders_command, order_preview_command, write_path_semantics_doc, live_write_guardrail) + all other
+     suites GREEN and byte-identical; tests/grid_tick.rs untouched (freeze gate).
+  4. Open the PR from feat/grid-tick → set current.json.pr; append a seq=4 handoff to journal.md; push.
+Feature gotchas (project-specific traps you MUST know):
+  - Freeze gate: NEVER create/modify/delete anything under tests/ (spec-paths). Impl-paths only.
+  - Grid contains NO raw place_order/cancel_order — compose build_stk_order + place_with_client +
+    cancel_with_client (ADR 0017). Raw write symbols stay ONLY in trade.rs (review greps this).
+  - Quantities are f64; lot & max_shares are u32 (cast to f64 for the qty+lot<=max_shares ceiling).
+  - grid_tick hard-refuses live (cfg.port==LIVE_PORT ⇒ config, offline) BEFORE connect. Paper-only v1.
+  - clippy float_cmp under -D warnings bites test AND src; use an approx/epsilon compare, and round2 limits.
+  - place_with_client already stamps the account (ADR 0024) — pass the resolved &account, don't re-stamp.
+Done when: tests/grid_tick.rs GREEN + full build/clippy clean + prior suites green + PR opened.
+On success: status→review (card), then run pipeline-review (codex / check): freeze gate (git diff 4b83d2a
+<branch-tip> -- tests/grid_tick.rs must be EMPTY) + full-suite green + paper acceptance + human-confirm merge.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
