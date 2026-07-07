@@ -214,3 +214,34 @@ Feature gotchas:
 Done when: PR #31 is updated, card 01 is back at review, full verify is green, and review can rerun.
 On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-07 · impl→review · completed · by=omp/π (GLM)
+done:   Fixed Review-01 blocking finding (PR #31, src/ib/signal.rs). --sma 0 was accepted by clap and
+        reached sma_signal(bars, 0); with non-empty bars the guards (bars.len()<n, as_of_idx+1<n) are
+        both false for n==0, so sma_at computed start=i+1 and sliced bars[i+1..=i] (start>end) — a PANIC,
+        violating the repo structured-error CLI contract.
+        Two fixes, both defensive:
+        (1) Gateway sma_signal_cmd validates args.sma >= 1 BEFORE any gateway work (held_symbols/connect)
+            ⇒ AppError::config("--sma must be >= 1", "sma-signal"), exit 5, pre-connect.
+        (2) Pure sma_signal guard widened: n==0 || bars.len()<n ⇒ Insufficient. The seam is now total
+            for n==0 — direct library callers can never panic. n=3 frozen cases unaffected.
+        Verified the panic vector is closed with a scratch white-box test (n==0 on non-empty bars ⇒
+        Insufficient, not panic); scratch removed before commit. tests/sma_signal.rs untouched.
+output: PR #31 (feat/sma-signal) update commit 5ea2a8b (b2a040b..5ea2a8b)
+verify: cargo build OK · cargo test --test sma_signal 5/5 GREEN · cargo clippy --all-targets
+        -D warnings CLEAN · cargo test (full suite) all-green, 0 failures (all prior suites
+        byte-identical). Freeze gate: tests/sma_signal.rs untouched.
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (card 01 → review again, attempts=1; feature complete).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=31
+Operator: review = codex (pipeline-review re-review). Merge gated on explicit human confirm (CONTRACT).
+Read for context (before acting):
+  - .pipeline/sma-signal/reviews/review-01.md — the prior blocking finding (now fixed).
+  - .pipeline/sma-signal/tasks/01.md — the card (impl-paths, out-of-scope).
+  - tests/sma_signal.rs — frozen spec (spec-rev 58f31d4); freeze gate diffs spec-paths.
+  - PR #31 — incremental diff b2a040b..5ea2a8b is the defensive fix in src/ib/signal.rs (guard + gateway validation).
+Re-review focus: confirm --sma 0 is now a structured config error (exit 5) pre-connect AND the pure
+seam is total for n==0 (Insufficient, no panic); re-run the freeze gate + full-suite gate + read-only grep.
+The frozen spec, JSON shape, and gateway read path are otherwise unchanged.
+<<< END
