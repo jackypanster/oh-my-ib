@@ -298,3 +298,20 @@ Current review state:
 Done when: after explicit human confirmation, merge PR #30 and complete pipeline done-bookkeeping per
 CONTRACT (card→done, current.json stage→done, final journal entry). Do not merge without confirmation.
 <<< END
+
+## seq=8 · 2026-07-07T06:08:08Z · review→done · completed · by=cc/claude-opus-4-8
+done:   Human-confirmed merge. Squash-merged PR #30 → main as afdb808 (feat/grid-tick deleted). Post-merge
+        full-verify on main GREEN: cargo build; cargo test (all suites incl. 15 grid_tick tests, 0 failed);
+        cargo clippy --all-targets -- -D warnings clean. Card 01 → done; current.json stage=done. One
+        reject→fix→accept cycle (review-01 cross-account scope → f7bb44b → review-02), attempts 1/3.
+        PAPER ACCEPTANCE (operator, :4002 account DUQ653733, 2026-07-07 ~06:00 UTC, US market closed):
+        flat dry-run ⇒ empty plan; --live ⇒ config refuse "paper-only"; flat + a lingering MKT order ⇒
+        dry-run planned Cancel{3}, real tick executed {order_id:3,Cancelled} executed=1, orders then empty,
+        re-run idempotent empty. Buy/sell LADDERING (held-symbol) deferred to RTH — a seed MKT order was
+        held by the gateway to 09:30 ET ([399]), so no filled cost anchor off-hours; the ladder logic is
+        proven by the 15 frozen deterministic tests (same deferred-acceptance shape as outside-rth live).
+output: main @ afdb808 (PR #30 merged) · .pipeline/current.json (stage=done) · tasks/01.md (status=done)
+grid-tick feature COMPLETE. Follow-ups (not blocking, candidate cards): (1) RTH operator run of the
+held-symbol ladder for full visual acceptance; (2) surface outside_rth in the `orders` read model;
+(3) optional GTC/stop-loss + orderRef ownership tagging + live promotion (own ADR).
+<<< END
