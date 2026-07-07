@@ -80,3 +80,39 @@ Feature gotchas:
 Done when: freeze commit (RED) + record commit (card + stage=task) pushed; spec-rev on the card.
 On success: stage→task, run pipeline-impl (omp). On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-07T12:10:37Z · task→impl · completed · by=cc/claude-opus-4-8
+done:   Two-commit freeze. FREEZE commit 22b1a9e = tests/sma_tick.rs ONLY (7 tests; RED via unresolved
+        oh_my_ib::ib::plan_sma_tick, verified single E0432, no src/ stub; approx helper). RECORD commit
+        (this) = tasks/01.md + current.json (stage=task). ONE card: frozen pure plan_sma_tick; gateway +
+        signal_for extraction + wiring review-by-reading. spec-rev 22b1a9e.
+output: .pipeline/sma-tick/tasks/01.md · current.json (stage=task) · spec-rev=22b1a9e
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (omp / goal-driven-impl-claude). Make tests/sma_tick.rs GREEN.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK.
+First: git pull --rebase.
+Read: oh-my-ib/CLAUDE.md + AGENTS.md; .pipeline/sma-tick/tasks/01.md (THE CARD — exact types, gateway
+§1–§5, algorithm, out-of-scope); arch.md + ADR 0035 + CONTEXT.md; tests/sma_tick.rs (frozen, spec-rev
+22b1a9e); src/ib/grid.rs (mirror the write-reconcile driver); src/ib/signal.rs (extract signal_for);
+src/ib/trade.rs (place_with_client :470, build_stk_order); src/ib/positions.rs; src/config.rs (LIVE_PORT).
+Your task:
+  1. Cut feat/sma-tick from trunk (inherits spec-rev 22b1a9e).
+  2. Implement per tasks/01.md §1–§5: src/ib/sma_tick.rs (pure plan_sma_tick + TickAction + gateway
+     sma_tick_cmd, paper-only, marketable LMT via build_stk_order + place_with_client); extract
+     pub(crate) signal_for in signal.rs (sma_signal_cmd delegates, byte-identical); mod.rs re-export;
+     cli.rs SmaTick; main.rs dispatch.
+  3. Verify: cargo test --test sma_tick GREEN; cargo build; cargo clippy --all-targets -- -D warnings;
+     ALL prior suites (sma_signal, grid_tick, 4 write suites) GREEN + byte-identical; tests/ untouched.
+  4. Open PR from feat/sma-tick → set current.json.pr; append seq=4; push.
+Feature gotchas:
+  - Paper-only (refuse LIVE_PORT before connect). NO raw place_order in sma_tick.rs (compose choke points).
+  - Binary target; plan_sma_tick pure/frozen; no == on f64 (clippy float_cmp).
+  - Marketable LMT (latest_close ×1.02 buy / ×0.98 sell) — reuse place_with_client unchanged; NOT MKT.
+  - signal_for extraction MUST keep sma_signal_cmd + tests/sma_signal.rs byte-identical/green.
+Done when: tests/sma_tick.rs GREEN + build/clippy clean + prior suites green + PR opened.
+On success: status→review, run pipeline-review (codex): freeze gate (git diff 22b1a9e <tip> --
+tests/sma_tick.rs EMPTY) + full-suite + paper-only grep + containment grep + paper acceptance.
+On failure: attempts++; >=3 ⇒ blocked ⇒ pipeline-hunt.
+<<< END
