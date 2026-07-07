@@ -47,6 +47,19 @@ pub fn build_stk_order(symbol: &str, side: Action, quantity: f64, limit: Option<
     }
     (contract, order)
 }
+/// Pure, FROZEN seam (ADR 0032): apply the opt-in outside-RTH flag to a freshly-built STK order.
+/// A MKT order (`order_type == "MKT"`) cannot fill outside regular trading hours, so `outside_rth`
+/// on a MKT order is refused (naming the limit requirement); every other case sets the flag verbatim
+/// (`false` is always Ok — flagless behavior stays byte-identical). Reads `order_type` (set by
+/// `build_stk_order`), sets `order.outside_rth`. Offline ⇒ frozen.
+pub fn apply_outside_rth(order: &mut Order, outside_rth: bool) -> Result<(), String> {
+    if outside_rth && order.order_type == "MKT" {
+        return Err("--outside-rth requires a limit price (MKT orders do not fill outside regular \
+                    trading hours); pass --limit".into());
+    }
+    order.outside_rth = outside_rth;
+    Ok(())
+}
 
 /// Pure, FROZEN seam: the ack JSON — exact 6-key object. `order_id`/`status` come from
 /// allocation + the first ack event; `symbol`/`action`/`quantity`/`limit_price` echo the
@@ -94,6 +107,7 @@ pub fn shape_preview(
             "type": order.order_type,
             "qty": order.total_quantity,
             "limit": order.limit_price,
+            "outside_rth": order.outside_rth,
         },
         "notional": notional,
         "notional_currency": notional_ccy,
@@ -618,7 +632,8 @@ fn place(cfg: &Config, args: &OrderArgs, side: Action, ctx: &str) -> Result<Valu
     }
 
     // 2. Build + place via the shared core (gate → connect → allocate → ack).
-    let (contract, order) = build_stk_order(&args.symbol, side, args.quantity, args.limit);
+    let (contract, mut order) = build_stk_order(&args.symbol, side, args.quantity, args.limit);
+    apply_outside_rth(&mut order, args.outside_rth).map_err(|m| AppError::config(m, ctx))?;
     let side_str = format!("{:?}", side);
     place_core(cfg, ctx, &contract, &order, |id, status| {
         shape_order_ack(id, status, &args.symbol, &side_str, args.quantity, args.limit)

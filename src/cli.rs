@@ -111,6 +111,10 @@ pub struct OrderArgs {
     /// Limit price (omit for MKT; positive for LMT)
     #[arg(long)]
     pub limit: Option<f64>,
+    /// Allow the order to also fill outside regular trading hours (pre-market + post-market).
+    /// Requires a limit price (MKT cannot fill outside RTH).
+    #[arg(long)]
+    pub outside_rth: bool,
 }
 
 #[derive(Args, Debug)]
