@@ -100,6 +100,8 @@ pub enum Command {
     OptionCombo(OptionComboArgs),
     /// Close a HELD option position by conid (side derived from held position; LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
     OptionClose(OptionCloseArgs),
+    /// 200-day SMA month-end HOLD/EXIT timing signal (read-only). No args = current positions.
+    SmaSignal(SmaSignalArgs),
     /// Run one grid reconcile tick (paper-only). Reads the grid config, snapshots account +
     /// positions + open orders, plans buy/sell rungs, and (unless --dry-run) executes on the
     /// shared connection — Cancels first, then Places, stop on first error.
@@ -284,4 +286,14 @@ pub struct GridTickArgs {
     /// Plan only: print the planned actions without executing them.
     #[arg(long)]
     pub dry_run: bool,
+}
+
+/// omi sma-signal [SYMBOLS...] [--sma N]
+#[derive(Args, Debug)]
+pub struct SmaSignalArgs {
+    /// Ticker symbols to evaluate; omit to use current positions.
+    pub symbols: Vec<String>,
+    /// SMA window in trading days (Faber default = 200).
+    #[arg(long, default_value_t = 200)]
+    pub sma: usize,
 }
