@@ -211,3 +211,38 @@ OPERATOR ACCEPTANCE (post-merge, paper :4002, journaled — never asserted by re
 --dry-run shows the intended pair; a real tick places both (omi orders); re-run ⇒ idempotent; cancel
 one + re-run ⇒ re-placed; sell to flat + re-run ⇒ lingering cancelled + idle. Live = deferred (own ADR).
 <<< END
+
+## seq=5 · 2026-07-07T05:22:32Z · review→impl · failed · by=codex
+done:   Review verdict written: REJECT for card 01. Freeze gate passed and full verify passed, but
+        semantic review found a cross-account cancel risk in grid_tick open-order scoping.
+output: .pipeline/grid-tick/reviews/review-01.md · .pipeline/grid-tick/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=30 card=01
+Model: capable-local OK (impl) — operator assigns the bot.
+First: git pull --rebase; no .env needed for build/test. Reuse the existing feat/grid-tick branch / PR #30.
+Read for context (before acting):
+  - oh-my-ib/AGENTS.md + CLAUDE.md — repo conventions; write safety and pipeline rules.
+  - .pipeline/grid-tick/tasks/01.md — card 01, now attempts=1/status=todo, plus Review rejection 01.
+  - .pipeline/grid-tick/reviews/review-01.md — blocking finding and verification already run.
+  - .pipeline/grid-tick/docs/adr/0033-grid-tick.md + arch.md + CONTEXT.md — binding design.
+  - tests/grid_tick.rs — frozen spec; DO NOT edit (spec-rev 4b83d2a).
+Your task (concrete, numbered):
+  1. Fix `src/ib/grid.rs`: after resolving `account`, pass the resolved account to
+     `open_orders_with_client` instead of `cfg.account.as_deref()`, so open orders, positions, and
+     placements are all scoped to the same single resolved account even when `--account` is omitted.
+  2. Do not touch `tests/grid_tick.rs` or other spec-paths. Preserve ADR 0017 containment: no raw
+     `place_order` / `cancel_order` outside `src/ib/trade.rs`.
+  3. Verify on `feat/grid-tick`: `cargo build`; `cargo test --test grid_tick`; `cargo test`;
+     `cargo clippy --all-targets -- -D warnings`. Re-run the freeze gate locally before handing back:
+     `git diff 4b83d2a origin/feat/grid-tick -- tests/grid_tick.rs` must be empty.
+  4. Push the PR update and set card 01 back to `review`; append the next journal entry.
+Feature gotchas:
+  - The bug is cross-account, not planner math. Do not change the frozen planner unless a new frozen spec
+    is routed through pipeline-task.
+  - `open_orders_with_client` intentionally does not auto-filter for read-only commands when passed None;
+    grid is a write orchestrator, so it must pass the resolved account explicitly.
+Done when: PR #30 is updated, card 01 is back at review, full verify is green, and review can rerun.
+On failure: attempts++; attempts >= 3 => blocked => run pipeline-hunt.
+<<< END
