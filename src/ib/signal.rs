@@ -12,6 +12,7 @@
 //! this is not a write module). Default paper port.
 
 use ibapi::market_data::historical::{BarSize, BarTimestamp, Duration, WhatToShow};
+use ibapi::client::blocking::Client;
 use ibapi::prelude::Contract;
 use serde_json::{json, Value};
 use time::Date;
@@ -169,6 +170,29 @@ fn ym_of_date(d: Date) -> (i32, u32) {
     (d.year(), u8::from(d.month()) as u32)
 }
 
+/// Fetch 2Y of daily bars for `symbol` on an already-connected client, strip to `Bar`s, and run
+/// the pure `sma_signal`. Extracted so `sma_signal_cmd` (multi-symbol read) and `sma_tick_cmd`
+/// (single-symbol write) share the SAME signal computation. `n == 0` is guarded to `Insufficient`
+/// inside the pure seam, so callers only need to validate at the CLI boundary.
+pub(crate) fn signal_for(client: &Client, symbol: &str, n: usize) -> Result<SmaSignal, AppError> {
+    let contract = Contract::stock(symbol).build();
+    let data = client
+        .historical_data(&contract, BarSize::Day)
+        .what_to_show(WhatToShow::Trades)
+        .duration(Duration::years(2))
+        .fetch()
+        .map_err(|e| AppError::data(format!("historical_data failed: {e}"), "sma-signal"))?;
+    let bars: Vec<Bar> = data
+        .bars
+        .iter()
+        .map(|b| Bar {
+            ym: ym_of(&b.date),
+            close: b.close,
+        })
+        .collect();
+    Ok(sma_signal(&bars, n))
+}
+
 /// The gateway command: resolve symbols (positions fallback when none given), fetch 2Y of daily
 /// bars per symbol, run the pure signal, emit the JSON envelope. Read-only — no gate, no writes.
 pub fn sma_signal_cmd(cfg: &Config, args: &SmaSignalArgs) -> Result<Value, AppError> {
@@ -189,22 +213,7 @@ pub fn sma_signal_cmd(cfg: &Config, args: &SmaSignalArgs) -> Result<Value, AppEr
     let client = super::connect(cfg)?;
     let mut signals: Vec<Value> = Vec::with_capacity(syms.len());
     for sym in &syms {
-        let contract = Contract::stock(sym.as_str()).build();
-        let data = client
-            .historical_data(&contract, BarSize::Day)
-            .what_to_show(WhatToShow::Trades)
-            .duration(Duration::years(2))
-            .fetch()
-            .map_err(|e| AppError::data(format!("historical_data failed: {e}"), "sma-signal"))?;
-        let bars: Vec<Bar> = data
-            .bars
-            .iter()
-            .map(|b| Bar {
-                ym: ym_of(&b.date),
-                close: b.close,
-            })
-            .collect();
-        let s = sma_signal(&bars, args.sma);
+        let s = signal_for(&client, sym, args.sma)?;
         signals.push(json!({
             "symbol": sym,
             "state": s.state.as_str(),

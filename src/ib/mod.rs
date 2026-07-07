@@ -19,6 +19,7 @@ mod executions;
 mod history;
 mod orders;
 mod grid;
+mod sma_tick;
 mod option_chain;
 mod option_quote;
 mod pnl;
@@ -47,6 +48,7 @@ pub use search::{search, shape_search, SearchRow};
 pub use completed_orders::{completed_orders, shape_completed_orders, CompletedOrderRow};
 pub use trade::{apply_outside_rth, blocking_close_order_ids, build_combo_order, build_option_order, build_stk_order, cancel, buy, sell, check_live_write_posture, combo_live_max_risk, compute_notional, derive_close, option_buy, option_close, option_combo, option_sell, parse_combo_leg, refuse_live_combo_on_live, require_live_write_gate, resolve_max_notional, shape_combo_order_ack, shape_option_close_ack, shape_order_ack, shape_option_order_ack, shape_preview, stamp_order_account, LegSpec};
 pub use signal::{sma_signal, sma_signal_cmd, Bar, SmaSignal, SignalState};
+pub use sma_tick::{plan_sma_tick, sma_tick_cmd, TickAction};
 
 const MAX_CONNECT_RETRIES: u32 = 3;
 const CONNECT_BACKOFF_MS: u64 = 250;

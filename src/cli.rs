@@ -106,6 +106,9 @@ pub enum Command {
     /// positions + open orders, plans buy/sell rungs, and (unless --dry-run) executes on the
     /// shared connection — Cancels first, then Places, stop on first error.
     GridTick(GridTickArgs),
+    /// Reconcile the position to the 200-day month-end signal (paper-only). HOLD ⇒ buy up to lot,
+    /// EXIT ⇒ sell to flat, INSUFFICIENT ⇒ no trade. Marketable LMT (not MKT).
+    SmaTick(SmaTickArgs),
 }
 
 #[derive(Args, Debug)]
@@ -296,4 +299,20 @@ pub struct SmaSignalArgs {
     /// SMA window in trading days (Faber default = 200).
     #[arg(long, default_value_t = 200)]
     pub sma: usize,
+}
+
+/// omi sma-tick [SYMBOL] [--lot N] [--sma N] [--dry-run]
+#[derive(Args, Debug)]
+pub struct SmaTickArgs {
+    /// Ticker symbol (default QQQ).
+    pub symbol: Option<String>,
+    /// Target share count when HOLD (the binary target; default 10).
+    #[arg(long, default_value_t = 10.0)]
+    pub lot: f64,
+    /// SMA window in trading days (Faber default = 200).
+    #[arg(long, default_value_t = 200)]
+    pub sma: usize,
+    /// Plan only: print the signal + planned action without placing the order.
+    #[arg(long)]
+    pub dry_run: bool,
 }
