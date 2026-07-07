@@ -277,3 +277,24 @@ use the resolved account); re-run the freeze gate + full-suite gate. The planner
 OPERATOR ACCEPTANCE (post-merge, paper :4002): the cross-account scenario in review-01.md is now
 structurally impossible — a second account's order can no longer reach the planner.
 <<< END
+
+## seq=7 · 2026-07-07T05:46:00Z · review→review · completed · by=codex
+done:   Re-reviewed PR #30 after the review-01 fix. Freeze gate passed, full verify passed, and the
+        account-scope bug is fixed: positions, open-orders reconcile input, and placements now all use
+        the same resolved account. Verdict: ACCEPT; awaiting human confirm/merge.
+output: .pipeline/grid-tick/reviews/review-02.md · .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Human confirmation / merge coordination for PR #30 (cc owns merge per current request).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=30
+Model: frontier SOTA required if another review rerun is requested; merge remains human-confirm gated.
+First: git pull --rebase; read .pipeline/grid-tick/reviews/review-02.md and this journal tail.
+Current review state:
+  - Card 01 status=review, attempts=1.
+  - PR #30 head f7bb44b44b93d182178ae0ee6934d98bf5ac433d.
+  - Freeze gate passed: `git diff 4b83d2a origin/feat/grid-tick -- tests/grid_tick.rs` empty.
+  - Full verify passed on PR head: cargo build; cargo test; cargo clippy --all-targets -- -D warnings.
+  - Review-01 finding fixed: `open_orders_with_client` now receives `Some(account.0.as_str())`.
+Done when: after explicit human confirmation, merge PR #30 and complete pipeline done-bookkeeping per
+CONTRACT (card→done, current.json stage→done, final journal entry). Do not merge without confirmation.
+<<< END

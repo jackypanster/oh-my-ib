@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "grid-tick",
-  "stage": "impl",
+  "stage": "review",
   "pr": 30,
   "full-verify": [
     "cargo build",
