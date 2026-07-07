@@ -237,3 +237,22 @@ symbol is 0.0; never a fabricated flat from a read error); (2) --lot validated i
 before connect. Re-run freeze gate + containment grep + paper-only guard + full-suite gate.
 The frozen planner, signal_for extraction, JSON shape, and marketable-LMT pricing are unchanged.
 <<< END
+
+## seq=8 · 2026-07-07T12:49:05Z · review→review · completed · by=codex
+done:   Re-reviewed PR #32 after review-01 fixes. Freeze gate and full verify passed. Position-read
+        failures now propagate before planning/placement, and invalid lot values are rejected
+        pre-connect. Verdict ACCEPT; awaiting human confirmation/merge.
+output: .pipeline/sma-tick/reviews/review-02.md · .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Human confirmation / merge coordination for PR #32 (feat/sma-tick).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=32
+Review verdict: ACCEPT in .pipeline/sma-tick/reviews/review-02.md.
+Do not re-open source review unless the PR head changes.
+Before merge, note GitHub currently reports a metadata-only conflict in .pipeline/sma-tick/tasks/01.md:
+preserve trunk's review status/attempts and reconcile the QQQM task-doc text as desired. Source files
+merge cleanly by local merge-tree.
+After explicit human confirm, pipeline-review may squash-merge PR #32, then set card 01 done,
+current.json stage done, append the final journal entry, commit/push main, and run/operator-record paper
+acceptance as needed.
+<<< END
