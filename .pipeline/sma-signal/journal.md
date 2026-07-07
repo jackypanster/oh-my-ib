@@ -245,3 +245,26 @@ Re-review focus: confirm --sma 0 is now a structured config error (exit 5) pre-c
 seam is total for n==0 (Insufficient, no panic); re-run the freeze gate + full-suite gate + read-only grep.
 The frozen spec, JSON shape, and gateway read path are otherwise unchanged.
 <<< END
+
+## seq=7 · 2026-07-07T09:39:32Z · review→review · completed · by=codex
+done:   Re-reviewed PR #31 after the review-01 fix. Freeze gate passed, full verify passed, read-only
+        grep passed, and the `--sma 0` panic vector is closed: gateway returns structured config error
+        before any gateway work, and pure `sma_signal(..., 0)` returns Insufficient instead of slicing.
+        Verdict: ACCEPT; awaiting human confirm/merge.
+output: .pipeline/sma-signal/reviews/review-02.md · .pipeline/current.json
+--- handoff ---
+>>> NEXT
+Human confirmation / merge coordination for PR #31 (cc owns merge per current request).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=31
+Model: frontier SOTA required if another review rerun is requested; merge remains human-confirm gated.
+First: git pull --rebase; read .pipeline/sma-signal/reviews/review-02.md and this journal tail.
+Current review state:
+  - Card 01 status=review, attempts=1.
+  - PR #31 head 5ea2a8b7de3665ffd20c816e63c41259aec764da.
+  - Freeze gate passed: `git diff 58f31d4 origin/feat/sma-signal -- tests/sma_signal.rs` empty.
+  - Full verify passed on PR head: cargo build; cargo test; cargo clippy --all-targets -- -D warnings.
+  - Review-01 finding fixed: `--sma 0` now exits 5 with code=config/context=sma-signal before connect,
+    and the pure seam treats n==0 as Insufficient.
+Done when: after explicit human confirmation, merge PR #31 and complete pipeline done-bookkeeping per
+CONTRACT (card->done, current.json stage->done, final journal entry). Do not merge without confirmation.
+<<< END
