@@ -175,3 +175,20 @@ OPERATOR ACCEPTANCE (post-merge, journaled — never asserted by review): paper 
 omi buy AAPL 1 --limit 150 --outside-rth --preview shows order.outside_rth: true; real place shows
 it in omi orders. Real post-market fill on :4001 = deferred (entitlement-gated at broker).
 <<< END
+## seq=5 · 2026-07-07T02:24:34Z · review→done · completed · by=codex(review)+cc(merge)
+done:   codex ACCEPT, zero findings (reviews/review-01.md). Freeze gate EMPTY (spec-rev bd9a1e8..PR-head
+        over tests/outside_rth.rs). Full-verify green on PR head in an isolated worktree (build + test
+        8/8+all-prior + clippy --all-targets -D warnings). cc independently re-ran the freeze gate (empty)
+        + PR surface (3 impl-paths, +21/-2) + mergeability (CLEAN), operator confirmed, squash-merged.
+        Card 01 → done; stage → done. Feature COMPLETE.
+output: reviews/review-01.md; merge commit 1c9fafb (PR #29 squashed into main); feat/outside-rth deleted.
+--- handoff ---
+>>> NEXT
+Feature outside-rth is DONE (PR #29 merged 1c9fafb, ADR 0032). No pipeline stage follows.
+Post-merge OPERATOR ACCEPTANCE (journaled, never asserted by the pipeline):
+  - paper :4002: `omi buy AAPL 1 --limit 150 --outside-rth --preview` ⇒ envelope shows
+    order.outside_rth: true, transmits: false; a real place ⇒ `omi orders` shows the flag.
+  - live :4001 post-market LMT actually filling outside RTH = deferred, entitlement/session-gated
+    at the broker (same "code-ready, entitlement-gated" shape as the [460] combo).
+No card, no re-queue. Next feature starts a fresh pipeline-prd (current.json.feature is free).
+<<< END
