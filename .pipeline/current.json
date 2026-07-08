@@ -1,9 +1,8 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "sma-tick",
-  "stage": "done",
-  "pr": 32,
+  "feature": "agent-help-logs",
+  "stage": "prd",
   "full-verify": [
     "cargo build",
     "cargo test",
