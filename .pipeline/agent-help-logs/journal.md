@@ -98,3 +98,47 @@ On success: stage=task → GATE 1: the operator reads the frozen red tests and s
 pipeline-driver impl loop (orca transport → omp/GLM), per stop-points.md.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=3 · 2026-07-08T07:55:00Z · arch→task · completed · by=cc/claude-fable-5
+done:   Spec FROZEN for agent-help-logs: 2 cards, 8 red tests (all assertion-red; compile
+        + clippy -D warnings verified clean pre-freeze — the verbatim pre-check's
+        unresolved-import case does not apply since both spec files compile against
+        today's crate). spec-rev=76ccd61df1f950fb15f9c34d94383a0e1e36e45e (one freeze
+        commit, whole feature). Card boundary note: cli.rs BOTH variants (Help + Logs
+        parsing) live in card 01 because the frozen 27-name inventory test needs `logs`
+        parseable; card 02 owns audit.rs + the main.rs seam + the real logs handler and
+        DEPENDS on card 01 (sequential on one feat branch).
+output: tests/help_command.rs · tests/logs_command.rs · .pipeline/agent-help-logs/tasks/01.md · tasks/02.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md — output/error contract + hard safety rules (read FIRST)
+  - .pipeline/agent-help-logs/tasks/01.md — the card (oldest todo first)
+  - .pipeline/agent-help-logs/arch.md + CONTEXT.md — shape, boundaries, glossary
+  - .pipeline/agent-help-logs/docs/adr/0036*, 0037* — BINDING schema + failure policy
+Your task (concrete, numbered):
+  1. Pick the oldest `status: todo` card in .pipeline/agent-help-logs/tasks/ (01 first).
+  2. Branch feat/agent-help-logs off trunk (create if absent; card 02 continues the SAME branch).
+  3. Set the card status: in-progress (commit metadata to main), implement per the card's
+     Steps within its impl-paths ONLY, make its card-scoped verify green:
+     card 01: cargo build && cargo test --test help_command
+     card 02: cargo build && cargo test --test logs_command
+     plus cargo clippy --all-targets -- -D warnings clean.
+  4. NEVER create/modify/delete anything under spec-paths (tests/help_command.rs,
+     tests/logs_command.rs) — the freeze gate; review diffs spec-rev..tip over spec-paths.
+  5. Push the branch, open/update the PR (gh), set the card status: review, append your
+     journal entry, push metadata to main.
+Feature gotchas (project-specific traps the next node MUST know):
+  - omi help / omi logs must work with NO config + NO gateway (route BEFORE Config::load).
+  - Gate strings EXACT: read-only | write | write-paper-only.
+  - Fail-open warn line must NOT contain the JSON error envelope (frozen assertion).
+  - Card 02 depends on card 01's surface::command_name() — do not reorder.
+  - Keep omi --help (flag) behavior intact — separately frozen in cli_contract.rs.
+Done when: the card's verify is green on feat/agent-help-logs, PR open, card status=review.
+On success: next todo card → pipeline-impl again; all cards review ⇒ run pipeline-review.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
