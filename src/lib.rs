@@ -4,6 +4,7 @@
 //! `ib` layer so the freeze gate can protect the black-box CLI contract.
 
 pub mod cli;
+pub mod audit;
 pub mod config;
 pub mod error;
 pub mod grid;
