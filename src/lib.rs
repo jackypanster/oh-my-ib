@@ -9,4 +9,5 @@ pub mod error;
 pub mod grid;
 pub mod ib;
 pub mod output;
+pub mod surface;
 pub mod tz;

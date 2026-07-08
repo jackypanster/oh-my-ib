@@ -8,7 +8,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 #[command(
     name = "omi",
     version,
-    about = "Read-only Interactive Brokers CLI (TWS API via ibapi)"
+    about = "Read-only Interactive Brokers CLI (TWS API via ibapi)",
+    disable_help_subcommand = true
 )]
 pub struct Cli {
     #[command(flatten)]
@@ -109,6 +110,12 @@ pub enum Command {
     /// Reconcile the position to the 200-day month-end signal (paper-only). HOLD ⇒ buy up to lot,
     /// EXIT ⇒ sell to flat, INSUFFICIENT ⇒ no trade. Marketable LMT (not MKT).
     SmaTick(SmaTickArgs),
+    /// One-shot JSON command surface: the entire command registry (names, purpose,
+    /// usage, example, write-gate) in a single invocation. Agent-parseable; no
+    /// gateway, no config needed.
+    Help,
+    /// Read the invocation audit log tail (JSONL). Local only — no gateway, no config.
+    Logs(LogsArgs),
 }
 
 #[derive(Args, Debug)]
@@ -315,4 +322,12 @@ pub struct SmaTickArgs {
     /// Plan only: print the signal + planned action without placing the order.
     #[arg(long)]
     pub dry_run: bool,
+}
+
+/// omi logs [--tail N]
+#[derive(Args, Debug)]
+pub struct LogsArgs {
+    /// Number of most-recent invocations to show (newest last).
+    #[arg(long, default_value_t = 50)]
+    pub tail: usize,
 }

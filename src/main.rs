@@ -7,7 +7,7 @@ use clap::Parser;
 use oh_my_ib::cli::{Cli, Command, Format};
 use oh_my_ib::config::Config;
 use oh_my_ib::error::AppError;
-use oh_my_ib::{ib, output};
+use oh_my_ib::{ib, output, surface};
 
 fn main() {
     let cli = match Cli::try_parse() {
@@ -59,7 +59,14 @@ fn main() {
 }
 
 fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
-    let config = Config::load()?.merge_flags(&cli.global)?;
+    // Pre-config commands: Help/Logs must work with no gateway and a missing or
+    // broken config file (arch §Data flow; ADR 0036/0037). Everything else loads
+    // + merges config first, then dispatches to the ib layer.
+    let config = match &cli.command {
+        Command::Help => return Ok(surface::help_json()),
+        Command::Logs(_) => return Err(AppError::other("logs: implemented by card 02")),
+        _ => Config::load()?.merge_flags(&cli.global)?,
+    };
     match &cli.command {
         Command::Health => ib::health(&config),
         Command::Brief => ib::brief(&config),
@@ -86,5 +93,8 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::SmaSignal(args) => ib::sma_signal_cmd(&config, args),
         Command::GridTick(args) => ib::grid_tick(&config, args),
         Command::SmaTick(args) => ib::sma_tick_cmd(&config, args),
+        // Pre-config commands are handled above; unreachable here. Listed (no `_`)
+        // so a new variant is still a compile error at this dispatch site.
+        Command::Help | Command::Logs(_) => unreachable!("handled before Config::load"),
     }
 }
