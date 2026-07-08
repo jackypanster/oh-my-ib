@@ -242,3 +242,39 @@ Done when: verdict written; if ACCEPT + human confirm ⇒ merged + branch delete
 final entry. On rejection: card → todo, attempts++, journal the verdict, route impl.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-07-08T08:42:58Z · review→review · completed · by=codex/gpt-5
+done:   Review verdict written for PR #33 at 00f593bd616cd6c64852e4153bb01e17c81855eb.
+        Freeze gate empty; full verify green; semantic review found no blocking issues.
+        Awaiting explicit human merge confirmation before any merge.
+output: .pipeline/agent-help-logs/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review continuation on a FRESH session only after the operator explicitly says
+`merge confirmed`.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=33
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md — repo conventions and hard safety rules
+  - CONTRACT.md from jackypanster/pipeline — review merge protocol
+  - .pipeline/agent-help-logs/reviews/review-01.md — ACCEPT verdict and gates run
+  - .pipeline/agent-help-logs/tasks/01.md, 02.md — both must still be review before merge
+Your task (concrete, numbered):
+  1. Confirm the current operator message explicitly says `merge confirmed`; otherwise STOP.
+  2. Re-read PR #33. If head is still 00f593bd616cd6c64852e4153bb01e17c81855eb and both
+     cards are still status=review, proceed. If the head changed, rerun the freeze gate,
+     full verify, and semantic delta review before any merge.
+  3. Squash-merge PR #33 via gh and delete feat/agent-help-logs.
+  4. Set .pipeline/agent-help-logs/tasks/01.md and tasks/02.md status=done, set
+     .pipeline/current.json stage=done, append the final review→done journal entry, commit
+     and push metadata to main.
+Feature gotchas:
+  - Only pipeline-review may merge, and only after explicit human confirmation.
+  - Do not edit product code or frozen spec paths during the merge completion.
+  - The seq=4 journal header status-format deviation is noted, not a blocker.
+Done when: PR #33 merged, feat/agent-help-logs deleted, both cards done, current.json stage=done,
+final journal entry committed and pushed to main.
+On failure: append a failed/blocked journal entry; if a specific card owns the failure, flip only
+that card per CONTRACT; otherwise write an integration incident report and route pipeline-hunt.
+<<< END
