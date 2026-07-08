@@ -2,7 +2,7 @@
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
   "feature": "agent-help-logs",
-  "stage": "prd",
+  "stage": "arch",
   "full-verify": [
     "cargo build",
     "cargo test",

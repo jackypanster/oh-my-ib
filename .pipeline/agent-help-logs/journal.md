@@ -41,3 +41,60 @@ Done when: arch.md + CONTEXT.md + ADRs landed, journal appended, pushed.
 On success: stage=arch, then run pipeline-task.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+## seq=2 · 2026-07-08T07:35:00Z · prd→arch · completed · by=cc/claude-fable-5
+done:   arch for agent-help-logs. All 5 PRD ⚠ rows resolved CODE-FIRST (no human question
+        needed): log path mirrors config_path() HOME-join; JSONL schema fixed (ADR 0036);
+        audit write failure = fail-open warn (ADR 0037, deliberate fast-fail deviation,
+        operator-flagged); logs = --tail N only; help = static registry + DOUBLE staleness
+        guard (compile-time exhaustive command_name() match shared with the audit seam +
+        runtime clap-names==registry-names test). New modules: src/surface.rs, src/audit.rs.
+        output.rs untouched (render_table verified generic). Help/Logs run pre-Config::load.
+output: .pipeline/agent-help-logs/arch.md · CONTEXT.md · docs/adr/0036-invocation-audit-log.md · docs/adr/0037-audit-fail-open.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md — output/error contract + hard safety rules (read FIRST)
+  - .pipeline/agent-help-logs/PRD.md — what
+  - .pipeline/agent-help-logs/arch.md — shape/boundaries + §Test hooks (your card material)
+  - .pipeline/agent-help-logs/CONTEXT.md — glossary (use these terms on the cards)
+  - .pipeline/agent-help-logs/docs/adr/0036*, 0037* — BINDING data-shape + failure-policy
+  - tests/cli_contract.rs — the black-box test convention to mirror (assert_cmd, offline)
+Your task (concrete, numbered):
+  1. think → atomic cards. Suggested cut: card 01 = src/surface.rs + `omi help` (+ cli.rs
+     disable_help_subcommand + Help variant); card 02 = src/audit.rs + main.rs seam +
+     `omi logs` (+ Logs variant). Cards land sequentially on ONE feat branch, so card 02
+     MAY use card 01's command_name() — note that dependency on card 02.
+  2. Per card write the FAILING red test into spec-paths (black-box; offline; override HOME
+     to a temp dir for anything touching the audit log; suggested files
+     tests/help_command.rs, tests/logs_command.rs — card-scoped verify via
+     `cargo test --test <file>`).
+  3. MANDATORY verbatim-compile pre-check before the freeze commit (pipeline-task skill
+     step 4): copy each spec file VERBATIM to a scratch test target, stub ONLY the missing
+     imports, run the card's compile AND `cargo clippy --all-targets -- -D warnings` on the
+     scratch; all green; DELETE the scratch.
+  4. Freeze protocol: ONE freeze commit for ALL cards' tests (its sha = the shared spec-rev)
+     → THEN the record commit (cards + current.json.stage=task + full-verify + journal).
+     Push both.
+Feature gotchas (project-specific traps the next node MUST know):
+  - `omi help` / `omi logs` must work with NO config file and NO gateway (arch: handled
+    before Config::load) — tests must NOT need a gateway.
+  - Audit-log tests MUST set HOME=<tempdir> (path derives from $HOME) — never touch the real
+    ~/.local/share/oh-my-ib/.
+  - disable_help_subcommand consequence: `omi help buy` becomes a usage error — do NOT
+    freeze a test expecting clap's old help-passthrough.
+  - Existing frozen test cli_contract.rs::help_lists_all_subcommands asserts the `--help`
+    FLAG output — that path is unchanged; keep it green.
+  - The staleness test needs `Cli::command()` — tests/ can `use oh_my_ib::cli::Cli` (lib.rs
+    exists; clap CommandFactory).
+  - full-verify in current.json is [cargo build, cargo test, cargo clippy --all-targets -- -D warnings] — re-confirm when recording.
+Done when: freeze commit + record commit pushed; every card carries the shared spec-rev,
+card-scoped verify, spec-paths ∩ impl-paths = ∅.
+On success: stage=task → GATE 1: the operator reads the frozen red tests and starts the
+pipeline-driver impl loop (orca transport → omp/GLM), per stop-points.md.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
