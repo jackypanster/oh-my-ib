@@ -199,3 +199,46 @@ Done when: card 02 verify green on feat/agent-help-logs, PR #33 updated, card 02
 On success: NO todo/in-progress cards remain ⇒ run pipeline-review (ONCE on the complete feature).
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+## seq=5 · 2026-07-08T09:20:00Z · impl→review · completed · by=cc/claude-fable-5 (takeover: glm-5.2 quota 429 at handoff)
+done:   Card 02 (audit JSONL + omi logs) implemented by glm-5.2 in the driven loop; omp hit
+        the coding-plan 7-day quota cap (429, resets 2026-07-09 17:18 CST) AFTER the code
+        was complete but BEFORE the handoff (push/PR/card-flip). cc completed the manual
+        pipeline-impl recovery path named by the driver HALT: verified card verify green
+        (cargo test --test logs_command 4/4 + clippy -D warnings clean), committed the
+        staged work (00f593b), force-with-lease pushed the glm-rebased feat branch
+        (sanctioned own-branch reconcile), flipped card 02 → review. Both cards now review;
+        PR #33 carries card 01 (2f3ca87) + card 02 (00f593b).
+output: PR #33 (feat/agent-help-logs @ 00f593b) · tasks/02.md (status=review)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=33
+Model: frontier SOTA required — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md — output/error contract + hard safety rules (read FIRST)
+  - .pipeline/agent-help-logs/PRD.md + arch.md + CONTEXT.md — what/how/glossary
+  - .pipeline/agent-help-logs/docs/adr/0036*, 0037* — BINDING schema + fail-open policy
+  - .pipeline/agent-help-logs/tasks/01.md, 02.md — cards incl. ## Freeze coverage sections
+Your task (concrete, numbered):
+  1. FREEZE GATE first: git diff 76ccd61df1f950fb15f9c34d94383a0e1e36e45e..<PR head> --
+     tests/help_command.rs tests/logs_command.rs — MUST be empty; non-empty ⇒ reject.
+  2. full-verify on the PR branch HEAD: cargo build && cargo test && cargo clippy
+     --all-targets -- -D warnings — all green or do not merge.
+  3. Semantic review of the diff (gh pr diff 33): read each card's ## Freeze coverage for
+     what is NOT frozen — card 01: registry prose accuracy vs cli.rs docs + the inline
+     clap-vs-registry set-equality unit test exists in surface.rs; card 02: --tail default
+     50, ts RFC3339 UTC, duration_ms plausibility. Check journal seq=4 header format
+     deviation (status field said "card 01 review" — note for the coder, not a blocker).
+  4. Write reviews/review-01.md with verdict. ACCEPT ⇒ wait for the EXPLICIT human merge
+     confirm, then squash-merge PR #33, delete feat/agent-help-logs, set both cards done,
+     current.json stage=done, append the final journal entry, push.
+Feature gotchas:
+  - Card 02 was committed by cc after glm-5.2's quota death (code authored by glm) — see
+    seq=5; judge the code, not the byline.
+  - The feature intentionally changes `omi help <cmd>` into a usage error
+    (disable_help_subcommand, arch-accepted) — not a regression.
+Done when: verdict written; if ACCEPT + human confirm ⇒ merged + branch deleted + journal
+final entry. On rejection: card → todo, attempts++, journal the verdict, route impl.
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
