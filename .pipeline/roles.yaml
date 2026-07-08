@@ -1,12 +1,14 @@
 # roles.yaml — per-target-repo skill bindings for oh-my-ib
 # Runtime: Claude Code. Adapted from jackypanster/pipeline default roles.yaml.
-# Only change vs default: impl rebound to the Claude-native twin of the Hermes
-# goal-driven-implementation skill (the Hermes one does not resolve on Claude Code).
+# impl slot: goal-driven-implementation is installed in BOTH runtimes on this machine
+# (~/.claude/skills/ for Claude Code, ~/workspace/hermes-skills/devops/ for Hermes/omp),
+# so the same name resolves whether impl is relayed by hand or driven by pipeline-driver.
+# (goal-driven-impl-claude was a planned twin that was never created — do not point at it.)
 
 prd:    [grill-me, think]        # grill-me clarifies the rough idea, then think produces the plan
 arch:   grill-with-docs          # walks the design tree against the codebase; emits CONTEXT.md + ADRs
 task:   think                    # decomposes into atomic cards (the agent writes the red tests)
-impl:   goal-driven-impl-claude  # Claude-runtime twin of Hermes goal-driven-implementation
+impl:   goal-driven-implementation  # autonomous think→design-tests→code→check loop (dual-runtime: Claude + Hermes/omp)
 review: check                    # semantic review of the diff/PR
 hunt:   hunt                     # root-cause a blocked card before re-queue
 improve: think                   # meta: reviewed skill-improvement PR against the pipeline repo
