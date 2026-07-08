@@ -142,3 +142,60 @@ Done when: the card's verify is green on feat/agent-help-logs, PR open, card sta
 On success: next todo card → pipeline-impl again; all cards review ⇒ run pipeline-review.
 On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
 <<< END
+
+
+## seq=4 · 2026-07-08T16:00:00Z · task→impl · card 01 review · by=cc/glm-5.2
+done:   Card 01 GREEN — \`omi help\` one-shot JSON command surface. Added \`Help\`/\`Logs\`
+        variants + \`disable_help_subcommand\` to cli.rs (Logs parses now so the 27-name
+        inventory test passes; its handler is card 02). NEW src/surface.rs: \`command_name()\`
+        exhaustive match (no \`_\` arm — compile-time staleness anchor, shared with card 02's
+        audit \`cmd\` field) + static REGISTRY (27 entries: name/purpose/usage/example/gate,
+        gate ∈ read-only|write|write-paper-only) + \`help_json()\` + inline clap-vs-registry
+        set-equality unit test. main.rs run(): Help/Logs routed BEFORE Config::load (works
+        with no gateway + missing/broken config); Logs arm is a placeholder error
+        (\`logs: implemented by card 02\`). lib.rs: \`pub mod surface;\`.
+        Verify: cargo build ✓; cargo test --test help_command 4/4 ✓;
+        cargo clippy --all-targets -- -D warnings ✓; cargo test --lib surface 2/2 ✓.
+        spec-paths (tests/help_command.rs) untouched — freeze gate respected.
+output: PR #33 (feat/agent-help-logs) · src/cli.rs · src/surface.rs · src/main.rs · src/lib.rs
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=33
+Model: capable-local OK (impl only) — operator assigns the bot; the pipeline can't verify the model.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md — output/error contract + hard safety rules (read FIRST)
+  - .pipeline/agent-help-logs/tasks/02.md — the card (oldest remaining todo)
+  - .pipeline/agent-help-logs/arch.md + CONTEXT.md — shape, boundaries, glossary
+  - .pipeline/agent-help-logs/docs/adr/0036*, 0037* — BINDING schema + failure policy
+  - src/surface.rs — command_name() (card 02's audit \`cmd\` anchor, already landed)
+  - src/main.rs — the dispatch seam location (card 02 wraps run() outcome)
+Your task (concrete, numbered):
+  1. Pick the oldest \`status: todo\` card (02). feat/agent-help-logs ALREADY EXISTS — check it
+     out, rebase onto origin/main if trunk advanced, continue on the SAME branch/PR #33.
+  2. Set card 02 status: in-progress (commit metadata to main), implement per its Steps within
+     impl-paths ONLY (src/audit.rs, src/main.rs, src/lib.rs), make its card-scoped verify green:
+     card 02: cargo build && cargo test --test logs_command; plus cargo clippy clean.
+  3. NEVER create/modify/delete anything under spec-paths (tests/logs_command.rs) — freeze gate.
+  4. The audit seam (ADR 0036/0037): after parse succeeds, Instant::now(); run; derive
+     exit/error; build AuditEntry; audit::append FAIL-OPEN (on write error print ONE plain
+     \`warn:\` line to stderr — NEVER the JSON envelope, NEVER a changed exit code). Replace
+     card 01's placeholder Logs arm with the real reader (path/entries/skipped_malformed).
+  5. Push the branch, update PR #33, set card 02 status: review, append your journal entry,
+     push metadata to main (stage stays impl — card 02 completes the feature's impl stage).
+Feature gotchas (project-specific traps the next node MUST know):
+  - Card 02 depends on card 01's surface::command_name() — already on the branch; do not reorder.
+  - Audit-log tests MUST set HOME=<tempdir> (path derives from $HOME) — never touch the real
+    ~/.local/share/oh-my-ib/.
+  - Redact --account value in LOGGED argv only (both --account X and --account=X forms);
+    never alter the real CLI parsing.
+  - Fail-open warn line must NOT contain the JSON error envelope (frozen assertion: no
+    \`"error"\` substring in stderr).
+  - Clap parse failures exit before a Command exists — NOT audited (v1 boundary, ADR 0036).
+  - The frozen test asserts exit == 2 and error == "connection" for a dead-port health —
+    those come from the EXISTING AppError mapping (error.rs:64,77); do not remap.
+Done when: card 02 verify green on feat/agent-help-logs, PR #33 updated, card 02 status=review.
+On success: NO todo/in-progress cards remain ⇒ run pipeline-review (ONCE on the complete feature).
+On failure: attempts++; >=3 ⇒ blocked ⇒ run pipeline-hunt.
+<<< END
