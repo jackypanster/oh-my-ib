@@ -1,5 +1,9 @@
 //! `omi` — read-only Interactive Brokers CLI. Each invocation: parse → load+merge
 //! config → connect → request → emit. JSON to stdout, error envelope to stderr.
+//! The audit seam (ADR 0036/0037) writes one JSONL line per parsed invocation
+//! after `run()` returns, fail-open, before emit/exit.
+
+use std::time::Instant;
 
 use clap::error::ErrorKind as ClapErrorKind;
 use clap::Parser;
@@ -7,7 +11,7 @@ use clap::Parser;
 use oh_my_ib::cli::{Cli, Command, Format};
 use oh_my_ib::config::Config;
 use oh_my_ib::error::AppError;
-use oh_my_ib::{ib, output};
+use oh_my_ib::{audit, ib, output, surface};
 
 fn main() {
     let cli = match Cli::try_parse() {
@@ -46,7 +50,30 @@ fn main() {
         },
     };
     let format = cli.global.format.unwrap_or(Format::Json);
-    match run(&cli) {
+    let started = Instant::now();
+    let result = run(&cli);
+    // Audit seam (ADR 0036/0037): one JSON line per parsed invocation, fail-open.
+    let (exit_code, error_code) = match &result {
+        Ok(_) => (0, None),
+        Err(err) => (err.exit_code(), Some(err.code())),
+    };
+    let entry = audit::AuditEntry {
+        ts: audit::rfc3339_utc(),
+        cmd: surface::command_name(&cli.command),
+        argv: audit::redacted_argv(),
+        mode: if cli.global.live { "live" } else { "paper" },
+        preview: cli.global.preview,
+        exit: exit_code,
+        error: error_code,
+        duration_ms: started.elapsed().as_millis() as u64,
+    };
+    if let Err(e) = audit::append(&entry) {
+        let path = audit::log_path()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "<unknown>".to_string());
+        eprintln!("warn: audit log write failed: {e} ({path})");
+    }
+    match result {
         Ok(value) => {
             output::emit_success(&value, format);
             std::process::exit(0);
@@ -59,7 +86,21 @@ fn main() {
 }
 
 fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
-    let config = Config::load()?.merge_flags(&cli.global)?;
+    // Pre-config commands: Help/Logs must work with no gateway and a missing or
+    // broken config file (arch §Data flow; ADR 0036/0037). Everything else loads
+    // + merges config first, then dispatches to the ib layer.
+    let config = match &cli.command {
+        Command::Help => return Ok(surface::help_json()),
+        Command::Logs(args) => {
+            let (entries, skipped) = audit::read_tail(args.tail);
+            return Ok(serde_json::json!({
+                "path": audit::log_path().map(|p| p.display().to_string()),
+                "entries": entries,
+                "skipped_malformed": skipped,
+            }));
+        }
+        _ => Config::load()?.merge_flags(&cli.global)?,
+    };
     match &cli.command {
         Command::Health => ib::health(&config),
         Command::Brief => ib::brief(&config),
@@ -86,5 +127,8 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::SmaSignal(args) => ib::sma_signal_cmd(&config, args),
         Command::GridTick(args) => ib::grid_tick(&config, args),
         Command::SmaTick(args) => ib::sma_tick_cmd(&config, args),
+        // Pre-config commands are handled above; unreachable here. Listed (no `_`)
+        // so a new variant is still a compile error at this dispatch site.
+        Command::Help | Command::Logs(_) => unreachable!("handled before Config::load"),
     }
 }
