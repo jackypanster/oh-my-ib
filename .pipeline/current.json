@@ -1,8 +1,8 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
   "branch": "main",
-  "feature": "agent-help-logs",
-  "stage": "done",
+  "feature": "snapshot-timeout",
+  "stage": "prd",
   "full-verify": [
     "cargo build",
     "cargo test",
