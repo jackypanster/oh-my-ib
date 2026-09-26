@@ -48,6 +48,7 @@ pub fn command_name(cmd: &Command) -> &'static str {
         Command::OptionSell(_) => "option-sell",
         Command::OptionCombo(_) => "option-combo",
         Command::OptionClose(_) => "option-close",
+        Command::PcsScan(_) => "pcs-scan",
         Command::SmaSignal(_) => "sma-signal",
         Command::GridTick(_) => "grid-tick",
         Command::SmaTick(_) => "sma-tick",
@@ -223,6 +224,13 @@ const REGISTRY: &[Entry] = &[
         gate: WRITE,
     },
     Entry {
+        name: "pcs-scan",
+        purpose: "Rank put-credit-spread candidates over symbols (read-only): one best candidate per symbol (credit, max loss, return on risk, breakeven) or a skip reason",
+        usage: "omi pcs-scan SYMBOL... [--dte-min 21] [--dte-max 45] [--dte-target 30] [--delta 0.20] [--width 5] [--min-credit-ratio 0.25]",
+        example: "omi pcs-scan NVDA QQQ --delta 0.20 --width 5",
+        gate: READ_ONLY,
+    },
+    Entry {
         name: "sma-signal",
         purpose: "200-day SMA month-end HOLD/EXIT timing signal (read-only). No args = current positions",
         usage: "omi sma-signal [SYMBOLS...] [--sma N]",
@@ -329,7 +337,7 @@ mod tests {
             "orders", "executions", "quote", "contract", "history", "search",
             "completed-orders", "buy", "sell", "cancel", "option-chain",
             "option-quote", "option-buy", "option-sell", "option-combo",
-            "option-close", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
+            "option-close", "pcs-scan", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
         ]
         .into_iter()
         .collect();

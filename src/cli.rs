@@ -101,6 +101,8 @@ pub enum Command {
     OptionCombo(OptionComboArgs),
     /// Close a HELD option position by conid (side derived from held position; LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
     OptionClose(OptionCloseArgs),
+    /// Rank put-credit-spread candidates over symbols (read-only)
+    PcsScan(PcsScanArgs),
     /// 200-day SMA month-end HOLD/EXIT timing signal (read-only). No args = current positions.
     SmaSignal(SmaSignalArgs),
     /// Run one grid reconcile tick (paper-only). Reads the grid config, snapshots account +
@@ -285,6 +287,32 @@ pub struct OptionCloseArgs {
     /// Quantity to close in whole contracts (>= 1); omit to close the full position
     #[arg(long)]
     pub qty: Option<f64>,
+}
+
+/// omi pcs-scan SYMBOL... [--dte-min 21] [--dte-max 45] [--dte-target 30] [--delta 0.20] [--width 5] [--min-credit-ratio 0.25]
+#[derive(Args, Debug)]
+pub struct PcsScanArgs {
+    /// Underlying symbols (1+)
+    #[arg(required = true, value_name = "SYMBOL")]
+    pub symbols: Vec<String>,
+    /// Minimum days to expiry
+    #[arg(long, default_value_t = 21)]
+    pub dte_min: i64,
+    /// Maximum days to expiry
+    #[arg(long, default_value_t = 45)]
+    pub dte_max: i64,
+    /// Target days to expiry (the expiry nearest this inside the window wins)
+    #[arg(long, default_value_t = 30)]
+    pub dte_target: i64,
+    /// Target |delta| of the short put
+    #[arg(long, default_value_t = 0.20)]
+    pub delta: f64,
+    /// Spread width in dollars (long strike = short strike − width)
+    #[arg(long, default_value_t = 5.0)]
+    pub width: f64,
+    /// Minimum credit_mid as a fraction of width
+    #[arg(long, default_value_t = 0.25)]
+    pub min_credit_ratio: f64,
 }
 
 /// omi grid-tick --config grid.toml [--dry-run]
