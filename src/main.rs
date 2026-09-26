@@ -124,6 +124,7 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::OptionSell(args) => ib::option_sell(&config, args),
         Command::OptionCombo(args) => ib::option_combo(&config, args),
         Command::OptionClose(args) => ib::option_close(&config, args),
+        Command::PcsScan(args) => ib::pcs_scan(&config, args),
         Command::SmaSignal(args) => ib::sma_signal_cmd(&config, args),
         Command::GridTick(args) => ib::grid_tick(&config, args),
         Command::SmaTick(args) => ib::sma_tick_cmd(&config, args),
