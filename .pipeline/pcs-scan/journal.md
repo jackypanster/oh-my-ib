@@ -25,3 +25,26 @@ Your task (concrete, numbered):
   3. Emit arch.md + CONTEXT.md + ADR (next free number, skip-not-fail + batching).
 Done when: arch.md + CONTEXT.md + ADR committed with journal seq=2, current.json.stage=arch.
 <<< END
+
+## seq=2 · 2026-09-26T11:41:35Z · prd→arch · completed · by=cc/claude-opus-5-5
+done:   arch for pcs-scan: two-pass batched snapshots (coarse 8 strikes → interpolate k* → 3 nearest + −width partners),
+        ≤50 concurrent subs/batch on one client (📖 Subscription owns Arc bus), skip-not-fail precedence, 11 pure frozen
+        seams pinned. PRD ⚠️ D8/D9/D10 settled. ADR 0039.
+output: .pipeline/pcs-scan/arch.md · CONTEXT.md · docs/adr/0039-pcs-scan-two-pass-batched-snapshots.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required (CC role). Mode: coordinated (control.json) — Pi=impl, grok=review+merge on human-direct token.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md (read FIRST) · .pipeline/pcs-scan/{PRD.md,arch.md,CONTEXT.md,docs/adr/0039-*.md}
+  - tests/snapshot_timeout.rs, tests/help_command.rs — frozen-spec style + the inventory to re-freeze
+Your task (concrete, numbered):
+  1. ONE card 01-pcs-scan: spec-paths tests/pcs_scan.rs + tests/help_command.rs (add "pcs-scan");
+     impl-paths src/ib/pcs_scan.rs, src/ib/mod.rs, src/cli.rs, src/main.rs, src/surface.rs.
+  2. Red spec per arch.md §Pure seams + §Freeze coverage (tie rules, bracket/no-bracket, Delayed* spot, zero-bid,
+     reason strings, sort, every-symbol-once, usage errors, dead port, help flags/inventory/read-only).
+  3. Verbatim stub-compile + clippy -D warnings on a scratch copy before the freeze commit.
+Done when: freeze commit + card record commit pushed, journal seq=3, current.json.stage=task.
+<<< END
