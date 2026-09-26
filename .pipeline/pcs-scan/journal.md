@@ -127,3 +127,37 @@ Model: capable-local OK (impl only) — operator assigns; the pipeline can't ver
 Done when: card 01 green again and the silent-head sibling read is fixed. attempts>=3 ⇒ blocked
 ⇒ pipeline-hunt.
 <<< END
+
+## seq=6 · 2026-09-26T12:26:37Z · impl→review · completed · by=pi/deepseek-v4.1-flash
+done:   Review-01 F1 fixed @ 7426cb1 on feat/pcs-scan (PR #35): drain_snapshot keeps the ONE shared
+        chunk deadline but no longer calls next_timeout(0) past it — it drains already-buffered items
+        with NON-blocking try_next (ibapi-3.1.0 next_timeout(0) returns None without reading). New pure
+        seam drain_until_end + 3 unit tests; evidence: (a) fails on the old-loop transliteration at
+        68ad974 (Err vs Ok). Card 01 green: verify (16+4) + full cargo test (342/0) + clippy
+        -D warnings clean; spec-rev 4b19d3d untouched; PR comment posted with the evidence.
+output: src/ib/pcs_scan.rs @ 7426cb1 (feat/pcs-scan) · .pipeline/pcs-scan/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/35
+Model: frontier SOTA required (review role) — operator assigns; the pipeline can't verify the model.
+Mode: coordinated (control.json) — Pi=impl, grok=review+merge on a direct human token.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting): AGENTS.md (FIRST) · CONTRACT.md · .pipeline/pcs-scan/tasks/01.md
+(steps + Freeze coverage + Assumptions) · .pipeline/pcs-scan/reviews/review-01.md (finding F1) ·
+arch.md §Gateway flow/§Pure seams · docs/adr/0039-*.md · tests/pcs_scan.rs (spec-rev 4b19d3d) · the PR diff.
+Your task (concrete, numbered):
+  1. Freeze gate: `git diff 4b19d3d2f94d7d8623a4b0809dd21f8ec19ce8b5 origin/feat/pcs-scan -- tests/pcs_scan.rs tests/help_command.rs` — non-empty ⇒ REJECT.
+  2. Full-verify on origin/feat/pcs-scan HEAD (7426cb1): cargo build && cargo test (unfiltered) && cargo clippy --all-targets -- -D warnings.
+  3. Semantic read of the F1 fix: drain_until_end — ONE shared chunk deadline; past-deadline reads are
+     non-blocking try_next (buffered only, never waits); SnapshotEnd either phase ⇒ Ok; empty buffer
+     past deadline ⇒ quote_error; pre-deadline None ⇒ Ok; Notice skipped; chunk dropped before next batch.
+  4. Verdict → reviews/review-02.md per CONTRACT §Atomic review outcome (only card; it must read review).
+     APPROVE ⇒ ONE commit (review file + review→review · completed journal whose NEXT first line is exactly
+     "Await human-direct merge confirmation in this reviewer session."); merge ONLY after the direct human token.
+     REJECT ⇒ ONE commit (review file + card review→todo/attempts++ + review→impl · failed journal) or hunt at attempts>=3.
+Gotchas: spec-paths = tests/pcs_scan.rs, tests/help_command.rs (never edit) · one card only · live acceptance
+(OPRA, US RTH, :4001) = PRD criterion 7 after merge · public repo: no tokens/account ids.
+Done when: reviews/review-02.md + verdict committed; on approval await the human token; on GO: squash PR #35,
+card 01 done, stage=done, review→done pushed.
+<<< END
