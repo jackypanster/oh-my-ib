@@ -73,3 +73,37 @@ Feature gotchas (review scrutinizes by reading — NOT frozen): gateway flow 1�
   next; chain row SMART & trading_class==symbol; skip precedence ADR 0039 §3; validate_params before connect; trade.rs untouched.
 Done when: PR open, card 01 status=review, verify + full-verify green.
 <<< END
+
+## seq=4 · 2026-09-26T11:58:06Z · impl→review · completed · by=pi/deepseek-v4.1-flash
+done:   Card 01 green @ 68ad974 on feat/pcs-scan, PR #35 open. All 16 frozen pcs_scan tests + 4 help
+        tests green; full cargo test + clippy -D warnings clean; spec untouched (4b19d3d). Assumptions
+        recorded on the card; no todo/in-progress cards remain.
+output: src/ib/pcs_scan.rs · src/ib/{mod,cli}.rs · src/main.rs · src/surface.rs @ 68ad974 (feat/pcs-scan);
+        PR #35 · tasks/01.md (review + Assumptions)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/35
+Model: frontier SOTA required (review role) — operator assigns; the pipeline can't verify the model.
+Mode: coordinated (control.json) — Pi=impl, grok=review+merge on a direct human token.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting): AGENTS.md (FIRST) · CONTRACT.md · .pipeline/pcs-scan/tasks/01.md
+(steps + Freeze coverage + Assumptions) · arch.md §Gateway flow/§Pure seams · docs/adr/0039-*.md ·
+tests/pcs_scan.rs (spec-rev 4b19d3d) · the PR diff.
+Your task (concrete, numbered):
+  1. Freeze gate: `git diff 4b19d3d2f94d7d8623a4b0809dd21f8ec19ce8b5 origin/feat/pcs-scan -- tests/pcs_scan.rs tests/help_command.rs` — non-empty ⇒ REJECT.
+  2. Full-verify on origin/feat/pcs-scan HEAD: cargo build && cargo test (unfiltered) && cargo clippy --all-targets -- -D warnings.
+  3. Semantic read (no hermetic seam — needs a live gateway; no-mock rule): gateway flow 1–7, snapshot_batch
+     (≤50 concurrent subs, ONE shared ADR 0038 deadline per chunk, per-contract Err ⇒ skip, chunk dropped
+     before next, 20ms subscribe pacing), chain row SMART & trading_class==symbol else most expirations,
+     skip precedence ADR 0039 §3, pass1 ∪ pass2 merge, card Assumptions vs the diff.
+  4. Verdict → reviews/review-01.md. APPROVE ⇒ ALL pre-merge guards, then ONE atomic commit per CONTRACT
+     §Atomic review outcome (handoff first line = "Await human-direct merge confirmation in this reviewer
+     session."); merge ONLY after the direct human token. REJECT ⇒ single-owner card→todo/attempts++ (≥3 ⇒
+     blocked ⇒ pipeline-hunt) or cross-card integration report ⇒ review→hunt · blocked.
+Gotchas: spec-paths = tests/pcs_scan.rs, tests/help_command.rs (never edit) · one card only (completeness
+trivially passes) · live acceptance (OPRA, US RTH, :4001): PRD criterion 7 after merge · public repo: no
+tokens/account ids.
+Done when: review-01.md + verdict committed; on approval await the human token; on GO: squash PR #35,
+card 01 done, stage=done, review→done pushed.
+<<< END
