@@ -781,35 +781,156 @@ fn snapshot_batch(client: &Client, contracts: &[Contract]) -> Vec<Result<SnapDat
     results
 }
 
+/// One read from a snapshot subscription, decoupled from ibapi so the shared-deadline drain
+/// schedule is unit-testable with plain data (repo no-mock rule).
+enum DrainRead<T> {
+    /// `TickTypes::SnapshotEnd` — the snapshot's terminal marker.
+    End,
+    /// A tick to record.
+    Data(T),
+    /// A notice: ignored, stream continues (ADR 0038 parity).
+    Notice,
+    /// A terminal stream error: this contract's `quote_error`.
+    Error,
+}
+
+/// Map a raw subscription read to [`DrainRead`]; generic over the error type so the blocking and
+/// the non-blocking read feed one schedule.
+fn to_drain_read<E>(item: Result<SubscriptionItem<TickTypes>, E>) -> DrainRead<TickTypes> {
+    match item {
+        Ok(SubscriptionItem::Data(TickTypes::SnapshotEnd)) => DrainRead::End,
+        Ok(SubscriptionItem::Data(tick)) => DrainRead::Data(tick),
+        Ok(SubscriptionItem::Notice(_)) => DrainRead::Notice,
+        Err(_) => DrainRead::Error,
+    }
+}
+
+/// The ADR 0038 loop for one subscription against the chunk's shared `deadline`, in two phases:
+/// blocking `next_timeout(remaining)` while time remains, then NON-blocking `try_next()` once the
+/// deadline has passed. `next_timeout(0)` must not be used past the deadline — ibapi returns `None`
+/// immediately without reading items already buffered (ibapi-3.1.0 `subscriptions/sync.rs:222-231`),
+/// which skip-failed every later subscription of a chunk whose head held the shared deadline.
+/// `SnapshotEnd` in either phase ⇒ `Ok`; the post-deadline buffer exhausted without `SnapshotEnd`
+/// ⇒ `quote_error` (ADR 0038); pre-deadline `None` (stream self-ended) ⇒ `Ok` (ADR 0016).
+fn drain_until_end<T>(
+    deadline: Instant,
+    mut blocking: impl FnMut(Duration) -> Option<DrainRead<T>>,
+    mut buffered: impl FnMut() -> Option<DrainRead<T>>,
+    mut on_data: impl FnMut(T),
+) -> Result<(), SkipReason> {
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let read = if remaining.is_zero() {
+            buffered()
+        } else {
+            blocking(remaining)
+        };
+        match read {
+            Some(DrainRead::End) => return Ok(()),
+            Some(DrainRead::Data(item)) => on_data(item),
+            Some(DrainRead::Notice) => {}
+            Some(DrainRead::Error) => return Err(SkipReason::QuoteError),
+            None if remaining.is_zero() => return Err(SkipReason::QuoteError),
+            None => return Ok(()),
+        }
+    }
+}
+
 /// The ADR 0038 loop for one subscription: drain until `SnapshotEnd` under the shared
 /// `deadline`; `Some(Err)` and deadline expiry are this contract's `quote_error`.
 fn drain_snapshot(sub: &Subscription<TickTypes>, deadline: Instant) -> Result<SnapData, SkipReason> {
     let mut ticks: Map<String, Value> = Map::new();
     let mut greeks: Option<GreeksRow> = None;
-    loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        match sub.next_timeout(remaining) {
-            Some(Ok(SubscriptionItem::Data(TickTypes::SnapshotEnd))) => break,
-            Some(Ok(SubscriptionItem::Data(tick))) => {
-                if let Some((label, price)) = quote_price_tick(&tick) {
-                    ticks.insert(label, json!(price));
-                }
-                if let Some(row) = option_quote_greeks(&tick) {
-                    greeks = Some(row); // last-model-row-wins (ADR 0019 D3)
-                }
+    drain_until_end(
+        deadline,
+        |remaining| sub.next_timeout(remaining).map(to_drain_read),
+        || sub.try_next().map(to_drain_read),
+        |tick| {
+            if let Some((label, price)) = quote_price_tick(&tick) {
+                ticks.insert(label, json!(price));
             }
-            Some(Ok(SubscriptionItem::Notice(_))) => continue,
-            Some(Err(_)) => return Err(SkipReason::QuoteError),
-            None if Instant::now() >= deadline => return Err(SkipReason::QuoteError),
-            None => break, // the stream self-ended before the deadline => success
-        }
-    }
+            if let Some(row) = option_quote_greeks(&tick) {
+                greeks = Some(row); // last-model-row-wins (ADR 0019 D3)
+            }
+        },
+    )?;
     Ok(SnapData { ticks, greeks })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
+
+    /// Review-01 F1 regression: a sibling whose ticks + SnapshotEnd already arrived inside the
+    /// shared window must be READ after the deadline. The 68ad974 loop called `next_timeout(0)`,
+    /// got `None` without reading the buffer, and skip-failed the contract.
+    #[test]
+    fn drain_until_end_reads_buffered_items_after_deadline() {
+        let deadline = Instant::now() - Duration::from_millis(1);
+        let mut buffered =
+            VecDeque::from([DrainRead::Data(1_u32), DrainRead::Data(2), DrainRead::End]);
+        let mut seen: Vec<u32> = Vec::new();
+        let result = drain_until_end::<u32>(
+            deadline,
+            |_: Duration| None,
+            || buffered.pop_front(),
+            |item| seen.push(item),
+        );
+        assert!(result.is_ok(), "buffered SnapshotEnd => Ok");
+        assert_eq!(
+            seen,
+            vec![1, 2],
+            "every tick buffered inside the window is read"
+        );
+        assert!(buffered.is_empty(), "drain stops at SnapshotEnd");
+    }
+
+    /// Past the deadline with nothing buffered: still this contract's timeout (ADR 0038).
+    #[test]
+    fn drain_until_end_past_deadline_empty_buffer_is_quote_error() {
+        let result = drain_until_end::<u32>(
+            Instant::now() - Duration::from_millis(1),
+            |_: Duration| None,
+            || None,
+            |_| {},
+        );
+        assert_eq!(result, Err(SkipReason::QuoteError));
+    }
+
+    /// Pre-deadline scheduling unchanged: `SnapshotEnd` ⇒ Ok, `Some(Err)` ⇒ quote_error, stream
+    /// self-end (`None`) ⇒ Ok; the non-blocking read is never consulted while time remains.
+    #[test]
+    fn drain_until_end_before_deadline_keeps_adr0038_semantics() {
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let mut blocking =
+            VecDeque::from([DrainRead::Data(7_u32), DrainRead::Notice, DrainRead::End]);
+        let mut seen: Vec<u32> = Vec::new();
+        let result = drain_until_end::<u32>(
+            deadline,
+            |_| blocking.pop_front(),
+            || panic!("buffered read must not run before the deadline"),
+            |item| seen.push(item),
+        );
+        assert!(result.is_ok());
+        assert_eq!(seen, vec![7]);
+
+        let result = drain_until_end::<u32>(
+            deadline,
+            |_| Some(DrainRead::Error),
+            || panic!("buffered read must not run before the deadline"),
+            |_| {},
+        );
+        assert_eq!(result, Err(SkipReason::QuoteError));
+
+        let result = drain_until_end::<u32>(
+            deadline,
+            |_: Duration| None, // pre-deadline None = stream self-ended => success
+            || panic!("buffered read must not run before the deadline"),
+            |_| {},
+        );
+        assert!(result.is_ok());
+    }
 
     #[test]
     fn tick_price_prefers_exact_label_over_delayed() {
