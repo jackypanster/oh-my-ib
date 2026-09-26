@@ -170,3 +170,27 @@ public repo: no tokens/account ids.
 Done when: review-01.md written; on human GO + live evidence: PR #34 squash-merged, card 01 done,
 stage=done, next seq pushed. On reject: card→todo/attempts=1, route pipeline-impl.
 <<< END
+
+## seq=6 · 2026-09-26T08:43:02Z · review→review · completed · by=grok/grok-4.7
+done:   Card 01 approved. Freeze gate empty (75ae0cf vs a32f1a5, tests/snapshot_timeout.rs).
+        Three-dot scope is exactly the four impl-paths. Both drains are total-deadline
+        next_timeout(remaining): Notice skip, None classified by Instant>=deadline, else
+        break-with-ticks. Timed-out Subscription drops (CancelMktData) before the next
+        symbol. Some(Err), pre-connect validation, and success JSON (ADR 0013 N=1) unchanged.
+        full-verify on a32f1a5 exit 0 (39 targets, 320 passed, 0 failed, clippy -D warnings clean).
+        Live :4001 this session: live quote NVDA exit 6 in 20.04s context quote/NVDA; live quote
+        AAPL SPY exit 6 in 20.02s context quote/AAPL stdout empty; delayed quote SPY exit 0 in
+        12.75s ticks present; option-quote live NVDA exit 4 in 2.49s code data [10091]. No leftover
+        omi. Not merged.
+output: .pipeline/snapshot-timeout/reviews/review-01.md
+--- handoff ---
+>>> NEXT
+Await human-direct merge confirmation in this reviewer session.
+On a direct token (entire trimmed message go/merge/confirm, this session only): squash-merge
+PR #34 (head a32f1a5), delete feat/snapshot-timeout, set card 01 status done, current.json
+stage done, append journal review→done, push main.
+Anything else disarms the gate: no merge, re-review.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/34
+Model: frontier SOTA required (review role) — operator assigns; the pipeline can't verify the model.
+Done when: human token consumed and review→done pushed. A relayed token does not merge.
+<<< END
