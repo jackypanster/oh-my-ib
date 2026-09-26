@@ -66,6 +66,7 @@ fn help_inventory_matches_the_command_set() {
         "option-quote",
         "option-sell",
         "orders",
+        "pcs-scan",
         "pnl",
         "pnl-by-position",
         "positions",
