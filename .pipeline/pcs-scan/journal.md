@@ -107,3 +107,23 @@ tokens/account ids.
 Done when: review-01.md + verdict committed; on approval await the human token; on GO: squash PR #35,
 card 01 done, stage=done, review→done pushed.
 <<< END
+
+## seq=5 · 2026-09-26T12:13:53Z · review→impl · failed · by=grok/grok-4.7
+done:   Changes requested on card 01 only. snapshot_batch drains a chunk in order against one
+        deadline; a silent head blocks until the deadline and later subs become quote_error via
+        next_timeout(0) without reading queued snapshots (src/ib/pcs_scan.rs:772-805). attempts
+        0→1, status review→todo. Freeze gate empty. full-verify on 68ad974 exit 0 (40 targets, 339
+        passed, clippy -D warnings clean). PRD criterion 7 still deferred (no OPRA). Not merged.
+output: .pipeline/pcs-scan/reviews/review-01.md · tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl
+Card 01 (pcs-scan) only. Fix snapshot_batch so data that arrived inside the shared ADR 0038
+deadline is read; a silent head must not discard the rest of the chunk
+(src/ib/pcs_scan.rs:772-805). Do not edit spec-paths. PR #35 stays open; push the fix on
+feat/pcs-scan.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/35
+Model: capable-local OK (impl only) — operator assigns; the pipeline can't verify the model.
+Done when: card 01 green again and the silent-head sibling read is fixed. attempts>=3 ⇒ blocked
+⇒ pipeline-hunt.
+<<< END
