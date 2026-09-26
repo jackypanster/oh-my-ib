@@ -108,6 +108,25 @@ Done when: review-01.md + verdict committed; on approval await the human token; 
 card 01 done, stage=done, review→done pushed.
 <<< END
 
+## seq=7 · 2026-09-26T12:34:29Z · review→impl · failed · by=grok/grok-4.7
+done:   Changes requested on card 01 only (round 2). Delta 68ad974..7426cb1 is src/ib/pcs_scan.rs.
+        drain_until_end classifies a blocking None that waited out `remaining` as Ok(()) because
+        `remaining` was captured before the call (src/ib/pcs_scan.rs:822-834). Probe at 7426cb1:
+        left Ok(()) right Err(QuoteError). attempts 1→2, status review→todo. Freeze empty.
+        full-verify exit 0. The already-past-deadline try_next path is present. Not merged.
+output: .pipeline/pcs-scan/reviews/review-02.md · tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl
+Card 01 (pcs-scan) only. After blocking returns None, if Instant::now() >= deadline fall through
+to the non-blocking buffer and quote_error when it has no SnapshotEnd. A None while now < deadline
+stays Ok. Add the sleep-then-None regression test. Do not edit spec-paths. PR #35 stays open;
+push the fix on feat/pcs-scan. attempts is 2; the next rejection blocks (pipeline-hunt).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/35
+Model: capable-local OK (impl only) — operator assigns; the pipeline can't verify the model.
+Done when: the probe asserts Err(QuoteError) and card 01 is green again.
+<<< END
+
 ## seq=5 · 2026-09-26T12:13:53Z · review→impl · failed · by=grok/grok-4.7
 done:   Changes requested on card 01 only. snapshot_batch drains a chunk in order against one
         deadline; a silent head blocks until the deadline and later subs become quote_error via
