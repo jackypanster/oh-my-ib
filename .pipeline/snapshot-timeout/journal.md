@@ -54,3 +54,29 @@ Your task (concrete, numbered):
   3. Stub-compile + clippy the spec in a scratch copy before freezing (frozen specs must be clippy-clean).
 Done when: card + frozen red spec committed, journal seq=3, current.json.stage=task.
 <<< END
+
+## seq=3 · 2026-09-26T07:10:55Z · arch→task · completed · by=cc/claude-opus-5-5
+done:   1 card (01-snapshot-deadline). Frozen red spec tests/snapshot_timeout.rs (7 tests; red = unresolved imports
+        SNAPSHOT_DEADLINE / snapshot_timeout_error). Verbatim stub-compile: 7/7 pass + clippy -D warnings clean on scratch
+        (scratch deleted). spec-rev 75ae0cf. check-cards ok.
+output: tests/snapshot_timeout.rs (spec-rev 75ae0cf) · .pipeline/snapshot-timeout/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none card=01
+Model: impl slot (Pi) — operator assigns; must differ from review model. Mode: coordinated (control.json).
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md (read FIRST) · .pipeline/snapshot-timeout/tasks/01.md (the card — steps + gotchas)
+  - .pipeline/snapshot-timeout/arch.md §Shape + §Loop (normative) · docs/adr/0038-snapshot-total-deadline.md
+Your task (concrete, numbered):
+  1. Branch feat/snapshot-timeout from main; set card 01 in-progress per CONTRACT.
+  2. Implement card 01 steps 1–4 in impl-paths ONLY; NEVER edit tests/snapshot_timeout.rs (spec-rev 75ae0cf).
+  3. verify: cargo build && cargo test --test snapshot_timeout; then full-verify (cargo test; clippy -D warnings).
+  4. Open a PR to main; card → review; journal seq bump.
+Feature gotchas (review scrutinizes by reading — NOT frozen): total-deadline loop at BOTH sites over
+  next_timeout(remaining) (not timeout_iter_data, not TAKE_FIRST_TIMEOUT); Notice ⇒ skip; None classified by
+  Instant::now() >= deadline (timeout) else break-with-ticks; Some(Err) + success output unchanged; subscription
+  dropped before next batch symbol; md-type label + instrument label wiring; stale ADR 0013/0019 comments updated.
+Done when: PR open, card 01 status=review, verify + full-verify green.
+<<< END
