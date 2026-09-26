@@ -48,3 +48,28 @@ Your task (concrete, numbered):
   3. Verbatim stub-compile + clippy -D warnings on a scratch copy before the freeze commit.
 Done when: freeze commit + card record commit pushed, journal seq=3, current.json.stage=task.
 <<< END
+
+## seq=3 · 2026-09-26T11:45:44Z · arch→task · completed · by=cc/claude-opus-5-5
+done:   1 card (01-pcs-scan). Frozen red spec tests/pcs_scan.rs (16 tests) + help_command.rs inventory re-freeze (+pcs-scan).
+        Verbatim stub-compile + clippy -D warnings clean on scratch (caught+fixed field_reassign_with_default pre-freeze).
+        spec-rev 4b19d3d. check-cards ok.
+output: tests/pcs_scan.rs, tests/help_command.rs (spec-rev 4b19d3d) · .pipeline/pcs-scan/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-impl on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none card=01
+Model: impl slot (Pi) — must differ from review model. Mode: coordinated (control.json).
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md (read FIRST) · .pipeline/pcs-scan/tasks/01.md (steps + gotchas)
+  - .pipeline/pcs-scan/arch.md §Shape/§CLI/§Pure seams/§Gateway flow (normative) · docs/adr/0039-*.md · CONTEXT.md
+Your task (concrete, numbered):
+  1. Branch feat/pcs-scan from main; card 01 in-progress per CONTRACT.
+  2. Implement card 01 steps 1–5 in impl-paths ONLY; NEVER edit tests/pcs_scan.rs or tests/help_command.rs (spec-rev 4b19d3d).
+  3. verify: cargo build && cargo test --test pcs_scan --test help_command; full-verify: cargo test + clippy -D warnings.
+  4. Open PR to main; card → review; journal seq bump.
+Feature gotchas (review scrutinizes by reading — NOT frozen): gateway flow 1–7; snapshot_batch ≤50 concurrent subs,
+  ONE shared ADR 0038 deadline per chunk, per-contract Err/timeout ⇒ skip (never command failure), chunk dropped before
+  next; chain row SMART & trading_class==symbol; skip precedence ADR 0039 §3; validate_params before connect; trade.rs untouched.
+Done when: PR open, card 01 status=review, verify + full-verify green.
+<<< END
