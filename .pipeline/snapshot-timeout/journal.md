@@ -135,3 +135,38 @@ Feature gotchas:
 Done when: review-01.md written; if human-confirmed + live-accepted: PR #34 squash-merged, card 01 done,
 stage=done, next journal seq pushed. On reject: card→todo/attempts=1, route pipeline-impl.
 <<< END
+
+## seq=5 · 2026-09-26T08:17:57Z · impl→review · completed · by=pi/deepseek-v4.1-flash
+done:   Corrects seq=4 (same run): its entry body exceeded the 40-line self-verify window, so this tail
+        is the run authority (seq=4 kept, append-only). Card 01 green @ a32f1a5 on feat/snapshot-timeout,
+        PR #34 open; verify 7/7 (build + test --test snapshot_timeout) + whole-suite cargo test + clippy
+        -D warnings GREEN; spec untouched (75ae0cf); Assumptions recorded on the card.
+output: src/ib/{mod,quote,option_quote}.rs + src/error.rs @ a32f1a5; PR #34; tasks/01.md (review)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/34
+Model: frontier SOTA required (review role) — operator assigns; the pipeline can't verify the model.
+First: git pull --rebase; no .env in this repo (runtime config: ~/.config/oh-my-ib/config.toml — never commit).
+Read for context (before acting): AGENTS.md (FIRST) · tasks/01.md (steps + Freeze coverage + Assumptions)
+· docs/adr/0038-snapshot-total-deadline.md (§Decision 2 normative) · arch.md · tests/snapshot_timeout.rs
+(spec-rev 75ae0cf) · the diff (src/ib/mod.rs, quote.rs, option_quote.rs, src/error.rs).
+Your task (concrete, numbered):
+  1. Freeze gate: git diff 75ae0cfd4839bffb715226e89f3dddfa0a2eb040 <PR-head> -- tests/snapshot_timeout.rs
+     — non-empty ⇒ REJECT (attempts++, card→todo, route impl). No other tests/* churn vs main.
+  2. Scope: PR diff exactly impl-paths: src/ib/mod.rs, quote.rs, option_quote.rs, error.rs.
+  3. Full-suite gate on PR head: cargo build && cargo test (unfiltered) + clippy --all-targets -D warnings.
+  4. Semantic read (no hermetic seam — silent snapshot needs a fake IB server): total-deadline loop over
+     next_timeout(remaining) at BOTH sites (NOT timeout_iter_data/TAKE_FIRST_TIMEOUT); Notice ⇒ skip;
+     None by Instant >= deadline vs before-deadline break-with-ticks; Some(Err) + success output
+     unchanged; timed-out sub dropped before next symbol (CancelMktData); labels wired; ADR 0013/0019
+     D2 comments cite 0038.
+  5. Verdict → reviews/review-01.md. APPROVE ⇒ run ALL pre-merge guards, then ONE atomic commit per
+     CONTRACT §Atomic review outcome; do NOT merge without explicit human confirmation. REJECT ⇒
+     attempts++, card→todo, journal failed, route pipeline-impl.
+Gotchas: only card 01 (completeness trivially passes) · operator live acceptance on :4001: live quote
+NVDA ⇒ exit 6 ≤ ~25s timeout/quote/NVDA; delayed quote SPY ⇒ success — record evidence before merge ·
+public repo: no tokens/account ids.
+Done when: review-01.md written; on human GO + live evidence: PR #34 squash-merged, card 01 done,
+stage=done, next seq pushed. On reject: card→todo/attempts=1, route pipeline-impl.
+<<< END
