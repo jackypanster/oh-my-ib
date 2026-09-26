@@ -59,6 +59,29 @@ const CONNECT_BACKOFF_MS: u64 = 250;
 /// is silent (emits nothing), so tunability buys nothing; a healthy first tick arrives <1s live.
 pub const TAKE_FIRST_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Total per-snapshot deadline (ADR 0038): ONE bound for the WHOLE snapshot drain, measured
+/// from just after `subscribe()` — not a per-item window (`timeout_iter_data` resets on every
+/// tick, so a trickle could extend the drain unboundedly). 20s > IB's doc-cited ≈11s
+/// `tickSnapshotEnd` tail, so a healthy snapshot never false-times-out; deliberately NOT
+/// `TAKE_FIRST_TIMEOUT` (10s < the 11s tail). Live-proven need: a silent snapshot (no tick,
+/// no error, no SnapshotEnd) otherwise blocks forever.
+pub const SNAPSHOT_DEADLINE: Duration = Duration::from_secs(20);
+
+/// Pure builder for the snapshot-drain timeout error (ADR 0038 §Decision 3): code `timeout`,
+/// exit 6. `instrument` is the symbol (quote) or `<symbol> <expiry> <strike> <C|P>`
+/// (option-quote); `md_type` is the CLI spelling `live|delayed|frozen`; `context` is
+/// `quote/<symbol>` / `option-quote`. Single-line message; the `20` is formatted from
+/// `SNAPSHOT_DEADLINE.as_secs()`, never a literal.
+pub fn snapshot_timeout_error(instrument: &str, md_type: &str, context: &str) -> AppError {
+    AppError::timeout(
+        format!(
+            "no SnapshotEnd within {}s for {instrument} (md-type={md_type}) — no real-time snapshot entitlement for this instrument, or market closed with no ticks; try --md-type delayed",
+            SNAPSHOT_DEADLINE.as_secs()
+        ),
+        context,
+    )
+}
+
 /// Whether a connection error is transient (worth a short retry) vs permanent. EAGAIN maps to
 /// `WouldBlock` — the error seen when two account-scoped commands reconnect back-to-back with the
 /// same client_id before the gateway has released the prior subscription.

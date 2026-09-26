@@ -7,7 +7,7 @@ use std::fmt;
 pub enum ErrorKind {
     /// Could not reach / handshake with the IB Gateway.
     Connection,
-    /// A bounded read produced no data in time — gateway-side wedge; the cure is a gateway restart.
+    /// A bounded read produced no data in time (the message names the cause/cure).
     Timeout,
     /// A requested entity (contract, account) does not exist.
     NotFound,

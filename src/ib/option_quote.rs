@@ -1,17 +1,18 @@
 //! `option-quote` — snapshot quote + best-effort greeks for one option contract. READ ONLY.
 //!
 //! Reuses the `quote.rs` snapshot-drain class (ADR 0013): `market_data(..).snapshot()` drained
-//! bare to `SnapshotEnd` — deliberately NOT timeout-wrapped (ADR 0019 D2; `SnapshotEnd` is
-//! request-id-routed with no observed wedge, matching quote.rs:44-45). Price ticks flow into
-//! `ticks` via `quote_price_tick`; OptionComputation rows are filtered to the MODEL rows only
-//! (ADR 0019 D3): `ModelOption`(13)/`DelayedModelOption`(83) populate `greeks` (last-write-wins),
-//! every other computation row is dropped. If no model row arrives before `SnapshotEnd` the
-//! `greeks` key is ABSENT and the output is still a success — under delayed+snapshot some data
-//! farms never push computations, and failing there would break the default path.
+//! to `SnapshotEnd` under the shared TOTAL `SNAPSHOT_DEADLINE` (ADR 0038; amends ADR 0019 D2's
+//! "deliberately NOT timeout-wrapped" posture — live-proven silent snapshots). Price ticks flow
+//! into `ticks` via `quote_price_tick`; OptionComputation rows are filtered to the MODEL rows
+//! only (ADR 0019 D3): `ModelOption`(13)/`DelayedModelOption`(83) populate `greeks`
+//! (last-write-wins), every other computation row is dropped. If no model row arrives before
+//! `SnapshotEnd` the `greeks` key is ABSENT and the output is still a success — under
+//! delayed+snapshot some data farms never push computations, and failing there would break the
+//! default path.
 
 use ibapi::contracts::tick_types::TickType;
 use ibapi::market_data::MarketDataType;
-use ibapi::prelude::{Contract, TickTypes};
+use ibapi::prelude::{Contract, SubscriptionItem, TickTypes};
 use serde_json::{json, Map, Value};
 
 use crate::cli::OptionQuoteArgs;
@@ -179,11 +180,12 @@ pub fn option_quote(cfg: &Config, args: &OptionQuoteArgs) -> Result<Value, AppEr
 
     let client = super::connect(cfg)?;
 
-    // md-type switch (quote.rs:32-39 verbatim) — `delayed` threads into the output echo.
-    let (market_data_type, delayed) = match cfg.md_type {
-        MdType::Live => (MarketDataType::Realtime, false),
-        MdType::Delayed => (MarketDataType::Delayed, true),
-        MdType::Frozen => (MarketDataType::Frozen, false),
+    // md-type switch (quote.rs:32-39 verbatim) — `delayed` threads into the output echo;
+    // `md_label` feeds the bounded-drain timeout error (ADR 0038).
+    let (market_data_type, delayed, md_label) = match cfg.md_type {
+        MdType::Live => (MarketDataType::Realtime, false, "live"),
+        MdType::Delayed => (MarketDataType::Delayed, true, "delayed"),
+        MdType::Frozen => (MarketDataType::Frozen, false, "frozen"),
     };
     client
         .switch_market_data_type(market_data_type)
@@ -209,20 +211,41 @@ pub fn option_quote(cfg: &Config, args: &OptionQuoteArgs) -> Result<Value, AppEr
         .subscribe()
         .map_err(|e| AppError::data(format!("market_data failed: {e}"), "option-quote"))?;
 
-    // Bare iter_data() to SnapshotEnd (ADR 0019 D2 — quote.rs class, NOT timeout-wrapped).
+    // Total-deadline drain (ADR 0038 §Decision 2; quote.rs verbatim): `next_timeout(remaining)`
+    // until SnapshotEnd / Err / None; `Notice` skipped (iter_data parity); `None` Instant-
+    // classified — at/after the deadline a timeout, before it stream-self-end ⇒ success.
+    // Dropping the timed-out `subscription` sends CancelMktData (ibapi cancellation on Drop).
+    let instrument_label = format!("{} {} {} {}", args.symbol, args.expiry, args.strike, normalized);
+    let deadline = std::time::Instant::now() + super::SNAPSHOT_DEADLINE;
     let mut ticks: Map<String, Value> = Map::new();
     let mut greeks: Option<GreeksRow> = None;
-    for tick in subscription.iter_data() {
-        let tick =
-            tick.map_err(|e| AppError::data(format!("market_data stream: {e}"), "option-quote"))?;
-        if matches!(tick, TickTypes::SnapshotEnd) {
-            break;
-        }
-        if let Some((label, price)) = super::quote_price_tick(&tick) {
-            ticks.insert(label, json!(price));
-        }
-        if let Some(row) = option_quote_greeks(&tick) {
-            greeks = Some(row); // last-model-row-wins (ADR 0019 D3)
+    loop {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        match subscription.next_timeout(remaining) {
+            Some(Ok(SubscriptionItem::Data(TickTypes::SnapshotEnd))) => break,
+            Some(Ok(SubscriptionItem::Data(tick))) => {
+                if let Some((label, price)) = super::quote_price_tick(&tick) {
+                    ticks.insert(label, json!(price));
+                }
+                if let Some(row) = option_quote_greeks(&tick) {
+                    greeks = Some(row); // last-model-row-wins (ADR 0019 D3)
+                }
+            }
+            Some(Ok(SubscriptionItem::Notice(_))) => continue,
+            Some(Err(e)) => {
+                return Err(AppError::data(
+                    format!("market_data stream: {e}"),
+                    "option-quote",
+                ))
+            }
+            None if std::time::Instant::now() >= deadline => {
+                return Err(super::snapshot_timeout_error(
+                    &instrument_label,
+                    md_label,
+                    "option-quote",
+                ))
+            }
+            None => break,
         }
     }
 
