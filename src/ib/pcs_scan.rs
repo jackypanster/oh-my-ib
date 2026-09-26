@@ -812,6 +812,9 @@ fn to_drain_read<E>(item: Result<SubscriptionItem<TickTypes>, E>) -> DrainRead<T
 /// which skip-failed every later subscription of a chunk whose head held the shared deadline.
 /// `SnapshotEnd` in either phase ⇒ `Ok`; the post-deadline buffer exhausted without `SnapshotEnd`
 /// ⇒ `quote_error` (ADR 0038); pre-deadline `None` (stream self-ended) ⇒ `Ok` (ADR 0016).
+/// A blocking `None` is classified AFTER the call by `Instant::now()` — never by the pre-call
+/// `remaining`, which cannot tell a self-end from a read that slept out the window. Waited out ⇒
+/// deadline timeout ⇒ fall through to the buffered phase; still early ⇒ self-ended `Ok`.
 fn drain_until_end<T>(
     deadline: Instant,
     mut blocking: impl FnMut(Duration) -> Option<DrainRead<T>>,
@@ -820,18 +823,27 @@ fn drain_until_end<T>(
 ) -> Result<(), SkipReason> {
     loop {
         let remaining = deadline.saturating_duration_since(Instant::now());
-        let read = if remaining.is_zero() {
-            buffered()
+        if remaining.is_zero() {
+            // Past the shared deadline: NON-blocking reads only, and an exhausted buffer here IS
+            // this contract's timeout (ADR 0038).
+            match buffered() {
+                Some(DrainRead::End) => return Ok(()),
+                Some(DrainRead::Data(item)) => on_data(item),
+                Some(DrainRead::Notice) => {}
+                Some(DrainRead::Error) | None => return Err(SkipReason::QuoteError),
+            }
         } else {
-            blocking(remaining)
-        };
-        match read {
-            Some(DrainRead::End) => return Ok(()),
-            Some(DrainRead::Data(item)) => on_data(item),
-            Some(DrainRead::Notice) => {}
-            Some(DrainRead::Error) => return Err(SkipReason::QuoteError),
-            None if remaining.is_zero() => return Err(SkipReason::QuoteError),
-            None => return Ok(()),
+            match blocking(remaining) {
+                Some(DrainRead::End) => return Ok(()),
+                Some(DrainRead::Data(item)) => on_data(item),
+                Some(DrainRead::Notice) => {}
+                Some(DrainRead::Error) => return Err(SkipReason::QuoteError),
+                // Re-check the clock AFTER the call: a read that slept out `remaining` is the
+                // deadline timeout and falls through to the buffered phase on the next iteration;
+                // only a `None` returned while time remains is the stream self-end.
+                None if Instant::now() < deadline => return Ok(()),
+                None => {}
+            }
         }
     }
 }
@@ -930,6 +942,46 @@ mod tests {
             |_| {},
         );
         assert!(result.is_ok());
+    }
+
+    /// Review-02 F2 regression: a blocking read that SLEEPS OUT `remaining` and returns `None`
+    /// (a real ibapi timeout) must classify as this contract's timeout. At 7426cb1 `remaining`
+    /// was captured before the call, so the post-call `None` still saw a non-zero `remaining`
+    /// and returned `Ok(())` (an empty-but-"successful" snapshot).
+    #[test]
+    fn drain_until_end_blocking_none_at_deadline_is_quote_error() {
+        let deadline = Instant::now() + Duration::from_millis(50);
+        let result = drain_until_end::<u32>(
+            deadline,
+            |remaining| {
+                std::thread::sleep(remaining);
+                None
+            },
+            || None,
+            |_| {},
+        );
+        assert_eq!(result, Err(SkipReason::QuoteError));
+    }
+
+    /// A blocking timeout (`None` at/after the deadline) falls through to the buffered phase and
+    /// reads what arrived inside the window: `Data` + `SnapshotEnd` ⇒ `Ok` with that data.
+    #[test]
+    fn drain_until_end_blocking_timeout_falls_through_to_buffer() {
+        let deadline = Instant::now() + Duration::from_millis(50);
+        let mut buffered = VecDeque::from([DrainRead::Data(9_u32), DrainRead::End]);
+        let mut seen: Vec<u32> = Vec::new();
+        let result = drain_until_end::<u32>(
+            deadline,
+            |remaining| {
+                std::thread::sleep(remaining);
+                None
+            },
+            || buffered.pop_front(),
+            |item| seen.push(item),
+        );
+        assert!(result.is_ok(), "buffered SnapshotEnd after a timeout => Ok");
+        assert_eq!(seen, vec![9], "ticks buffered inside the window are recorded");
+        assert!(buffered.is_empty(), "drain stops at SnapshotEnd");
     }
 
     #[test]
