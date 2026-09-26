@@ -32,3 +32,25 @@ Your task (concrete, numbered):
   4. Name the pure freezable seams (deadline const, timeout-error builder) for pipeline-task.
 Done when: arch.md + CONTEXT.md + ADR committed with journal seq=2, current.json.stage=arch.
 <<< END
+
+## seq=2 · 2026-09-26T07:08:19Z · prd→arch · completed · by=cc/claude-opus-5-5
+done:   arch for snapshot-timeout: total-deadline loop over next_timeout(remaining) at both snapshot drains,
+        SNAPSHOT_DEADLINE=20s (📖 IB tickSnapshotEnd ≈11s; ≠ TAKE_FIRST_TIMEOUT 10s), pure snapshot_timeout_error
+        builder, Instant-classified None, CancelMktData-on-drop. PRD ⚠️ D2/D4 settled. ADR 0038 amends 0013/0019 D2.
+output: .pipeline/snapshot-timeout/arch.md · CONTEXT.md · docs/adr/0038-snapshot-total-deadline.md
+--- handoff ---
+>>> NEXT
+Run pipeline-task on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=none
+Model: frontier SOTA required (CC role). Mode: coordinated (control.json) — Pi=impl, Codex=review+merge on human-direct token.
+First: git pull --rebase; no .env in this repo (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md (read FIRST) · .pipeline/snapshot-timeout/{PRD.md,arch.md,CONTEXT.md,docs/adr/0038-snapshot-total-deadline.md}
+  - tests/read_timeouts.rs, tests/multi_quote.rs — frozen-spec style precedent (offline, no mocks)
+Your task (concrete, numbered):
+  1. ONE card `01-snapshot-deadline`: spec-paths tests/snapshot_timeout.rs; impl-paths src/ib/mod.rs,
+     src/ib/quote.rs, src/ib/option_quote.rs, src/error.rs.
+  2. Write the red spec per arch.md §Freeze coverage items 1–4 (const, error builder, option label, dead-port/help regressions).
+  3. Stub-compile + clippy the spec in a scratch copy before freezing (frozen specs must be clippy-clean).
+Done when: card + frozen red spec committed, journal seq=3, current.json.stage=task.
+<<< END
