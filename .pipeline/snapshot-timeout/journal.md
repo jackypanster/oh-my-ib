@@ -80,3 +80,58 @@ Feature gotchas (review scrutinizes by reading — NOT frozen): total-deadline l
   dropped before next batch symbol; md-type label + instrument label wiring; stale ADR 0013/0019 comments updated.
 Done when: PR open, card 01 status=review, verify + full-verify green.
 <<< END
+
+## seq=4 · 2026-09-26T08:17:31Z · impl→review · completed · by=pi/deepseek-v4.1-flash
+done:   Card 01 green on feat/snapshot-timeout @ a32f1a5, PR #34 open. SNAPSHOT_DEADLINE (20s, total per
+        snapshot) + pure snapshot_timeout_error builder in src/ib/mod.rs; both drains (quote_one,
+        option_quote) swapped to the total-deadline loop over next_timeout(remaining): Notice skip,
+        Instant-classified None, drop ⇒ CancelMktData, md-type + instrument labels wired; stale ADR
+        0013/0019 D2 comments updated to ADR 0038; ErrorKind::Timeout doc broadened. Spec untouched
+        (75ae0cf). verify 7/7 (cargo build + cargo test --test snapshot_timeout) + whole-suite cargo
+        test + clippy -D warnings GREEN. No SKILL-PROPOSAL.
+output: src/ib/{mod,quote,option_quote}.rs + src/error.rs on feat/snapshot-timeout @ a32f1a5;
+        https://github.com/jackypanster/oh-my-ib/pull/34; tasks/01.md (review + Assumptions);
+        .pipeline/current.json (stage=impl)
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/34
+Model: frontier SOTA required (review role) — operator assigns the bot; the pipeline can't verify the model.
+Mode: coordinated (control.json) — CC=prd/arch/task, Pi=impl, Codex=review+merge on human-direct token.
+First: git pull --rebase; no .env in this repo (runtime config lives at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting):
+  - AGENTS.md (read FIRST) — repo conventions + hard safety rules
+  - .pipeline/snapshot-timeout/tasks/01.md — card 01: steps, Freeze coverage, Assumptions
+  - docs/adr/0038-snapshot-total-deadline.md (§Decision 2 loop is normative) + .pipeline/snapshot-timeout/arch.md
+  - tests/snapshot_timeout.rs — the frozen spec (spec-rev 75ae0cf)
+  - src/ib/mod.rs, src/ib/quote.rs, src/ib/option_quote.rs, src/error.rs — the PR diff
+Your task (concrete, numbered):
+  1. Freeze gate (deterministic, FIRST): git diff 75ae0cfd4839bffb715226e89f3dddfa0a2eb040 <PR-head> --
+     tests/snapshot_timeout.rs — non-empty ⇒ REJECT (attempts++, card→todo, route impl). Confirm no
+     other tests/* changed vs main.
+  2. Scope: the PR diff must be exactly impl-paths (src/ib/mod.rs, src/ib/quote.rs,
+     src/ib/option_quote.rs, src/error.rs).
+  3. Full-suite gate: on the PR head run current.json.full-verify exactly — cargo build && cargo test
+     (whole suite, unfiltered) + cargo clippy --all-targets -- -D warnings.
+  4. Semantic read (card Freeze coverage names the read-targets; no hermetic seam — a silent snapshot
+     needs a fake IB server): total-deadline loop over next_timeout(remaining) at BOTH sites (NOT
+     timeout_iter_data, NOT TAKE_FIRST_TIMEOUT); Notice ⇒ skip (iter_data parity); None classified by
+     Instant >= deadline (timeout) vs before-deadline break-with-ticks; Some(Err) arm + success output
+     unchanged (N=1 byte-identity, ADR 0013); timed-out subscription dropped before the next batch
+     symbol (CancelMktData); md-type label live|delayed|frozen + instrument label wiring; stale ADR
+     0013/0019 D2 comments now cite ADR 0038.
+  5. Verdict → reviews/review-01.md. APPROVE ⇒ run EVERY pre-merge guard first (freeze gate, semantic
+     review, every-card-review completeness, full-suite GREEN on feat/snapshot-timeout HEAD), then
+     publish the ONE atomic commit per CONTRACT §Atomic review outcome. Do NOT merge without explicit
+     human confirmation. REJECT ⇒ attempts++, card→todo, journal status=failed, route pipeline-impl
+     with findings.
+Feature gotchas:
+  - Card 01 is the feature's ONLY card — completeness guard trivially passes; review runs ONCE on the
+    whole feature (PR #34).
+  - Operator live acceptance (needs the :4001 gateway; not a hermetic gate): omi --live --md-type live
+    quote NVDA ⇒ exit 6 within ~25s, stderr code timeout, context quote/NVDA; omi --live --md-type
+    delayed quote SPY ⇒ success with ticks. Record the evidence before merge.
+  - Public repo: never commit tokens/account ids; runtime config is ~/.config/oh-my-ib/config.toml.
+Done when: review-01.md written; if human-confirmed + live-accepted: PR #34 squash-merged, card 01 done,
+stage=done, next journal seq pushed. On reject: card→todo/attempts=1, route pipeline-impl.
+<<< END
