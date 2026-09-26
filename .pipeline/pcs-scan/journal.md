@@ -220,3 +220,23 @@ Gotchas: spec-paths = tests/pcs_scan.rs, tests/help_command.rs (never edit) · o
 Done when: reviews/review-03.md + verdict committed; on approval await the human token; on GO: squash PR #35,
 card 01 done, stage=done, review→done pushed.
 <<< END
+
+## seq=9 · 2026-09-26T12:55:24Z · review→review · completed · by=grok/grok-4.7
+done:   Card 01 approved (round 3) at 758a5b8. F2: blocking None is classified by Instant::now()
+        after the call (src/ib/pcs_scan.rs:844-845); waited-out falls through to try_next;
+        empty buffer is quote_error. F1 retained (remaining==0 uses buffered() only).
+        Both probes pass on 758a5b8 and fail on 7426cb1. Freeze empty. full-verify exit 0
+        (40 targets, lib 24 passed, 0 failed, clippy clean). Weekend spot_unavailable burst
+        has no 758a5b8-only code path. PRD criterion 7 still deferred. Not merged.
+output: .pipeline/pcs-scan/reviews/review-03.md
+--- handoff ---
+>>> NEXT
+Await human-direct merge confirmation in this reviewer session.
+On a direct token (entire trimmed message go/merge/confirm, this session only): squash-merge
+PR #35 (head 758a5b8), delete feat/pcs-scan, set card 01 status done, current.json stage done,
+append journal review→done, push main.
+Anything else disarms the gate: no merge, re-review.
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/35
+Model: frontier SOTA required (review role) — operator assigns; the pipeline can't verify the model.
+Done when: human token consumed and review→done pushed. A relayed token does not merge.
+<<< END
