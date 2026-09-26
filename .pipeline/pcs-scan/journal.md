@@ -180,3 +180,43 @@ repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/
 Model: capable-local OK (impl only) — operator assigns; the pipeline can't verify the model.
 Done when: the probe asserts Err(QuoteError) and card 01 is green again.
 <<< END
+## seq=8 · 2026-09-26T12:43:52Z · impl→review · completed · by=pi/deepseek-v4.1-flash
+done:   Review-02 F2 fixed @ 758a5b8 on feat/pcs-scan (PR #35): drain_until_end classifies every
+        blocking None AFTER the call by Instant::now() — waited-out ⇒ timeout ⇒ buffered phase
+        (no SnapshotEnd ⇒ quote_error); still-early ⇒ self-end Ok. Two regression tests added:
+        both FAIL on 7426cb1 (Ok(()) vs Err(QuoteError); seen [] vs [9]) and pass on the fix
+        (all 5 drain_until_end tests green). Card 01 green: verify (16+4) + full cargo test
+        (unfiltered) + clippy -D warnings clean; spec-rev 4b19d3d untouched; PR comment
+        #issuecomment-5846367002 posted with the evidence. attempts stay 2 ⇒ any next rejection
+        is blocked ⇒ hunt.
+output: src/ib/pcs_scan.rs @ 758a5b8 (feat/pcs-scan) · .pipeline/pcs-scan/tasks/01.md
+--- handoff ---
+>>> NEXT
+Run pipeline-review on a FRESH session (assume you know nothing — rebuild from the repo + CONTRACT.md).
+repo=git@github.com:jackypanster/oh-my-ib.git branch=main pr=https://github.com/jackypanster/oh-my-ib/pull/35
+Model: frontier SOTA required (review role) — operator assigns; the pipeline can't verify the model.
+Mode: coordinated (control.json) — Pi=impl, reviewer=review+merge on a direct human token.
+First: git pull --rebase; no .env (runtime config at ~/.config/oh-my-ib/config.toml — never commit it).
+Read for context (before acting): AGENTS.md (FIRST) · CONTRACT.md · .pipeline/pcs-scan/tasks/01.md
+(steps + Freeze coverage + Assumptions) · .pipeline/pcs-scan/reviews/review-01.md (F1) and
+review-02.md (F2 — this round's fix) · arch.md §Gateway flow/§Pure seams · docs/adr/0038-*.md ·
+tests/pcs_scan.rs (spec-rev 4b19d3d) · PR #35 diff (delta 7426cb1..758a5b8 = src/ib/pcs_scan.rs only).
+Your task (concrete, numbered):
+  1. Freeze gate: git diff 4b19d3d2f94d7d8623a4b0809dd21f8ec19ce8b5 origin/feat/pcs-scan -- tests/pcs_scan.rs tests/help_command.rs — non-empty ⇒ REJECT.
+  2. Full-verify on origin/feat/pcs-scan HEAD (758a5b8): cargo build && cargo test (unfiltered) && cargo clippy --all-targets -- -D warnings.
+  3. Semantic read of the F2 fix: drain_until_end — a blocking None is re-checked by Instant::now() AFTER
+     the call; waited-out ⇒ buffered phase (no SnapshotEnd ⇒ quote_error); pre-deadline None ⇒ Ok; the
+     buffered phase is non-blocking only (no next_timeout(0) past the deadline — F1 retained).
+  4. Read the two new tests: sleep-out None ⇒ Err(QuoteError); a timeout falling through to a Data+End
+     buffer ⇒ Ok with [9]. Confirm both fail on 7426cb1 per the PR comment evidence.
+  5. Verdict → reviews/review-03.md per CONTRACT §Atomic review outcome (only card; it must read review).
+     APPROVE ⇒ ONE commit (review file + review→review · completed journal whose NEXT first line is exactly
+     "Await human-direct merge confirmation in this reviewer session."); merge ONLY after the direct human token.
+     REJECT ⇒ attempts 2→3 ⇒ blocked ⇒ ONE commit (review file + card review→blocked + review→hunt · blocked
+     journal), route pipeline-hunt (never another impl round).
+Gotchas: spec-paths = tests/pcs_scan.rs, tests/help_command.rs (never edit) · one card only · attempts=2:
+     ANY rejection means blocked ⇒ hunt, not impl · live acceptance (OPRA, US RTH, :4001) = PRD criterion 7
+     after merge · public repo: no tokens/account ids.
+Done when: reviews/review-03.md + verdict committed; on approval await the human token; on GO: squash PR #35,
+card 01 done, stage=done, review→done pushed.
+<<< END
