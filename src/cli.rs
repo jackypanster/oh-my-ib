@@ -92,6 +92,7 @@ pub enum Command {
     /// Change the limit price of an open single-leg LMT order.
     /// Without --confirm, print a JSON preview and send nothing.
     /// With --confirm, resubmit the same order id (TWS modify — not cancel+replace).
+    /// Global --preview forces that preview even if --confirm is set (no place_order).
     /// Live needs --live + OMI_ALLOW_LIVE=1. The new notional is checked against OMI_MAX_NOTIONAL.
     Reprice(RepriceArgs),
     /// Option chain (expirations × strikes) for an underlying

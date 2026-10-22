@@ -1446,10 +1446,22 @@ pub fn reprice_order(order: &Order, order_id: i32, new_price: f64) -> Order {
     next
 }
 
+/// Whether `reprice` may call `place_order`.
+///
+/// `--confirm` alone transmits. The global `--preview` flag forces the preview
+/// path (no transmit, no live-write gate) even when `--confirm` is also set,
+/// matching `place_core` / option writes. Exit 8 and the open-order-only guard
+/// are unchanged: this only decides whether the confirm arm is allowed to run.
+pub fn reprice_transmits(confirm: bool, global_preview: bool) -> bool {
+    confirm && !global_preview
+}
+
 /// Pure decision. `confirm == false` is always a preview (even when the live cap
 /// would block a later confirm — `risk_blocked` says so, and nothing is sent).
-/// `confirm == true` over the live cap is `Err` guard/64 and does not submit.
-/// A non-LMT / non single-leg target is data/4 on both arms.
+/// Callers pass `reprice_transmits(args.confirm, cfg.preview)` so a global
+/// `--preview` stays a preview. `confirm == true` over the live cap is `Err`
+/// guard/64 and does not submit. A non-LMT / non single-leg target is data/4
+/// on both arms.
 pub fn plan_reprice(
     confirm: bool,
     is_live: bool,
@@ -1603,10 +1615,13 @@ fn find_open_order(
 
 /// Modify the limit price of an open single-leg LMT.
 ///
-/// Without `--confirm`: connect, read the open order, print a preview, return.
-/// `place_order` is not called. With `--confirm`: same read, re-check
+/// Without `--confirm`, or with the global `--preview` flag (even if `--confirm`
+/// is set): connect, read the open order, print a preview, return. `place_order`
+/// is not called and the live-write gate is skipped (preview is a read, same as
+/// `place_core`). With `--confirm` and no `--preview`: same read, re-check
 /// `OMI_MAX_NOTIONAL` against the new price, then `place_order` with the SAME
 /// order id (TWS modify). No cancel+replace. Live still needs the double gate.
+/// Exit 8 (unconfirmed after send) and the open-order-only guard are unchanged.
 pub fn reprice(cfg: &Config, args: &RepriceArgs) -> Result<Value, AppError> {
     let ctx = "reprice";
     if args.order_id < 1 {
@@ -1624,8 +1639,10 @@ pub fn reprice(cfg: &Config, args: &RepriceArgs) -> Result<Value, AppError> {
             ctx,
         ));
     }
-    // Preview is a read. Confirm is a write: the live-port gate runs BEFORE connect.
-    if args.confirm {
+    // Global `--preview` wins over `--confirm`: no gate, no place_order.
+    // A real confirm is a write: the live-port gate runs BEFORE connect.
+    let transmit = reprice_transmits(args.confirm, cfg.preview);
+    if transmit {
         require_live_write_gate(cfg)?;
     }
     // Fail closed on a bad cap before any connection, on both arms. Nothing is sent.
@@ -1636,7 +1653,7 @@ pub fn reprice(cfg: &Config, args: &RepriceArgs) -> Result<Value, AppError> {
     let open = find_open_order(&client, args.order_id, cfg.account.as_deref())?;
     let target = target_from(&open);
     let is_live = cfg.port == LIVE_PORT;
-    match plan_reprice(args.confirm, is_live, cap, &target, args.price)? {
+    match plan_reprice(transmit, is_live, cap, &target, args.price)? {
         RepricePlan::Preview(v) => Ok(v),
         RepricePlan::Submit(plan) => {
             let mut order = reprice_order(&open.order, plan.order_id, plan.new_price);

@@ -16,11 +16,25 @@ use serde_json::{json, Value};
 
 use oh_my_ib::ib::submit_timeout_error;
 use oh_my_ib::ib::{
-    build_stk_order, classify_submit_error, plan_reprice, reprice_order, RepricePlan, RepriceTarget,
+    build_stk_order, classify_submit_error, plan_reprice, reprice_order, reprice_transmits,
+    RepricePlan, RepriceTarget,
 };
+use std::net::TcpStream;
+use std::time::Duration;
 
 fn omi() -> Command {
     Command::cargo_bin("omi").expect("the `omi` binary should build")
+}
+
+/// 127.0.0.1:4001 accepting TCP means a live gateway may be up. The
+/// `--preview --confirm --live` test assumes a dead port (it asserts
+/// `connection`). Skip when reachable so the test never places an order.
+fn live_gateway_reachable() -> bool {
+    "127.0.0.1:4001"
+        .parse()
+        .ok()
+        .and_then(|addr| TcpStream::connect_timeout(&addr, Duration::from_millis(300)).ok())
+        .is_some()
 }
 
 fn stk(qty: f64, limit: f64, multiplier: f64) -> RepriceTarget {
@@ -259,6 +273,61 @@ fn combo_is_out_of_scope_exit_4() {
     let err = plan_reprice(true, false, 500.0, &target, 0.4).unwrap_err();
     assert_eq!(err.exit_code(), 4);
     assert_eq!(err.code(), "data");
+}
+
+// ---- global --preview wins over --confirm (no transmit, no live-write gate) --
+
+#[test]
+fn global_preview_overrides_confirm_and_does_not_plan_a_submit() {
+    assert!(!reprice_transmits(true, true), "--preview + --confirm must not transmit");
+    assert!(reprice_transmits(true, false), "--confirm alone transmits");
+    assert!(!reprice_transmits(false, false));
+    assert!(!reprice_transmits(false, true));
+    let plan = plan_reprice(
+        reprice_transmits(true, true),
+        true,
+        500.0,
+        &stk(10.0, 10.0, 1.0),
+        11.0,
+    )
+    .unwrap();
+    match plan {
+        RepricePlan::Preview(v) => {
+            assert_eq!(v["preview"], json!(true));
+            assert_eq!(v["transmits"], json!(false));
+        }
+        RepricePlan::Submit(_) => panic!("global --preview must not plan a place_order"),
+    }
+}
+
+#[test]
+fn cli_global_preview_with_confirm_skips_the_live_write_gate() {
+    if live_gateway_reachable() {
+        eprintln!("skip: 127.0.0.1:4001 is open; refusing to risk a live modify");
+        return;
+    }
+    let (code, v) = stderr_code(
+        omi()
+            .env_remove("OMI_ALLOW_LIVE")
+            .env_remove("OMI_MAX_NOTIONAL")
+            .args([
+                "--format",
+                "json",
+                "--preview",
+                "--live",
+                "reprice",
+                "--price",
+                "1",
+                "7",
+                "--confirm",
+            ]),
+    );
+    assert_ne!(
+        v["error"]["code"], "config",
+        "global --preview must skip the live-write gate even with --confirm"
+    );
+    assert_eq!(code, 2, "dead :4001 is a connection error, not a placed order");
+    assert_eq!(v["error"]["code"], "connection");
 }
 
 // ---- CLI usage + the unchanged live-port gate -------------------------------

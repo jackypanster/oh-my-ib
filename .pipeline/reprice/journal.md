@@ -49,3 +49,18 @@ Paper acceptance (operator, :4002, no live): place a far LMT, preview reprice (p
 confirm reprice (same order id, new price, no second order), cancel. If Tiger rejects or
 duplicates, record it — do not add cancel+replace.
 <<< END
+
+## seq=5 · 2026-10-22T07:10:00Z · impl · completed · by=cloud-agent
+done:   Review fix (PR #36, was 4245609). `reprice` honors global `--preview`:
+        `reprice_transmits(confirm, cfg.preview)` is `confirm && !preview`. That bool
+        drives both `require_live_write_gate` and `plan_reprice`, so
+        `omi --preview reprice --confirm` returns the preview JSON and does not call
+        `place_order`. Exit 8 and the open-order-only guard are unchanged.
+        docs/write-path-semantics.md opening write list now includes `reprice`.
+output: src/ib/trade.rs, src/ib/mod.rs, src/cli.rs, AGENTS.md,
+        docs/write-path-semantics.md, tests/reprice.rs
+--- handoff ---
+>>> NEXT
+Review is still the open PR. Do not merge. Tiger/IB Gateway live+paper modify
+was NOT exercised in the cloud VM.
+<<< END
