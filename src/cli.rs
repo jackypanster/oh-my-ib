@@ -89,6 +89,11 @@ pub enum Command {
     Sell(OrderArgs),
     /// Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
     Cancel(CancelArgs),
+    /// Change the limit price of an open single-leg LMT order.
+    /// Without --confirm, print a JSON preview and send nothing.
+    /// With --confirm, resubmit the same order id (TWS modify — not cancel+replace).
+    /// Live needs --live + OMI_ALLOW_LIVE=1. The new notional is checked against OMI_MAX_NOTIONAL.
+    Reprice(RepriceArgs),
     /// Option chain (expirations × strikes) for an underlying
     OptionChain(OptionChainArgs),
     /// Snapshot quote + greeks for one option contract
@@ -139,6 +144,19 @@ pub struct OrderArgs {
 pub struct CancelArgs {
     /// Order id to cancel
     pub order_id: i32,
+}
+
+/// omi reprice --price 10.5 ORDER_ID [--confirm]
+#[derive(Args, Debug)]
+pub struct RepriceArgs {
+    /// New limit price (finite, > 0)
+    #[arg(long)]
+    pub price: f64,
+    /// Open order id to modify
+    pub order_id: i32,
+    /// Submit the modification. Absent ⇒ JSON preview only; nothing is sent.
+    #[arg(long)]
+    pub confirm: bool,
 }
 
 #[derive(Args, Debug)]

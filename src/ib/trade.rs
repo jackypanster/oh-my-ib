@@ -1,16 +1,18 @@
 //! `trade` — the ONLY module with write calls (Phase 2 write path, ADR 0017).
 //!
 //! Safety architecture (ADR 0017):
-//! - **Containment**: `place_order`/`cancel_order` live HERE ONLY. Review greps for these
-//!   symbols elsewhere — zero hits expected. No read command imports this module's gateway fns.
+//! - **Containment**: `place_order`/`cancel_order` live HERE ONLY. `reprice` is the same
+//!   `place_order` call with the EXISTING order id (TWS modify — never cancel+replace).
+//!   Review greps for these symbols elsewhere — zero hits expected. No read command
+//!   imports this module's gateway fns.
 //! - **Double gate on live, ungated paper**: an order at the effective live port
 //!   (`cfg.port == LIVE_PORT`, catching both `--live` and hand-set `--port 4001`) requires
 //!   `OMI_ALLOW_LIVE=1`; missing ⇒ `code="config"` BEFORE any connection (offline-deterministic).
 //! - **Bounded, deterministic ack**: allocate the order id FIRST (`next_valid_order_id`), then
 //!   `place_order` and wait for the FIRST `OrderStatus`/`OpenOrder` event under
 //!   `TAKE_FIRST_TIMEOUT` (per-item window, ADR 0016's bounded-iterator pattern). No event
-//!   ⇒ exit 6 `timeout` envelope that NAMES the allocated order id, says it MAY be submitted,
-//!   points at `omi orders`, and forbids blind retry.
+//!   ⇒ exit 8 `unconfirmed` envelope that NAMES the order id, says it MAY be submitted,
+//!   points at `omi orders`, and forbids automatic retry. Read timeouts stay exit 6.
 //! - **No retry, ever**: a placement timeout is an UNKNOWN state, not a failure to redo —
 //!   automatic re-placement is the classic double-order bug.
 
@@ -18,17 +20,24 @@ use ibapi::accounts::types::AccountId;
 use ibapi::accounts::{AccountPortfolioValue, AccountUpdate};
 use ibapi::client::blocking::Client;
 use ibapi::contracts::{Contract, LegAction, OptionRight, SecurityType};
-use ibapi::orders::{Action, CancelOrder, Order, PlaceOrder, TimeInForce};
+use ibapi::orders::{Action, CancelOrder, Order, OrderData, Orders, PlaceOrder, TimeInForce};
 use serde_json::{json, Value};
 
-use crate::cli::{CancelArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs};
+use crate::cli::{
+    CancelArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs, RepriceArgs,
+};
 use crate::config::{Config, LIVE_PORT};
 use crate::error::AppError;
 
 /// Pure, FROZEN seam: CLI params → the exact `(Contract, Order)` pair sent to the gateway.
 /// `limit` `None` ⇒ MKT, `Some` ⇒ LMT. TIF always `Day` (v1). `Contract::stock` uses the
 /// SMART/USD defaults (parity with `quote`/`contract`).
-pub fn build_stk_order(symbol: &str, side: Action, quantity: f64, limit: Option<f64>) -> (Contract, Order) {
+pub fn build_stk_order(
+    symbol: &str,
+    side: Action,
+    quantity: f64,
+    limit: Option<f64>,
+) -> (Contract, Order) {
     let contract = Contract::stock(symbol).build();
     let mut order = Order {
         action: side,
@@ -54,8 +63,11 @@ pub fn build_stk_order(symbol: &str, side: Action, quantity: f64, limit: Option<
 /// `build_stk_order`), sets `order.outside_rth`. Offline ⇒ frozen.
 pub fn apply_outside_rth(order: &mut Order, outside_rth: bool) -> Result<(), String> {
     if outside_rth && order.order_type == "MKT" {
-        return Err("--outside-rth requires a limit price (MKT orders do not fill outside regular \
-                    trading hours); pass --limit".into());
+        return Err(
+            "--outside-rth requires a limit price (MKT orders do not fill outside regular \
+                    trading hours); pass --limit"
+                .into(),
+        );
     }
     order.outside_rth = outside_rth;
     Ok(())
@@ -89,12 +101,7 @@ pub fn shape_order_ack(
 /// substitute for margin = `qty × |limit| × multiplier` (STK ×1, OPT ×100, combo ×100 on
 /// |net_limit|). MKT (no limit) ⇒ `notional: null` (key present). `transmits: false` is the
 /// machine-readable safety marker; `note` explains why margin/commission are absent.
-pub fn shape_preview(
-    contract: Value,
-    order: &Order,
-    multiplier: f64,
-    notional_ccy: &str,
-) -> Value {
+pub fn shape_preview(contract: Value, order: &Order, multiplier: f64, notional_ccy: &str) -> Value {
     let notional = order
         .limit_price
         .map(|l| order.total_quantity * l.abs() * multiplier);
@@ -224,7 +231,9 @@ pub fn resolve_max_notional(raw: Option<&str>) -> Result<f64, String> {
         None => Ok(DEFAULT_MAX_NOTIONAL),
         Some(s) => match s.trim().parse::<f64>() {
             Ok(v) if v.is_finite() && v > 0.0 => Ok(v),
-            _ => Err(format!("invalid OMI_MAX_NOTIONAL '{s}': expected a positive number")),
+            _ => Err(format!(
+                "invalid OMI_MAX_NOTIONAL '{s}': expected a positive number"
+            )),
         },
     }
 }
@@ -260,7 +269,10 @@ pub fn check_live_write_posture(
 /// reports "combo is paper-only" directly.
 pub fn refuse_live_combo_on_live(is_live: bool) -> Result<(), String> {
     if is_live {
-        Err("option-combo is paper-only during the trial (interlock posture) — use paper :4002".into())
+        Err(
+            "option-combo is paper-only during the trial (interlock posture) — use paper :4002"
+                .into(),
+        )
     } else {
         Ok(())
     }
@@ -271,7 +283,10 @@ pub fn refuse_live_combo_on_live(is_live: bool) -> Result<(), String> {
 /// the net limit is NOT read). Every other shape ⇒ `Err(reason)` (stays paper-only).
 pub fn combo_live_max_risk(specs: &[LegSpec], qty: f64) -> Result<f64, String> {
     if specs.len() != 2 {
-        return Err("live combo is limited to 2-leg vertical spreads; other structures are paper-only".into());
+        return Err(
+            "live combo is limited to 2-leg vertical spreads; other structures are paper-only"
+                .into(),
+        );
     }
     let (a, b) = (&specs[0], &specs[1]);
     if a.symbol != b.symbol {
@@ -309,7 +324,11 @@ pub fn derive_close(position: f64, qty: Option<f64>) -> Result<(Action, f64), St
     if position == 0.0 {
         return Err("position is 0 — nothing to close".to_string());
     }
-    let side = if position > 0.0 { Action::Sell } else { Action::Buy };
+    let side = if position > 0.0 {
+        Action::Sell
+    } else {
+        Action::Buy
+    };
     let abs = position.abs();
     let close_qty = match qty {
         None => abs,
@@ -318,7 +337,9 @@ pub fn derive_close(position: f64, qty: Option<f64>) -> Result<(Action, f64), St
                 return Err(format!("qty must be finite, got {q}"));
             }
             if q < 1.0 {
-                return Err(format!("qty must be a whole number of contracts >= 1, got {q}"));
+                return Err(format!(
+                    "qty must be a whole number of contracts >= 1, got {q}"
+                ));
             }
             if q.fract() != 0.0 {
                 return Err(format!("qty must be a whole number of contracts, got {q}"));
@@ -393,7 +414,6 @@ pub fn blocking_close_order_ids(
     ids
 }
 
-
 /// Pure, FROZEN seam (ADR 0024 §2): stamp the resolved account onto an order. Sets
 /// `order.account` (OVERWRITING any prior value — the resolved account is the ONLY
 /// authority) and touches nothing else. Called at the single placement choke point
@@ -433,25 +453,17 @@ pub fn option_sell(cfg: &Config, args: &OptionOrderArgs) -> Result<Value, AppErr
 pub(crate) fn cancel_with_client(client: &Client, order_id: i32) -> Result<Value, AppError> {
     let subscription = client
         .cancel_order(order_id, "")
-        .map_err(|e| AppError::data(format!("cancel_order failed: {e}"), "cancel"))?;
-    match subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT).next() {
+        .map_err(|e| classify_submit_error(&e, order_id, "cancel", false))?;
+    match subscription
+        .timeout_iter_data(super::TAKE_FIRST_TIMEOUT)
+        .next()
+    {
         Some(Ok(CancelOrder::OrderStatus(os))) => Ok(json!({
             "order_id": order_id,
             "status": format!("{:?}", os.status),
         })),
-        Some(Err(e)) => Err(AppError::data(
-            format!("cancel order stream: {e}"),
-            "cancel",
-        )),
-        None => Err(AppError::timeout(
-            format!(
-                "cancel of order {} — no ack within {}s; the cancel MAY or MAY NOT have \
-                 succeeded — verify with `omi orders`, do NOT retry blindly",
-                order_id,
-                super::TAKE_FIRST_TIMEOUT.as_secs()
-            ),
-            "cancel",
-        )),
+        Some(Err(e)) => Err(classify_submit_error(&e, order_id, "cancel", true)),
+        None => Err(submit_timeout_error(order_id, "cancel")),
     }
 }
 
@@ -490,41 +502,15 @@ pub(crate) fn place_with_client(
     // Place.
     let subscription = client
         .place_order(order_id, contract, &order)
-        .map_err(|e| AppError::data(format!("place_order failed: {e}"), ctx))?;
+        .map_err(|e| classify_submit_error(&e, order_id, ctx, false))?;
 
     // Bounded first-ack loop (ADR 0016 bounded-iterator pattern). Take the FIRST
     // OrderStatus or OpenOrder event; skip ExecutionData/CommissionReport (window
     // refreshes on each arrival). Any None before an ack = UNKNOWN state (the order
-    // MAY have been submitted) — never a silent success, never a blind retry.
-    let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
-    loop {
-        match items.next() {
-            Some(Ok(PlaceOrder::OrderStatus(os))) => {
-                return Ok(ack(order_id, &format!("{:?}", os.status)));
-            }
-            Some(Ok(PlaceOrder::OpenOrder(od))) => {
-                return Ok(ack(order_id, &format!("{:?}", od.order_state.status)));
-            }
-            Some(Ok(_)) => {} // ExecutionData / CommissionReport — skip, window refreshes.
-            Some(Err(e)) => {
-                return Err(AppError::data(
-                    format!("order stream: {e}"),
-                    ctx,
-                ))
-            }
-            None => {
-                return Err(AppError::timeout(
-                    format!(
-                        "order {} may have been SUBMITTED — no ack within {}s; verify with \
-                         `omi orders`, do NOT retry blindly",
-                        order_id,
-                        super::TAKE_FIRST_TIMEOUT.as_secs()
-                    ),
-                    ctx,
-                ))
-            }
-        }
-    }
+    // MAY have been submitted) — exit 8 `unconfirmed`, never a silent success, never
+    // an automatic retry. A broker rejection notice is exit 7.
+    let status = first_place_status(subscription, order_id, ctx)?;
+    Ok(ack(order_id, &status))
 }
 
 /// Read-only preview for STK / single-leg option (ADR 0027, gateway fn, review-by-reading
@@ -604,7 +590,7 @@ fn place_core(
     // closed — refuse, never default — mirroring the gate's fail-closed posture.
     let is_live = cfg.port == LIVE_PORT;
     let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
-        .map_err(|m| AppError::config(m, ctx))?;
+        .map_err(|m| AppError::guard(m, ctx))?;
     let multiplier = if matches!(contract.security_type, SecurityType::Option) {
         100.0
     } else {
@@ -613,7 +599,7 @@ fn place_core(
     let is_mkt = order.order_type == "MKT";
     let notional = compute_notional(order.total_quantity, order.limit_price, multiplier);
     check_live_write_posture(is_live, is_mkt, notional, cap)
-        .map_err(|m| AppError::config(m, ctx))?;
+        .map_err(|m| AppError::guard(m, ctx))?;
     let client = super::connect(cfg)?;
     let account = super::resolve_account(&client, cfg)?;
     place_with_client(&client, ctx, contract, order, &account, ack)
@@ -643,7 +629,14 @@ fn place(cfg: &Config, args: &OrderArgs, side: Action, ctx: &str) -> Result<Valu
     apply_outside_rth(&mut order, args.outside_rth).map_err(|m| AppError::config(m, ctx))?;
     let side_str = format!("{:?}", side);
     place_core(cfg, ctx, &contract, &order, |id, status| {
-        shape_order_ack(id, status, &args.symbol, &side_str, args.quantity, args.limit)
+        shape_order_ack(
+            id,
+            status,
+            &args.symbol,
+            &side_str,
+            args.quantity,
+            args.limit,
+        )
     })
 }
 
@@ -675,19 +668,28 @@ fn place_option(
     })?;
     if !args.strike.is_finite() || args.strike <= 0.0 {
         return Err(AppError::usage(
-            format!("--strike must be a finite positive number (got {})", args.strike),
+            format!(
+                "--strike must be a finite positive number (got {})",
+                args.strike
+            ),
             ctx,
         ));
     }
     if !args.qty.is_finite() || args.qty < 1.0 || args.qty.fract() != 0.0 {
         return Err(AppError::usage(
-            format!("--qty must be a whole number of contracts >= 1 (got {})", args.qty),
+            format!(
+                "--qty must be a whole number of contracts >= 1 (got {})",
+                args.qty
+            ),
             ctx,
         ));
     }
     if !args.limit.is_finite() || args.limit <= 0.0 {
         return Err(AppError::usage(
-            format!("--limit must be a finite positive number (got {})", args.limit),
+            format!(
+                "--limit must be a finite positive number (got {})",
+                args.limit
+            ),
             ctx,
         ));
     }
@@ -753,9 +755,14 @@ pub fn parse_combo_leg(s: &str) -> Result<LegSpec, String> {
     }
     let action = tokens[0].to_ascii_uppercase();
     if action != "BUY" && action != "SELL" {
-        return Err(format!("invalid action '{}': expected BUY or SELL", tokens[0]));
+        return Err(format!(
+            "invalid action '{}': expected BUY or SELL",
+            tokens[0]
+        ));
     }
-    let ratio: i32 = tokens[1].parse().map_err(|_| format!("invalid ratio '{}': must be an integer", tokens[1]))?;
+    let ratio: i32 = tokens[1]
+        .parse()
+        .map_err(|_| format!("invalid ratio '{}': must be an integer", tokens[1]))?;
     if ratio <= 0 {
         return Err(format!("ratio must be > 0, got {}", ratio));
     }
@@ -763,14 +770,23 @@ pub fn parse_combo_leg(s: &str) -> Result<LegSpec, String> {
     let expiry = tokens[3].to_string();
     super::option_quote::parse_expiry(&expiry)
         .ok_or_else(|| format!("invalid expiry '{}': expected 8-digit YYYYMMDD", tokens[3]))?;
-    let strike: f64 = tokens[4].parse().map_err(|_| format!("invalid strike '{}': must be a number", tokens[4]))?;
+    let strike: f64 = tokens[4]
+        .parse()
+        .map_err(|_| format!("invalid strike '{}': must be a number", tokens[4]))?;
     if !strike.is_finite() || strike <= 0.0 {
         return Err(format!("strike must be finite-positive, got {}", strike));
     }
     let right = super::option_quote::normalize_right(tokens[5])
         .ok_or_else(|| format!("invalid right '{}': expected C|CALL or P|PUT", tokens[5]))?
         .to_string();
-    Ok(LegSpec { action, ratio, symbol, expiry, strike, right })
+    Ok(LegSpec {
+        action,
+        ratio,
+        symbol,
+        expiry,
+        strike,
+        right,
+    })
 }
 
 /// Pure, FROZEN seam: validated leg specs → the exact `(Contract, Order)` for a BAG.
@@ -789,7 +805,11 @@ pub fn build_combo_order(
 ) -> Result<(Contract, Order), String> {
     let mut builder = Contract::spread();
     for (spec, conid) in legs {
-        let leg_action = if spec.action == "BUY" { LegAction::Buy } else { LegAction::Sell };
+        let leg_action = if spec.action == "BUY" {
+            LegAction::Buy
+        } else {
+            LegAction::Sell
+        };
         builder = builder.add_leg(*conid, leg_action).ratio(spec.ratio).done();
     }
     let mut contract = builder
@@ -864,7 +884,7 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
         }
     };
     if args.legs.len() < 2 || args.legs.len() > 4 {
- return Err(AppError::usage(
+        return Err(AppError::usage(
             format!("--leg count must be 2..=4, got {}", args.legs.len()),
             ctx,
         ));
@@ -873,9 +893,8 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     let mut specs: Vec<LegSpec> = Vec::with_capacity(args.legs.len());
     for (i, raw) in args.legs.iter().enumerate() {
         let n = i + 1;
-        let spec = parse_combo_leg(raw).map_err(|reason| {
-            AppError::usage(format!("leg {n}: {reason}"), ctx)
-        })?;
+        let spec = parse_combo_leg(raw)
+            .map_err(|reason| AppError::usage(format!("leg {n}: {reason}"), ctx))?;
         specs.push(spec);
     }
     // Same-symbol rule: all legs must share the underlying.
@@ -888,7 +907,10 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     }
     if !args.qty.is_finite() || args.qty < 1.0 || args.qty.fract() != 0.0 {
         return Err(AppError::usage(
-            format!("--qty must be a whole number of contracts >= 1 (got {})", args.qty),
+            format!(
+                "--qty must be a whole number of contracts >= 1 (got {})",
+                args.qty
+            ),
             ctx,
         ));
     }
@@ -902,19 +924,20 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
     // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
     //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
     if !cfg.preview {
-        // Combo defined-risk breaker (ADR 0031): a clean 2-leg 1:1 vertical is
-        // admitted onto live; every other shape refuses BEFORE the gate (a shape
-        // refusal holds regardless of OMI_ALLOW_LIVE, so it reports first). Risk =
-        // pure width |Δstrike|×100×qty (premium-proof); the cap + posture reuse the
-        // ADR 0030 seams. Paper skips the whole block ⇒ any combo still places :4002.
-        let is_live = cfg.port == LIVE_PORT;
-        if is_live {
-            let max_risk = combo_live_max_risk(&specs, args.qty).map_err(|m| AppError::config(m, ctx))?;
-            let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
-                .map_err(|m| AppError::config(m, ctx))?;
-            check_live_write_posture(true, false, Some(max_risk), cap).map_err(|m| AppError::config(m, ctx))?;
-        }
+        // Env gate FIRST (config/5). A clean vertical's width-notional is over the
+        // default $500 cap, and frozen `option-combo --live` asserts code=config
+        // when OMI_ALLOW_LIVE is unset — a cap check before the gate would hide it.
+        // After the gate, the defined-risk breaker (ADR 0031) and the notional cap
+        // are guard/64 (nothing sent). Paper skips the block.
         require_live_write_gate(cfg)?;
+        if cfg.port == LIVE_PORT {
+            let max_risk =
+                combo_live_max_risk(&specs, args.qty).map_err(|m| AppError::guard(m, ctx))?;
+            let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
+                .map_err(|m| AppError::guard(m, ctx))?;
+            check_live_write_posture(true, false, Some(max_risk), cap)
+                .map_err(|m| AppError::guard(m, ctx))?;
+        }
     }
 
     // 3. Connect (connection errors).
@@ -936,8 +959,9 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
             _ => Contract::put(&spec.symbol),
         }
         .strike(spec.strike);
-        let (y, m, d) = super::option_quote::parse_expiry(&spec.expiry)
-            .ok_or_else(|| AppError::usage(format!("leg {n}: internal: unparseable expiry"), ctx))?;
+        let (y, m, d) = super::option_quote::parse_expiry(&spec.expiry).ok_or_else(|| {
+            AppError::usage(format!("leg {n}: internal: unparseable expiry"), ctx)
+        })?;
         let leg_contract = builder
             .expires_on(y, m, d)
             .on_exchange(exchange)
@@ -946,9 +970,18 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
         let details = client
             .contract_details(&leg_contract)
             .map_err(|e| AppError::data(format!("leg {n}: contract_details failed: {e}"), ctx))?;
-        let conid = details.first().map(|d| d.contract.contract_id).ok_or_else(|| {
-            AppError::not_found(format!("leg {n}: no contract for {} {} {}", spec.symbol, spec.strike, spec.right), ctx)
-        })?;
+        let conid = details
+            .first()
+            .map(|d| d.contract.contract_id)
+            .ok_or_else(|| {
+                AppError::not_found(
+                    format!(
+                        "leg {n}: no contract for {} {} {}",
+                        spec.symbol, spec.strike, spec.right
+                    ),
+                    ctx,
+                )
+            })?;
         resolved.push((spec, conid));
     }
 
@@ -994,8 +1027,17 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
         Ok(shape_preview(contract_json, &order, 100.0, &args.currency))
     } else {
         place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
-            let leg_refs: Vec<(&LegSpec, i32)> = legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
-            shape_combo_order_ack(id, status, &underlying, &action_str, args.qty, args.limit, &leg_refs)
+            let leg_refs: Vec<(&LegSpec, i32)> =
+                legs_snapshot.iter().map(|(s, c)| (s, *c)).collect();
+            shape_combo_order_ack(
+                id,
+                status,
+                &underlying,
+                &action_str,
+                args.qty,
+                args.limit,
+                &leg_refs,
+            )
         })
     }
 }
@@ -1022,7 +1064,10 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
     }
     if !args.limit.is_finite() || args.limit <= 0.0 {
         return Err(AppError::usage(
-            format!("--limit must be a finite positive number (got {})", args.limit),
+            format!(
+                "--limit must be a finite positive number (got {})",
+                args.limit
+            ),
             ctx,
         ));
     }
@@ -1066,8 +1111,8 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
         .map_err(|e| AppError::data(format!("account_updates failed: {e}"), ctx))?;
     let mut matched: Option<AccountPortfolioValue> = None;
     for update in subscription.iter_data() {
-        let update = update
-            .map_err(|e| AppError::data(format!("account_updates stream: {e}"), ctx))?;
+        let update =
+            update.map_err(|e| AppError::data(format!("account_updates stream: {e}"), ctx))?;
         match update {
             AccountUpdate::PortfolioValue(p) => {
                 if p.contract.contract_id == args.conid {
@@ -1103,8 +1148,7 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
         return Err(AppError::usage(
             format!(
                 "conid {} is {}, not an option — use `omi sell`/`omi buy` for stock",
-                args.conid,
-                row.contract.security_type
+                args.conid, row.contract.security_type
             ),
             ctx,
         ));
@@ -1174,7 +1218,10 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
     let raw_expiry = row.contract.last_trade_date_or_contract_month.clone();
     let (y, m, d) = super::option_quote::parse_expiry(&raw_expiry).ok_or_else(|| {
         AppError::data(
-            format!("expiry unparseable for conid {}: got {raw_expiry:?}", args.conid),
+            format!(
+                "expiry unparseable for conid {}: got {raw_expiry:?}",
+                args.conid
+            ),
             ctx,
         )
     })?;
@@ -1222,15 +1269,21 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
 
     // 8. Wrong-contract gate (ADR 0021): the resolved contract's conid MUST match the
     //    requested one BEFORE any placement. Refuses on mismatch (data — never places).
-    let details = client.contract_details(&contract).map_err(|e| {
-        AppError::data(format!("contract_details failed: {e}"), ctx)
-    })?;
-    let resolved_conid = details.first().map(|d| d.contract.contract_id).ok_or_else(|| {
-        AppError::not_found(
-            format!("no contract resolved for conid {} — refusing to place", args.conid),
-            ctx,
-        )
-    })?;
+    let details = client
+        .contract_details(&contract)
+        .map_err(|e| AppError::data(format!("contract_details failed: {e}"), ctx))?;
+    let resolved_conid = details
+        .first()
+        .map(|d| d.contract.contract_id)
+        .ok_or_else(|| {
+            AppError::not_found(
+                format!(
+                    "no contract resolved for conid {} — refusing to place",
+                    args.conid
+                ),
+                ctx,
+            )
+        })?;
     if resolved_conid != args.conid {
         return Err(AppError::data(
             format!(
@@ -1275,5 +1328,338 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
                 args.limit,
             )
         })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// reprice — modify an open LMT by placeOrder with the SAME order id (ADR 0040).
+// ibapi 3.1 `Client::place_order` is documented "Places or modifies". There is
+// no separate modify call. Tiger's gateway has NOT been observed doing this;
+// do NOT fall back to cancel+replace.
+// ---------------------------------------------------------------------------
+
+/// Open-order fields the reprice decision needs. The gateway path fills this from
+/// `OrderData`; tests build it directly. `sec_type` is the IB string (`STK`/`OPT`/`BAG`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct RepriceTarget {
+    pub order_id: i32,
+    pub symbol: String,
+    pub sec_type: String,
+    pub action: String,
+    pub quantity: f64,
+    pub order_type: String,
+    pub limit_price: Option<f64>,
+    pub tif: String,
+    pub account: String,
+    pub currency: String,
+    pub multiplier: f64,
+}
+
+/// What a confirmed reprice will hand to `place_order`. `order_id` is the EXISTING
+/// open-order id — never a freshly allocated one.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConfirmedReprice {
+    pub order_id: i32,
+    pub new_price: f64,
+}
+
+/// Preview sends nothing. Submit is the only arm that may call `place_order`.
+#[derive(Clone, Debug, PartialEq)]
+pub enum RepricePlan {
+    Preview(Value),
+    Submit(ConfirmedReprice),
+}
+
+/// Notional multiplier. A positive finite contract multiplier wins; otherwise OPT
+/// is 100 and everything else is 1 (STK).
+pub fn notional_multiplier(sec_type: &str, raw_multiplier: &str) -> f64 {
+    if let Ok(m) = raw_multiplier.trim().parse::<f64>() {
+        if m.is_finite() && m > 0.0 {
+            return m;
+        }
+    }
+    if sec_type == "OPT" {
+        100.0
+    } else {
+        1.0
+    }
+}
+
+/// Preconditions that must hold BEFORE any `place_order`. `Err` ⇒ data/4, nothing sent.
+pub fn validate_reprice_target(target: &RepriceTarget) -> Result<(), String> {
+    if target.order_type != "LMT" {
+        return Err(format!(
+            "order {} is {}, not LMT — reprice only changes a limit price; nothing sent",
+            target.order_id, target.order_type
+        ));
+    }
+    if target.sec_type != "STK" && target.sec_type != "OPT" {
+        return Err(format!(
+            "order {} is {} — reprice supports single-leg STK and OPT LMT only; nothing sent",
+            target.order_id, target.sec_type
+        ));
+    }
+    if !target.quantity.is_finite() || target.quantity <= 0.0 {
+        return Err(format!(
+            "order {} has non-positive quantity {}; nothing sent",
+            target.order_id, target.quantity
+        ));
+    }
+    Ok(())
+}
+
+/// JSON preview: current order, new price, notional. `transmits` is always false.
+pub fn shape_reprice_preview(target: &RepriceTarget, new_price: f64, risk_blocked: bool) -> Value {
+    let notional = compute_notional(target.quantity, Some(new_price), target.multiplier);
+    json!({
+        "preview": true,
+        "transmits": false,
+        "order_id": target.order_id,
+        "current_order": {
+            "order_id": target.order_id,
+            "symbol": target.symbol,
+            "sec_type": target.sec_type,
+            "action": target.action,
+            "quantity": target.quantity,
+            "order_type": target.order_type,
+            "limit_price": target.limit_price,
+            "tif": target.tif,
+            "account": target.account,
+            "currency": target.currency,
+        },
+        "new_price": new_price,
+        "notional": notional,
+        "notional_currency": target.currency,
+        "risk_blocked": risk_blocked,
+    })
+}
+
+/// Copy the working order and change ONLY the limit. `order_id` is written back onto
+/// the order so the wire id and `Order.order_id` agree. `transmit` is forced true so
+/// a confirmed modify is not staged.
+pub fn reprice_order(order: &Order, order_id: i32, new_price: f64) -> Order {
+    let mut next = order.clone();
+    next.order_id = order_id;
+    next.order_type = "LMT".into();
+    next.limit_price = Some(new_price);
+    next.transmit = true;
+    next
+}
+
+/// Pure decision. `confirm == false` is always a preview (even when the live cap
+/// would block a later confirm — `risk_blocked` says so, and nothing is sent).
+/// `confirm == true` over the live cap is `Err` guard/64 and does not submit.
+/// A non-LMT / non single-leg target is data/4 on both arms.
+pub fn plan_reprice(
+    confirm: bool,
+    is_live: bool,
+    cap: f64,
+    target: &RepriceTarget,
+    new_price: f64,
+) -> Result<RepricePlan, AppError> {
+    if !new_price.is_finite() || new_price <= 0.0 {
+        return Err(AppError::usage(
+            format!("--price must be a finite positive number (got {new_price})"),
+            "reprice",
+        ));
+    }
+    validate_reprice_target(target).map_err(|m| AppError::data(m, "reprice"))?;
+    let notional = compute_notional(target.quantity, Some(new_price), target.multiplier);
+    let posture = check_live_write_posture(is_live, false, notional, cap);
+    if !confirm {
+        return Ok(RepricePlan::Preview(shape_reprice_preview(
+            target,
+            new_price,
+            posture.is_err(),
+        )));
+    }
+    posture.map_err(|m| AppError::guard(m, "reprice"))?;
+    Ok(RepricePlan::Submit(ConfirmedReprice {
+        order_id: target.order_id,
+        new_price,
+    }))
+}
+
+/// Exit 8. Shared by every write ack-wait (`buy`/`sell`/`cancel`/`reprice`/options).
+/// The message forbids automatic retry — the order MAY already be working.
+pub fn submit_timeout_error(order_id: i32, ctx: &str) -> AppError {
+    AppError::unconfirmed(
+        format!(
+            "order {order_id} outcome UNCONFIRMED — no ack within {}s after send; it MAY have been submitted. Verify with `omi orders`. Do NOT retry automatically",
+            super::TAKE_FIRST_TIMEOUT.as_secs()
+        ),
+        ctx,
+    )
+}
+
+/// Map an ibapi error from a write.
+///
+/// `sent == false` is the `place_order`/`cancel_order` call itself returning `Err`
+/// (the request may not have left the process). A local validation error is data/4
+/// (nothing sent). A transport error is unconfirmed/8 (the bytes may have flushed).
+/// `sent == true` is a stream error AFTER the call returned a subscription: a broker
+/// rejection notice (codes 200–399, except cancel-confirmation 202) is exit 7;
+/// anything else is unconfirmed/8. Callers must not auto-retry exit 8.
+pub fn classify_submit_error(err: &ibapi::Error, order_id: i32, ctx: &str, sent: bool) -> AppError {
+    if let ibapi::Error::Notice(n) = err {
+        if n.is_order_rejection() && !n.is_cancellation() {
+            return AppError::rejected(format!("broker rejected order {order_id}: {n}"), ctx);
+        }
+    }
+    let transport = matches!(
+        err,
+        ibapi::Error::Io(_)
+            | ibapi::Error::ConnectionReset
+            | ibapi::Error::ConnectionFailed
+            | ibapi::Error::ConnectionRejected(_)
+            | ibapi::Error::UnexpectedEndOfStream
+            | ibapi::Error::Shutdown
+            | ibapi::Error::EndOfStream
+    );
+    if sent || transport {
+        return AppError::unconfirmed(
+            format!(
+                "order {order_id} outcome UNCONFIRMED after send ({err}). Verify with `omi orders`. Do NOT retry automatically"
+            ),
+            ctx,
+        );
+    }
+    AppError::data(format!("order not sent: {err}"), ctx)
+}
+
+fn first_place_status(
+    subscription: ibapi::client::blocking::Subscription<PlaceOrder>,
+    order_id: i32,
+    ctx: &str,
+) -> Result<String, AppError> {
+    let mut items = subscription.timeout_iter_data(super::TAKE_FIRST_TIMEOUT);
+    loop {
+        match items.next() {
+            Some(Ok(PlaceOrder::OrderStatus(os))) => return Ok(format!("{:?}", os.status)),
+            Some(Ok(PlaceOrder::OpenOrder(od))) => {
+                return Ok(format!("{:?}", od.order_state.status))
+            }
+            Some(Ok(_)) => {}
+            Some(Err(e)) => return Err(classify_submit_error(&e, order_id, ctx, true)),
+            None => return Err(submit_timeout_error(order_id, ctx)),
+        }
+    }
+}
+
+fn target_from(d: &OrderData) -> RepriceTarget {
+    let sec_type = d.contract.security_type.to_string();
+    let currency = if d.contract.currency.as_str().is_empty() {
+        "USD".to_string()
+    } else {
+        d.contract.currency.to_string()
+    };
+    RepriceTarget {
+        order_id: d.order_id,
+        symbol: d.contract.symbol.to_string(),
+        sec_type: sec_type.clone(),
+        action: format!("{:?}", d.order.action),
+        quantity: d.order.total_quantity,
+        order_type: d.order.order_type.clone(),
+        limit_price: d.order.limit_price,
+        tif: format!("{:?}", d.order.tif),
+        account: d.order.account.clone(),
+        currency,
+        multiplier: notional_multiplier(&sec_type, &d.contract.multiplier),
+    }
+}
+
+fn find_open_order(
+    client: &Client,
+    order_id: i32,
+    account_filter: Option<&str>,
+) -> Result<OrderData, AppError> {
+    let ctx = "reprice";
+    let subscription = client
+        .all_open_orders()
+        .map_err(|e| AppError::data(format!("all_open_orders failed: {e}; nothing sent"), ctx))?;
+    let mut found: Option<OrderData> = None;
+    for item in subscription.iter_data() {
+        let item =
+            item.map_err(|e| AppError::data(format!("orders stream: {e}; nothing sent"), ctx))?;
+        if let Orders::OrderData(d) = item {
+            if d.order_id != order_id {
+                continue;
+            }
+            if let Some(acct) = account_filter {
+                if d.order.account != acct {
+                    continue;
+                }
+            }
+            found = Some(d);
+        }
+    }
+    found.ok_or_else(|| {
+        AppError::data(
+            format!("order {order_id} is not an open order — nothing sent; see `omi orders`"),
+            ctx,
+        )
+    })
+}
+
+/// Modify the limit price of an open single-leg LMT.
+///
+/// Without `--confirm`: connect, read the open order, print a preview, return.
+/// `place_order` is not called. With `--confirm`: same read, re-check
+/// `OMI_MAX_NOTIONAL` against the new price, then `place_order` with the SAME
+/// order id (TWS modify). No cancel+replace. Live still needs the double gate.
+pub fn reprice(cfg: &Config, args: &RepriceArgs) -> Result<Value, AppError> {
+    let ctx = "reprice";
+    if args.order_id < 1 {
+        return Err(AppError::usage(
+            format!("order id must be a positive integer, got {}", args.order_id),
+            ctx,
+        ));
+    }
+    if !args.price.is_finite() || args.price <= 0.0 {
+        return Err(AppError::usage(
+            format!(
+                "--price must be a finite positive number (got {})",
+                args.price
+            ),
+            ctx,
+        ));
+    }
+    // Preview is a read. Confirm is a write: the live-port gate runs BEFORE connect.
+    if args.confirm {
+        require_live_write_gate(cfg)?;
+    }
+    // Fail closed on a bad cap before any connection, on both arms. Nothing is sent.
+    let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
+        .map_err(|m| AppError::guard(m, ctx))?;
+
+    let client = super::connect(cfg)?;
+    let open = find_open_order(&client, args.order_id, cfg.account.as_deref())?;
+    let target = target_from(&open);
+    let is_live = cfg.port == LIVE_PORT;
+    match plan_reprice(args.confirm, is_live, cap, &target, args.price)? {
+        RepricePlan::Preview(v) => Ok(v),
+        RepricePlan::Submit(plan) => {
+            let mut order = reprice_order(&open.order, plan.order_id, plan.new_price);
+            if order.account.is_empty() {
+                let account = super::resolve_account(&client, cfg)?;
+                stamp_order_account(&mut order, &account.0);
+            }
+            // SAME id. next_order_id() would allocate a second order — do not call it.
+            // Tiger acceptance of this modify is UNVERIFIED (ADR 0040). No cancel+replace.
+            let subscription = client
+                .place_order(plan.order_id, &open.contract, &order)
+                .map_err(|e| classify_submit_error(&e, plan.order_id, ctx, false))?;
+            let status = first_place_status(subscription, plan.order_id, ctx)?;
+            Ok(json!({
+                "order_id": plan.order_id,
+                "status": status,
+                "symbol": target.symbol,
+                "action": target.action,
+                "quantity": target.quantity,
+                "limit_price": plan.new_price,
+                "previous_limit_price": target.limit_price,
+                "modified": true,
+            }))
+        }
     }
 }
