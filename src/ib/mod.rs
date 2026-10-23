@@ -129,15 +129,80 @@ pub(crate) fn connect(cfg: &Config) -> Result<Client, AppError> {
     }
 }
 
+/// Soft/advisory IB notice codes that must not fail `managed_accounts`.
+///
+/// ibapi classifies warnings as 2100..=2169 (`Notice::is_warning`). Tiger/IB
+/// client-version advisory **2172** (soft until 2026-12-15: upgrade from 1045.1
+/// toward 1050.1) sits just outside that range, so `one_shot` surfaces it as
+/// `Err(Error::Notice)` and aborts before the ManagedAccounts payload. Codes in
+/// 2100..=2199 are treated as soft for this read path only.
+pub fn is_soft_managed_accounts_notice(code: i32) -> bool {
+    (2100..=2199).contains(&code)
+}
+
+const MANAGED_ACCOUNTS_SOFT_ATTEMPTS: u32 = 3;
+
+/// Soft-notice retry loop for `managed_accounts`, injectable for tests.
+///
+/// Calls `fetch` up to [`MANAGED_ACCOUNTS_SOFT_ATTEMPTS`] times. Soft notices
+/// (see [`is_soft_managed_accounts_notice`]) accumulate as Display strings in
+/// `warnings` and retry; any other error fails immediately. Returns
+/// `(accounts, warnings)` on success. Does not touch the write path.
+pub fn managed_accounts_tolerant_with<F>(
+    mut fetch: F,
+) -> Result<(Vec<String>, Vec<String>), AppError>
+where
+    F: FnMut() -> Result<Vec<String>, ibapi::Error>,
+{
+    let mut warnings = Vec::new();
+    for attempt in 1..=MANAGED_ACCOUNTS_SOFT_ATTEMPTS {
+        match fetch() {
+            Ok(accounts) => return Ok((accounts, warnings)),
+            Err(ibapi::Error::Notice(n)) if is_soft_managed_accounts_notice(n.code) => {
+                warnings.push(n.to_string());
+                if attempt == MANAGED_ACCOUNTS_SOFT_ATTEMPTS {
+                    return Err(AppError::data(
+                        format!(
+                            "managed_accounts only returned soft notices after {MANAGED_ACCOUNTS_SOFT_ATTEMPTS} attempts: {}",
+                            warnings.join("; ")
+                        ),
+                        "managed_accounts",
+                    ));
+                }
+            }
+            Err(e) => {
+                return Err(AppError::data(
+                    format!("managed_accounts failed: {e}"),
+                    "managed_accounts",
+                ));
+            }
+        }
+    }
+    unreachable!("managed_accounts_tolerant_with loop always returns")
+}
+
+/// `Client::managed_accounts` with soft-notice tolerance.
+///
+/// Thin wrapper over [`managed_accounts_tolerant_with`]. Retries when the
+/// gateway emits a soft notice (e.g. 2172) ahead of the ManagedAccounts payload.
+pub(crate) fn managed_accounts_tolerant(
+    client: &Client,
+) -> Result<(Vec<String>, Vec<String>), AppError> {
+    managed_accounts_tolerant_with(|| client.managed_accounts())
+}
+
 /// Resolve the account to scope a request to: the configured/`--account` value if set,
 /// else the first managed account. Errors if none is available.
+///
+/// When `cfg.account` is set, short-circuits without calling the gateway (unchanged).
+/// Otherwise uses [`managed_accounts_tolerant`] so soft notice 2172 cannot block
+/// account resolution.
 pub(crate) fn resolve_account(client: &Client, cfg: &Config) -> Result<AccountId, AppError> {
     if let Some(account) = &cfg.account {
         return Ok(AccountId(account.clone()));
     }
-    let accounts = client
-        .managed_accounts()
-        .map_err(|e| AppError::data(format!("managed_accounts failed: {e}"), "resolve account"))?;
+    let (accounts, _warnings) = managed_accounts_tolerant(client)
+        .map_err(|e| AppError::data(e.message, "resolve account"))?;
     accounts
         .into_iter()
         .next()
