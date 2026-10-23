@@ -142,17 +142,21 @@ pub fn is_soft_managed_accounts_notice(code: i32) -> bool {
 
 const MANAGED_ACCOUNTS_SOFT_ATTEMPTS: u32 = 3;
 
-/// `Client::managed_accounts` with soft-notice tolerance.
+/// Soft-notice retry loop for `managed_accounts`, injectable for tests.
 ///
-/// Retries a few times when the gateway emits a soft notice (e.g. 2172) ahead of
-/// the ManagedAccounts payload. Returns `(accounts, warnings)` where each warning
-/// is the notice Display form `"[code] message"`. Does not touch the write path.
-pub(crate) fn managed_accounts_tolerant(
-    client: &Client,
-) -> Result<(Vec<String>, Vec<String>), AppError> {
+/// Calls `fetch` up to [`MANAGED_ACCOUNTS_SOFT_ATTEMPTS`] times. Soft notices
+/// (see [`is_soft_managed_accounts_notice`]) accumulate as Display strings in
+/// `warnings` and retry; any other error fails immediately. Returns
+/// `(accounts, warnings)` on success. Does not touch the write path.
+pub fn managed_accounts_tolerant_with<F>(
+    mut fetch: F,
+) -> Result<(Vec<String>, Vec<String>), AppError>
+where
+    F: FnMut() -> Result<Vec<String>, ibapi::Error>,
+{
     let mut warnings = Vec::new();
     for attempt in 1..=MANAGED_ACCOUNTS_SOFT_ATTEMPTS {
-        match client.managed_accounts() {
+        match fetch() {
             Ok(accounts) => return Ok((accounts, warnings)),
             Err(ibapi::Error::Notice(n)) if is_soft_managed_accounts_notice(n.code) => {
                 warnings.push(n.to_string());
@@ -174,7 +178,17 @@ pub(crate) fn managed_accounts_tolerant(
             }
         }
     }
-    unreachable!("managed_accounts_tolerant loop always returns")
+    unreachable!("managed_accounts_tolerant_with loop always returns")
+}
+
+/// `Client::managed_accounts` with soft-notice tolerance.
+///
+/// Thin wrapper over [`managed_accounts_tolerant_with`]. Retries when the
+/// gateway emits a soft notice (e.g. 2172) ahead of the ManagedAccounts payload.
+pub(crate) fn managed_accounts_tolerant(
+    client: &Client,
+) -> Result<(Vec<String>, Vec<String>), AppError> {
+    managed_accounts_tolerant_with(|| client.managed_accounts())
 }
 
 /// Resolve the account to scope a request to: the configured/`--account` value if set,
