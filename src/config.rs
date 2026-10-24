@@ -41,7 +41,9 @@ pub struct Config {
     pub client_id: i32,
     pub account: Option<String>,
     pub md_type: MdType,
-    /// CLI-only: `--preview` mirrors `g.preview` (no config-file key).
+    /// CLI-only: global `--preview` forces a write preview even with `--confirm`
+    /// (no config-file key). Writes are preview-by-default; this flag is the
+    /// back-compat "never transmit" override.
     pub preview: bool,
 }
 

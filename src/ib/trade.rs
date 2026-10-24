@@ -426,6 +426,7 @@ pub fn stamp_order_account(order: &mut Order, account: &str) {
 // ---------------------------------------------------------------------------
 
 /// Place a BUY order. See [`place`] for the shared placement logic.
+/// Without `--confirm` (or with global `--preview`) this is a preview: no `place_order`.
 pub fn buy(cfg: &Config, args: &OrderArgs) -> Result<Value, AppError> {
     place(cfg, args, Action::Buy, "buy")
 }
@@ -467,10 +468,29 @@ pub(crate) fn cancel_with_client(client: &Client, order_id: i32) -> Result<Value
     }
 }
 
-/// Cancel an order by id. Gate → connect → `cancel_with_client` (byte-identical behavior;
-/// the body was extracted unchanged into `cancel_with_client`).
+/// Cancel an order by id.
+///
+/// Without `--confirm`, or with the global `--preview` flag even when `--confirm`
+/// is set: JSON preview, no `cancel_order`. A live port still hits the live-write
+/// gate first (frozen: `cancel --live` without `OMI_ALLOW_LIVE` is `config`,
+/// before any connect). With `--confirm` and no `--preview`: gate → connect →
+/// `cancel_with_client`.
 pub fn cancel(cfg: &Config, args: &CancelArgs) -> Result<Value, AppError> {
-    require_live_write_gate(cfg)?;
+    let ctx = "cancel";
+    if args.order_id < 1 {
+        return Err(AppError::usage(
+            format!("order id must be a positive integer, got {}", args.order_id),
+            ctx,
+        ));
+    }
+    // Frozen live-write contract: a live port is `config` before connect, even on
+    // the preview arm. Paper preview skips the gate (nothing is sent).
+    if cfg.port == LIVE_PORT || write_transmits(args.confirm, cfg.preview) {
+        require_live_write_gate(cfg)?;
+    }
+    if !write_transmits(args.confirm, cfg.preview) {
+        return Ok(shape_cancel_preview(args.order_id));
+    }
     let client = super::connect(cfg)?;
     cancel_with_client(&client, args.order_id)
 }
@@ -577,13 +597,21 @@ fn place_core(
     ctx: &str,
     contract: &Contract,
     order: &Order,
+    confirm: bool,
     ack: impl Fn(i32, &str) -> Value,
 ) -> Result<Value, AppError> {
-    if cfg.preview {
+    // Writes are preview-by-default. Global `--preview` forces the preview even
+    // when `--confirm` is set. A live port still hits the live-write gate BEFORE
+    // connect on both arms (frozen: `buy --live` without `OMI_ALLOW_LIVE` is
+    // `config`). Paper preview skips the gate — nothing is sent.
+    let transmit = write_transmits(confirm, cfg.preview);
+    if cfg.port == LIVE_PORT || transmit {
+        require_live_write_gate(cfg)?;
+    }
+    if !transmit {
         let client = super::connect(cfg)?;
         return preview_stk_option(&client, ctx, contract, order);
     }
-    require_live_write_gate(cfg)?;
     // Write posture guardrail (ADR 0030): offline, before connect. Refuse a live opening
     // order that is MKT (no price protection) or over the notional cap (fat-finger breaker).
     // Paper (cfg.port != LIVE_PORT ⇒ is_live=false) is exempt. A bad OMI_MAX_NOTIONAL fails
@@ -628,7 +656,7 @@ fn place(cfg: &Config, args: &OrderArgs, side: Action, ctx: &str) -> Result<Valu
     let (contract, mut order) = build_stk_order(&args.symbol, side, args.quantity, args.limit);
     apply_outside_rth(&mut order, args.outside_rth).map_err(|m| AppError::config(m, ctx))?;
     let side_str = format!("{:?}", side);
-    place_core(cfg, ctx, &contract, &order, |id, status| {
+    place_core(cfg, ctx, &contract, &order, args.confirm, |id, status| {
         shape_order_ack(
             id,
             status,
@@ -712,7 +740,7 @@ fn place_option(
         args.limit,
     );
     let action_str = format!("{:?}", side);
-    place_core(cfg, ctx, &contract, &order, |id, status| {
+    place_core(cfg, ctx, &contract, &order, args.confirm, |id, status| {
         shape_option_order_ack(
             id,
             status,
@@ -921,16 +949,18 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
         ));
     }
 
-    // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
-    //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
-    if !cfg.preview {
-        // Env gate FIRST (config/5). A clean vertical's width-notional is over the
-        // default $500 cap, and frozen `option-combo --live` asserts code=config
-        // when OMI_ALLOW_LIVE is unset — a cap check before the gate would hide it.
-        // After the gate, the defined-risk breaker (ADR 0031) and the notional cap
-        // are guard/64 (nothing sent). Paper skips the block.
+    // 2. Double gate (config error, before connect — offline-deterministic).
+    //    Preview (no `--confirm`, or global `--preview`) sends nothing, so paper
+    //    skips the gate. A live port still gates FIRST — frozen `option-combo --live`
+    //    without OMI_ALLOW_LIVE is `config`, even on the preview arm. Env gate
+    //    before the cap: a clean vertical's width-notional is over the default $500
+    //    cap, and a cap check before the gate would hide that config error.
+    //    After the gate, the defined-risk breaker (ADR 0031) and the notional cap
+    //    are guard/64 (nothing sent). Paper skips the block.
+    let transmit = write_transmits(args.confirm, cfg.preview);
+    if cfg.port == LIVE_PORT || transmit {
         require_live_write_gate(cfg)?;
-        if cfg.port == LIVE_PORT {
+        if cfg.port == LIVE_PORT && transmit {
             let max_risk =
                 combo_live_max_risk(&specs, args.qty).map_err(|m| AppError::guard(m, ctx))?;
             let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
@@ -1000,8 +1030,8 @@ pub fn option_combo(cfg: &Config, args: &OptionComboArgs) -> Result<Value, AppEr
 
     let action_str = format!("{:?}", side);
     let legs_snapshot: Vec<(LegSpec, i32)> = resolved;
-    if cfg.preview {
-        // ADR 0027: read-only preview — shape from the already-resolved legs (no
+    if !transmit {
+        // Read-only preview — shape from the already-resolved legs (no
         // place_order, no transmit). Multiplier 100 on |net_limit| (option ×100).
         let legs_json: Vec<Value> = legs_snapshot
             .iter()
@@ -1092,9 +1122,11 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
         }
     }
 
-    // 2. Double gate (config error, before connect — offline-deterministic). ADR 0027:
-    //    preview is read-shaped (no place_order) ⇒ skip the write gate; the REAL arm gates.
-    if !cfg.preview {
+    // 2. Double gate (config error, before connect — offline-deterministic).
+    //    Preview sends nothing, so paper skips the gate. A live port still gates
+    //    first (frozen: `option-close --live` without OMI_ALLOW_LIVE is `config`).
+    let transmit = write_transmits(args.confirm, cfg.preview);
+    if cfg.port == LIVE_PORT || transmit {
         require_live_write_gate(cfg)?;
     }
 
@@ -1298,8 +1330,8 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
     //    the RESOLVED row identity; `action` is the DERIVED side.
     let action_str = format!("{:?}", side);
     let expiry_echo = raw_expiry.clone();
-    if cfg.preview {
-        // ADR 0027: read-only preview — shape from the already-resolved held contract
+    if !transmit {
+        // Read-only preview — shape from the already-resolved held contract
         // (conid known from args; symbol/expiry/strike/right from the matched position).
         // NO place_order, NO transmit. Multiplier 100 (single-leg option).
         let contract_json = json!({
@@ -1446,14 +1478,29 @@ pub fn reprice_order(order: &Order, order_id: i32, new_price: f64) -> Order {
     next
 }
 
-/// Whether `reprice` may call `place_order`.
+/// Whether a write verb may call `place_order` / `cancel_order`.
 ///
 /// `--confirm` alone transmits. The global `--preview` flag forces the preview
-/// path (no transmit, no live-write gate) even when `--confirm` is also set,
-/// matching `place_core` / option writes. Exit 8 and the open-order-only guard
-/// are unchanged: this only decides whether the confirm arm is allowed to run.
-pub fn reprice_transmits(confirm: bool, global_preview: bool) -> bool {
+/// path even when `--confirm` is also set. Shared by `buy`/`sell`/`cancel`/
+/// option writes and `reprice`. Exit 8 and the open-order-only guard are
+/// unchanged: this only decides whether the confirm arm is allowed to run.
+pub fn write_transmits(confirm: bool, global_preview: bool) -> bool {
     confirm && !global_preview
+}
+
+/// `reprice`'s name for [`write_transmits`]. Same rule.
+pub fn reprice_transmits(confirm: bool, global_preview: bool) -> bool {
+    write_transmits(confirm, global_preview)
+}
+
+/// Cancel preview. No gateway read: the id is the only input, and nothing is sent.
+pub fn shape_cancel_preview(order_id: i32) -> Value {
+    json!({
+        "preview": true,
+        "transmits": false,
+        "order_id": order_id,
+        "action": "cancel",
+    })
 }
 
 /// Pure decision. `confirm == false` is always a preview (even when the live cap
@@ -1617,11 +1664,11 @@ fn find_open_order(
 ///
 /// Without `--confirm`, or with the global `--preview` flag (even if `--confirm`
 /// is set): connect, read the open order, print a preview, return. `place_order`
-/// is not called and the live-write gate is skipped (preview is a read, same as
-/// `place_core`). With `--confirm` and no `--preview`: same read, re-check
-/// `OMI_MAX_NOTIONAL` against the new price, then `place_order` with the SAME
-/// order id (TWS modify). No cancel+replace. Live still needs the double gate.
-/// Exit 8 (unconfirmed after send) and the open-order-only guard are unchanged.
+/// is not called and the live-write gate is skipped (preview is a read). With
+/// `--confirm` and no `--preview`: same read, re-check `OMI_MAX_NOTIONAL` against
+/// the new price, then `place_order` with the SAME order id (TWS modify). No
+/// cancel+replace. Live still needs the double gate. Exit 8 (unconfirmed after
+/// send) and the open-order-only guard are unchanged.
 pub fn reprice(cfg: &Config, args: &RepriceArgs) -> Result<Value, AppError> {
     let ctx = "reprice";
     if args.order_id < 1 {
@@ -1641,7 +1688,9 @@ pub fn reprice(cfg: &Config, args: &RepriceArgs) -> Result<Value, AppError> {
     }
     // Global `--preview` wins over `--confirm`: no gate, no place_order.
     // A real confirm is a write: the live-port gate runs BEFORE connect.
-    let transmit = reprice_transmits(args.confirm, cfg.preview);
+    // (Unlike the other write verbs, a `reprice` preview skips the gate even on
+    // a live port — frozen by `cli_global_preview_with_confirm_skips_the_live_write_gate`.)
+    let transmit = write_transmits(args.confirm, cfg.preview);
     if transmit {
         require_live_write_gate(cfg)?;
     }
