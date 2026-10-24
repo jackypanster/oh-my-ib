@@ -122,6 +122,18 @@ pub enum Command {
     /// Preview by default; `--confirm` sends. Paper default; live needs --live + OMI_ALLOW_LIVE=1.
     /// Global `--preview` forces the preview even if `--confirm` is set.
     OptionClose(OptionCloseArgs),
+    /// Sell / buy back ONE covered call against held shares (preview by default).
+    /// `open` is coverage-guarded (free shares must cover qty×100); `close` is held-short guarded.
+    CoveredCall {
+        #[command(subcommand)]
+        action: CoveredCallAction,
+    },
+    /// Sell ONE naked US put or buy back a held short put (preview by default).
+    /// `open` reports `assignment_notional` and refuses over the live notional cap; `close` is held-short guarded.
+    ShortPut {
+        #[command(subcommand)]
+        action: ShortPutAction,
+    },
     /// Rank put-credit-spread candidates over symbols (read-only)
     PcsScan(PcsScanArgs),
     /// 200-day SMA month-end HOLD/EXIT timing signal (read-only). No args = current positions.
@@ -319,6 +331,60 @@ pub struct OptionComboArgs {
     /// Currency
     #[arg(long, default_value = "USD")]
     pub currency: String,
+    /// Send the order. Absent ⇒ JSON preview only (`transmits: false`); nothing is sent.
+    /// Global `--preview` forces that preview even when this flag is set.
+    #[arg(long)]
+    pub confirm: bool,
+}
+
+/// `covered-call` action group: one CALL per run — `open` sells against held shares, `close`
+/// buys back a held short call. Roll is out of scope.
+#[derive(Subcommand, Debug)]
+pub enum CoveredCallAction {
+    /// SELL calls against held shares (coverage-guarded; preview by default).
+    Open(CoveredOrderArgs),
+    /// BUY back a held short call (held-short guarded; preview by default).
+    Close(CoveredOrderArgs),
+}
+
+/// `short-put` action group: one PUT per run — `open` sells naked (assignment-capped), `close`
+/// buys back a held short put.
+#[derive(Subcommand, Debug)]
+pub enum ShortPutAction {
+    /// SELL puts to open — naked, margin-backed; capped by OMI_MAX_NOTIONAL on strike×100×qty when live (preview by default).
+    Open(CoveredOrderArgs),
+    /// BUY back a held short put (held-short guarded; preview by default).
+    Close(CoveredOrderArgs),
+}
+
+/// Shared `covered-call`/`short-put` arguments. The right is implied by the verb
+/// (`covered-call` ⇒ CALL, `short-put` ⇒ PUT), so there is no `--right`.
+#[derive(Args, Debug)]
+pub struct CoveredOrderArgs {
+    /// Underlying ticker symbol, e.g. AAPL
+    #[arg(long)]
+    pub symbol: String,
+    /// Expiry date, 8-digit YYYYMMDD
+    #[arg(long)]
+    pub expiry: String,
+    /// Strike price (finite, > 0)
+    #[arg(long)]
+    pub strike: f64,
+    /// Quantity in whole contracts (>= 1)
+    #[arg(long)]
+    pub qty: f64,
+    /// Limit price (REQUIRED — LMT-only, no MKT; finite, > 0)
+    #[arg(long)]
+    pub limit: f64,
+    /// Exchange
+    #[arg(long, default_value = "SMART")]
+    pub exchange: String,
+    /// Currency
+    #[arg(long, default_value = "USD")]
+    pub currency: String,
+    /// Trading class, e.g. SPXW (optional; gateway resolves when absent)
+    #[arg(long)]
+    pub trading_class: Option<String>,
     /// Send the order. Absent ⇒ JSON preview only (`transmits: false`); nothing is sent.
     /// Global `--preview` forces that preview even when this flag is set.
     #[arg(long)]

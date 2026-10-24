@@ -24,7 +24,8 @@ use ibapi::orders::{Action, CancelOrder, Order, OrderData, Orders, PlaceOrder, T
 use serde_json::{json, Value};
 
 use crate::cli::{
-    CancelArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs, RepriceArgs,
+    CancelArgs, CoveredOrderArgs, OptionCloseArgs, OptionComboArgs, OptionOrderArgs, OrderArgs,
+    RepriceArgs,
 };
 use crate::config::{Config, LIVE_PORT};
 use crate::error::AppError;
@@ -261,6 +262,106 @@ pub fn check_live_write_posture(
         )),
         _ => Ok(()),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Covered-call / short-put seams — pure, offline. The coverage and held-short
+// guards decide BEFORE any order is built, so a refusal sends nothing.
+// ---------------------------------------------------------------------------
+
+/// One position row reduced to what the guards need: the underlying symbol, the
+/// IB security-type wire code (`"STK"` / `"OPT"` / …), signed quantity (short is
+/// negative), and — for options only — expiry (`YYYYMMDD`), strike, and right
+/// (`"C"` / `"P"`). Non-option rows leave the option fields `None`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GuardRow {
+    pub symbol: String,
+    pub sec_type: String,
+    pub qty: f64,
+    pub expiry: Option<String>,
+    pub strike: Option<f64>,
+    pub right: Option<String>,
+}
+
+/// Free shares and the short CALL contracts already committed against them, for
+/// one underlying. `shares` counts long stock only; `short_calls` counts every
+/// short call on the underlying regardless of expiry or strike (a covered call
+/// commits 100 shares per contract, full stop).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Coverage {
+    pub shares: f64,
+    pub short_calls: f64,
+}
+
+/// Live share counts can be fractional; the free-share comparison tolerates this.
+const COVERAGE_EPSILON: f64 = 1e-9;
+
+/// Fail-closed covered-call coverage guard. OK iff
+/// `shares − 100 × short_calls ≥ 100 × qty` for `symbol`; otherwise `Err` naming
+/// the shares, the committed short calls, the free remainder, and what was
+/// needed. Puts are never a commitment, and only long stock counts as cover.
+pub fn check_coverage(symbol: &str, qty: f64, rows: &[GuardRow]) -> Result<Coverage, String> {
+    let symbol_up = symbol.to_ascii_uppercase();
+    let mut shares = 0.0;
+    let mut short_calls = 0.0;
+    for row in rows {
+        if row.symbol.to_ascii_uppercase() != symbol_up {
+            continue;
+        }
+        if row.sec_type == "OPT" && row.right.as_deref() == Some("C") && row.qty < 0.0 {
+            short_calls += row.qty.abs();
+        } else if row.sec_type == "STK" && row.qty > 0.0 {
+            shares += row.qty;
+        }
+    }
+    let needed = 100.0 * qty;
+    let free = shares - 100.0 * short_calls;
+    if free >= needed - COVERAGE_EPSILON {
+        Ok(Coverage { shares, short_calls })
+    } else {
+        Err(format!(
+            "{symbol_up}: {shares} shares − 100×{short_calls} short calls leave {free} free, \
+             need {needed} for {qty} new contract(s)"
+        ))
+    }
+}
+
+/// Fail-closed close guard for a single short option. The summed quantity of the
+/// exact contract (symbol + expiry + strike + right) must be `≤ −qty`, else `Err`
+/// naming the held quantity. Returns the held quantity (negative) for the ack.
+pub fn check_short_option_held(
+    symbol: &str,
+    expiry: &str,
+    strike: f64,
+    right: &str,
+    qty: f64,
+    rows: &[GuardRow],
+) -> Result<f64, String> {
+    let symbol_up = symbol.to_ascii_uppercase();
+    let held: f64 = rows
+        .iter()
+        .filter(|row| {
+            row.sec_type == "OPT"
+                && row.symbol.to_ascii_uppercase() == symbol_up
+                && row.expiry.as_deref() == Some(expiry)
+                && row.strike.is_some_and(|s| (s - strike).abs() < 1e-9)
+                && row.right.as_deref() == Some(right)
+        })
+        .map(|row| row.qty)
+        .sum();
+    if held > -qty + COVERAGE_EPSILON {
+        return Err(format!(
+            "short {right} {symbol_up} {expiry} {strike} held qty {held} cannot cover closing {qty}"
+        ));
+    }
+    Ok(held)
+}
+
+/// `strike × 100 × qty` — the stock the account must buy if every short put is
+/// assigned. This is the notional the live cap is checked against, NOT the
+/// premium (`qty × limit × 100`).
+pub fn assignment_notional(strike: f64, qty: f64) -> f64 {
+    strike * 100.0 * qty
 }
 
 /// Pure, FROZEN seam (ADR 0030 D4): a live `option-combo` ⇒ `Err`. Combo is paper-only
@@ -1361,6 +1462,206 @@ pub fn option_close(cfg: &Config, args: &OptionCloseArgs) -> Result<Value, AppEr
             )
         })
     }
+}
+
+/// Drain `account_updates` to `End` into guard rows. Shared by the covered-call and
+/// short-put verbs so the guards see the same snapshot `omi positions` would.
+fn drain_guard_rows(client: &Client, account: &AccountId, ctx: &str) -> Result<Vec<GuardRow>, AppError> {
+    let subscription = client
+        .account_updates(account)
+        .map_err(|e| AppError::data(format!("account_updates failed: {e}"), ctx))?;
+    let mut rows = Vec::new();
+    for update in subscription.iter_data() {
+        let update =
+            update.map_err(|e| AppError::data(format!("account_updates stream: {e}"), ctx))?;
+        match update {
+            AccountUpdate::PortfolioValue(p) => rows.push(guard_row_from(&p)),
+            AccountUpdate::End => break,
+            _ => {}
+        }
+    }
+    Ok(rows)
+}
+
+/// Reduce one portfolio row to the guard shape. Option identity is populated only
+/// for `SecurityType::Option`, mirroring `position_row`.
+fn guard_row_from(p: &AccountPortfolioValue) -> GuardRow {
+    let is_option = matches!(p.contract.security_type, SecurityType::Option);
+    GuardRow {
+        symbol: p.contract.symbol.to_string(),
+        sec_type: p.contract.security_type.to_string(),
+        qty: p.position,
+        expiry: is_option.then(|| p.contract.last_trade_date_or_contract_month.clone()),
+        strike: is_option.then_some(p.contract.strike),
+        right: is_option.then(|| match &p.contract.right {
+            Some(OptionRight::Call) => "C".to_string(),
+            Some(OptionRight::Put) => "P".to_string(),
+            _ => String::new(),
+        }),
+    }
+}
+
+/// Local validation shared by `covered-call` and `short-put`: expiry, strike, whole
+/// qty ≥ 1, finite positive limit. The right is implied by the verb, so it is not
+/// parsed here. Usage errors, before any gate or connect.
+fn validate_covered_args(args: &CoveredOrderArgs, ctx: &str) -> Result<(u16, u8, u8), AppError> {
+    let expiry = super::option_quote::parse_expiry(&args.expiry).ok_or_else(|| {
+        AppError::usage(
+            format!(
+                "invalid --expiry {}: expected 8-digit YYYYMMDD with month 1-12 and day 1-31",
+                args.expiry
+            ),
+            ctx,
+        )
+    })?;
+    if !args.strike.is_finite() || args.strike <= 0.0 {
+        return Err(AppError::usage(
+            format!("--strike must be a finite positive number (got {})", args.strike),
+            ctx,
+        ));
+    }
+    if !args.qty.is_finite() || args.qty < 1.0 || args.qty.fract() != 0.0 {
+        return Err(AppError::usage(
+            format!("--qty must be a whole number of contracts >= 1 (got {})", args.qty),
+            ctx,
+        ));
+    }
+    if !args.limit.is_finite() || args.limit <= 0.0 {
+        return Err(AppError::usage(
+            format!("--limit must be a finite positive number (got {})", args.limit),
+            ctx,
+        ));
+    }
+    Ok(expiry)
+}
+
+/// The preview envelope plus the strategy's extra keys (`coverage` or
+/// `assignment_notional`). `shape_preview` itself stays the frozen 8-key object.
+fn preview_with_extra(preview: Value, extra: Value) -> Result<Value, AppError> {
+    let mut obj = preview;
+    let extra = extra.as_object().cloned().unwrap_or_default();
+    obj.as_object_mut()
+        .expect("shape_preview returns an object")
+        .extend(extra);
+    Ok(obj)
+}
+
+/// Shared body for the four single-leg short strategies. `right` is implied by the
+/// verb (`"C"` for covered-call, `"P"` for short-put). `guard` runs on the drained
+/// positions and returns the extra JSON keys; a `Err` is a `guard` refusal that
+/// sends nothing. The assignment cap (short-put open, live only) is checked offline
+/// before connect.
+fn place_covered(
+    cfg: &Config,
+    args: &CoveredOrderArgs,
+    side: Action,
+    right_str: &str,
+    ctx: &str,
+    pre_connect: impl FnOnce() -> Result<Value, AppError>,
+    guard: impl FnOnce(&[GuardRow]) -> Result<Value, String>,
+) -> Result<Value, AppError> {
+    let expiry = validate_covered_args(args, ctx)?;
+    let extra = pre_connect()?;
+
+    let transmit = write_transmits(args.confirm, cfg.preview);
+    if cfg.port == LIVE_PORT || transmit {
+        require_live_write_gate(cfg)?;
+    }
+
+    let right = match right_str {
+        "C" => OptionRight::Call,
+        _ => OptionRight::Put,
+    };
+    let (contract, order) = build_option_order(
+        &args.symbol,
+        expiry,
+        args.strike,
+        right,
+        args.trading_class.as_deref(),
+        &args.exchange,
+        &args.currency,
+        side,
+        args.qty,
+        args.limit,
+    );
+
+    let client = super::connect(cfg)?;
+    let account = super::resolve_account(&client, cfg)?;
+    let rows = drain_guard_rows(&client, &account, ctx)?;
+    let held = guard(&rows).map_err(|m| AppError::guard(m, ctx))?;
+    let extra = {
+        let mut merged = extra;
+        if let (Some(dst), Some(src)) = (merged.as_object_mut(), held.as_object()) {
+            dst.extend(src.clone());
+        }
+        merged
+    };
+
+    let action_str = format!("{:?}", side);
+    if !transmit {
+        let preview = preview_stk_option(&client, ctx, &contract, &order)?;
+        preview_with_extra(preview, extra)
+    } else {
+        let ack_extra = extra.clone();
+        let mut ack = place_with_client(&client, ctx, &contract, &order, &account, |id, status| {
+            shape_option_order_ack(
+                id,
+                status,
+                &args.symbol,
+                &args.expiry,
+                args.strike,
+                right_str,
+                &action_str,
+                args.qty,
+                args.limit,
+            )
+        })?;
+        if let (Some(dst), Some(src)) = (ack.as_object_mut(), ack_extra.as_object()) {
+            dst.extend(src.clone());
+        }
+        Ok(ack)
+    }
+}
+
+/// `covered-call open`: SELL a call, refused unless free shares cover `qty × 100`.
+pub fn covered_call_open(cfg: &Config, args: &CoveredOrderArgs) -> Result<Value, AppError> {
+    place_covered(cfg, args, Action::Sell, "C", "covered-call", || Ok(json!({})), |rows| {
+        let coverage = check_coverage(&args.symbol, args.qty, rows)?;
+        Ok(json!({ "coverage": { "shares": coverage.shares, "short_calls": coverage.short_calls } }))
+    })
+}
+
+/// `covered-call close`: BUY back a call, refused unless that exact call is held short.
+pub fn covered_call_close(cfg: &Config, args: &CoveredOrderArgs) -> Result<Value, AppError> {
+    place_covered(cfg, args, Action::Buy, "C", "covered-call", || Ok(json!({})), |rows| {
+        let held = check_short_option_held(&args.symbol, &args.expiry, args.strike, "C", args.qty, rows)?;
+        Ok(json!({ "held": { "short_qty": held } }))
+    })
+}
+
+/// `short-put open`: SELL a naked put. Always reports `assignment_notional`; on a live
+/// port that notional is capped by `OMI_MAX_NOTIONAL` (paper is exempt, like the other
+/// writes). The cap is decided offline, before connect, so a refusal sends nothing.
+pub fn short_put_open(cfg: &Config, args: &CoveredOrderArgs) -> Result<Value, AppError> {
+    let ctx = "short-put";
+    place_covered(cfg, args, Action::Sell, "P", ctx, || {
+        let notional = assignment_notional(args.strike, args.qty);
+        let cap = resolve_max_notional(std::env::var("OMI_MAX_NOTIONAL").ok().as_deref())
+            .map_err(|m| AppError::guard(m, ctx))?;
+        if cfg.port == LIVE_PORT {
+            check_live_write_posture(true, false, Some(notional), cap)
+                .map_err(|m| AppError::guard(m, ctx))?;
+        }
+        Ok(json!({ "assignment_notional": notional, "cap": cap }))
+    }, |_| Ok(json!({})))
+}
+
+/// `short-put close`: BUY back a put, refused unless that exact put is held short.
+pub fn short_put_close(cfg: &Config, args: &CoveredOrderArgs) -> Result<Value, AppError> {
+    place_covered(cfg, args, Action::Buy, "P", "short-put", || Ok(json!({})), |rows| {
+        let held = check_short_option_held(&args.symbol, &args.expiry, args.strike, "P", args.qty, rows)?;
+        Ok(json!({ "held": { "short_qty": held } }))
+    })
 }
 
 // ---------------------------------------------------------------------------
