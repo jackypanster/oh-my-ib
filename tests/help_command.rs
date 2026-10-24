@@ -54,6 +54,7 @@ fn help_inventory_matches_the_command_set() {
         "completed-orders",
         "contract",
         "covered-call",
+        "delta-legs",
         "executions",
         "grid-tick",
         "health",
@@ -76,6 +77,7 @@ fn help_inventory_matches_the_command_set() {
         "search",
         "sell",
         "short-put",
+        "spreads",
         "sma-signal",
         "sma-tick",
     ]

@@ -52,6 +52,8 @@ pub fn command_name(cmd: &Command) -> &'static str {
         Command::CoveredCall { .. } => "covered-call",
         Command::ShortPut { .. } => "short-put",
         Command::PcsScan(_) => "pcs-scan",
+        Command::Spreads => "spreads",
+        Command::DeltaLegs(_) => "delta-legs",
         Command::SmaSignal(_) => "sma-signal",
         Command::GridTick(_) => "grid-tick",
         Command::SmaTick(_) => "sma-tick",
@@ -255,6 +257,20 @@ const REGISTRY: &[Entry] = &[
         gate: READ_ONLY,
     },
     Entry {
+        name: "spreads",
+        purpose: "Income-book view of held covered calls and short puts (read-only): share coverage, free shares, and assignment notional. Places no orders",
+        usage: "omi spreads",
+        example: "omi spreads",
+        gate: READ_ONLY,
+    },
+    Entry {
+        name: "delta-legs",
+        purpose: "Pick covered-call and cash-secured-put strikes inside an inclusive |delta| band (default 0.15-0.25), ranked toward a 15-20% annualized yield (read-only). Ranking is NOT a trade recommendation / 排序不是建议下单",
+        usage: "omi delta-legs SYMBOL [--kind covered|csp|both] [--dte-min 21] [--dte-max 45] [--dte-target 30] [--delta-min 0.15] [--delta-max 0.25]",
+        example: "omi delta-legs AAPL --kind both",
+        gate: READ_ONLY,
+    },
+    Entry {
         name: "sma-signal",
         purpose: "200-day SMA month-end HOLD/EXIT timing signal (read-only). No args = current positions",
         usage: "omi sma-signal [SYMBOLS...] [--sma N]",
@@ -361,7 +377,7 @@ mod tests {
             "orders", "executions", "quote", "contract", "history", "search",
             "completed-orders", "buy", "sell", "cancel", "reprice", "option-chain",
             "option-quote", "option-buy", "option-sell", "option-combo",
-            "option-close", "covered-call", "short-put", "pcs-scan", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
+            "option-close", "covered-call", "short-put", "pcs-scan", "spreads", "delta-legs", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
         ]
         .into_iter()
         .collect();

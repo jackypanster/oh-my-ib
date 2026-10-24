@@ -22,8 +22,10 @@ mod grid;
 mod sma_tick;
 mod option_chain;
 mod option_quote;
+mod delta_legs;
 mod pcs_scan;
 mod pnl;
+mod spreads;
 mod pnl_by_position;
 mod positions;
 mod quote;
@@ -44,6 +46,11 @@ pub use pnl_by_position::{pnl_by_position, shape_pnl_by_position, PnlSingleRow};
 pub use positions::{position_row, positions};
 pub use option_chain::{filter_chain_rows, option_chain, shape_option_chain, ChainRow};
 pub use option_quote::{option_quote, option_quote_greeks, shape_option_quote, GreeksRow};
+pub use delta_legs::{
+    delta_legs, select_delta_legs, shape_delta_legs, validate_delta_legs_params, DeltaLegsParams,
+    LegCandidate, LegKind, LegRow, DELTA_MAX, DELTA_MIN, FLOOR, SORT_AIM, TARGET_MAX, TARGET_MIN,
+};
+pub use spreads::{shape_spreads, spreads, SpreadsRow};
 pub use pcs_scan::{
     coarse_strikes, estimate_target_strike, pcs_scan, pick_expiry, pick_spot, refine_strikes,
     select_pcs, shape_pcs_scan, validate_params, PcsCandidate, PcsParams, PutRow, SkipReason,

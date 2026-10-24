@@ -134,6 +134,8 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
             ShortPutAction::Close(args) => ib::short_put_close(&config, args),
         },
         Command::PcsScan(args) => ib::pcs_scan(&config, args),
+        Command::Spreads => ib::spreads(&config),
+        Command::DeltaLegs(args) => ib::delta_legs(&config, args),
         Command::SmaSignal(args) => ib::sma_signal_cmd(&config, args),
         Command::GridTick(args) => ib::grid_tick(&config, args),
         Command::SmaTick(args) => ib::sma_tick_cmd(&config, args),
