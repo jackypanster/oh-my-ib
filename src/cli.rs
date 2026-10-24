@@ -136,6 +136,11 @@ pub enum Command {
     },
     /// Rank put-credit-spread candidates over symbols (read-only)
     PcsScan(PcsScanArgs),
+    /// Income-book view: covered calls and short puts already held (read-only)
+    Spreads,
+    /// Pick covered-call / cash-secured-put strikes inside a |delta| band (read-only).
+    /// Ranking is a sort, not a trade recommendation.
+    DeltaLegs(DeltaLegsArgs),
     /// 200-day SMA month-end HOLD/EXIT timing signal (read-only). No args = current positions.
     SmaSignal(SmaSignalArgs),
     /// Run one grid reconcile tick (paper-only). Reads the grid config, snapshots account +
@@ -433,6 +438,43 @@ pub struct PcsScanArgs {
     /// Minimum credit_mid as a fraction of width
     #[arg(long, default_value_t = 0.25)]
     pub min_credit_ratio: f64,
+}
+
+/// Which side `delta-legs` ranks.
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum DeltaLegsKind {
+    /// Covered calls only (short calls against held shares).
+    Covered,
+    /// Cash-secured puts only.
+    Csp,
+    /// Both sides.
+    #[default]
+    Both,
+}
+
+/// omi delta-legs SYMBOL [--kind covered|csp|both] [--dte-min 21] [--dte-max 45] [--dte-target 30] [--delta-min 0.15] [--delta-max 0.25]
+#[derive(Args, Debug)]
+pub struct DeltaLegsArgs {
+    /// Underlying ticker symbol, e.g. AAPL
+    pub symbol: String,
+    /// Which side to rank: covered (calls), csp (puts), or both
+    #[arg(long, value_enum, default_value_t = DeltaLegsKind::Both)]
+    pub kind: DeltaLegsKind,
+    /// Minimum days to expiry
+    #[arg(long, default_value_t = 21)]
+    pub dte_min: i64,
+    /// Maximum days to expiry
+    #[arg(long, default_value_t = 45)]
+    pub dte_max: i64,
+    /// Target days to expiry (the expiry nearest this inside the window wins)
+    #[arg(long, default_value_t = 30)]
+    pub dte_target: i64,
+    /// Inclusive lower edge of the |delta| band
+    #[arg(long, default_value_t = 0.15)]
+    pub delta_min: f64,
+    /// Inclusive upper edge of the |delta| band
+    #[arg(long, default_value_t = 0.25)]
+    pub delta_max: f64,
 }
 
 /// omi grid-tick --config grid.toml [--dry-run]
