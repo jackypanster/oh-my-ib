@@ -191,7 +191,7 @@ fn option_combo_global_preview_overrides_confirm_on_dead_paper() {
 
 #[test]
 fn write_verb_help_names_confirm() {
-    for verb in ["buy", "sell", "cancel", "option-buy", "option-sell", "option-combo", "option-close"] {
+    for verb in ["buy", "sell", "cancel", "option-buy", "option-sell", "option-combo", "option-close", "covered-call", "short-put"] {
         omi()
             .args([verb, "--help"])
             .assert()

@@ -8,7 +8,7 @@ use std::time::Instant;
 use clap::error::ErrorKind as ClapErrorKind;
 use clap::Parser;
 
-use oh_my_ib::cli::{Cli, Command, Format};
+use oh_my_ib::cli::{Cli, Command, CoveredCallAction, Format, ShortPutAction};
 use oh_my_ib::config::Config;
 use oh_my_ib::error::AppError;
 use oh_my_ib::{audit, ib, output, surface};
@@ -125,6 +125,14 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::OptionSell(args) => ib::option_sell(&config, args),
         Command::OptionCombo(args) => ib::option_combo(&config, args),
         Command::OptionClose(args) => ib::option_close(&config, args),
+        Command::CoveredCall { action } => match action {
+            CoveredCallAction::Open(args) => ib::covered_call_open(&config, args),
+            CoveredCallAction::Close(args) => ib::covered_call_close(&config, args),
+        },
+        Command::ShortPut { action } => match action {
+            ShortPutAction::Open(args) => ib::short_put_open(&config, args),
+            ShortPutAction::Close(args) => ib::short_put_close(&config, args),
+        },
         Command::PcsScan(args) => ib::pcs_scan(&config, args),
         Command::SmaSignal(args) => ib::sma_signal_cmd(&config, args),
         Command::GridTick(args) => ib::grid_tick(&config, args),

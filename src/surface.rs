@@ -49,6 +49,8 @@ pub fn command_name(cmd: &Command) -> &'static str {
         Command::OptionSell(_) => "option-sell",
         Command::OptionCombo(_) => "option-combo",
         Command::OptionClose(_) => "option-close",
+        Command::CoveredCall { .. } => "covered-call",
+        Command::ShortPut { .. } => "short-put",
         Command::PcsScan(_) => "pcs-scan",
         Command::SmaSignal(_) => "sma-signal",
         Command::GridTick(_) => "grid-tick",
@@ -232,6 +234,20 @@ const REGISTRY: &[Entry] = &[
         gate: WRITE,
     },
     Entry {
+        name: "covered-call",
+        purpose: "Sell or buy back ONE covered call against held shares (LMT/DAY). `open` refuses unless free shares cover qty×100; `close` refuses unless that exact call is held short. Preview by default (transmits: false, nothing sent); --confirm sends. Paper default; live needs --live + OMI_ALLOW_LIVE=1. Global --preview forces the preview even with --confirm",
+        usage: "omi covered-call open|close --symbol SYM --expiry YYYYMMDD --strike K --qty N --limit P [--exchange SMART] [--currency USD] [--trading-class SPXW] [--confirm]",
+        example: "omi covered-call open --symbol AAPL --expiry 20261218 --strike 250 --qty 1 --limit 3.50",
+        gate: WRITE,
+    },
+    Entry {
+        name: "short-put",
+        purpose: "Sell ONE naked US put or buy back a held short put (LMT/DAY). `open` reports assignment_notional (strike×100×qty) and refuses over OMI_MAX_NOTIONAL on a live port; `close` refuses unless that exact put is held short. Preview by default (transmits: false, nothing sent); --confirm sends. Paper default; live needs --live + OMI_ALLOW_LIVE=1. Global --preview forces the preview even with --confirm",
+        usage: "omi short-put open|close --symbol SYM --expiry YYYYMMDD --strike K --qty N --limit P [--exchange SMART] [--currency USD] [--trading-class SPXW] [--confirm]",
+        example: "omi short-put open --symbol NVDA --expiry 20261218 --strike 170 --qty 1 --limit 2.40",
+        gate: WRITE,
+    },
+    Entry {
         name: "pcs-scan",
         purpose: "Rank put-credit-spread candidates over symbols (read-only): one best candidate per symbol (credit, max loss, return on risk, breakeven) or a skip reason",
         usage: "omi pcs-scan SYMBOL... [--dte-min 21] [--dte-max 45] [--dte-target 30] [--delta 0.20] [--width 5] [--min-credit-ratio 0.25]",
@@ -345,7 +361,7 @@ mod tests {
             "orders", "executions", "quote", "contract", "history", "search",
             "completed-orders", "buy", "sell", "cancel", "reprice", "option-chain",
             "option-quote", "option-buy", "option-sell", "option-combo",
-            "option-close", "pcs-scan", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
+            "option-close", "covered-call", "short-put", "pcs-scan", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
         ]
         .into_iter()
         .collect();

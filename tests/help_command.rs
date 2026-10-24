@@ -53,6 +53,7 @@ fn help_inventory_matches_the_command_set() {
         "cancel",
         "completed-orders",
         "contract",
+        "covered-call",
         "executions",
         "grid-tick",
         "health",
@@ -74,6 +75,7 @@ fn help_inventory_matches_the_command_set() {
         "reprice",
         "search",
         "sell",
+        "short-put",
         "sma-signal",
         "sma-tick",
     ]

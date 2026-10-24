@@ -1,7 +1,7 @@
 # write-path-semantics — reference-behavior audit
 
 > Source of truth for every field `omi` actually sends to the Tiger/IB gateway on a write
-> (`buy`/`sell`/`option-buy`/`option-sell`/`option-combo`/`option-close`/`cancel`/`reprice`). Frozen by
+> (`buy`/`sell`/`option-buy`/`option-sell`/`option-combo`/`option-close`/`covered-call`/`short-put`/`cancel`/`reprice`). Frozen by
 > `tests/write_path_semantics_doc.rs` (ADR 0025). DOC-ONLY audit (D6): a value that looks WRONG is
 > registered `⚠️`, never fixed here — a fix is its own feature.
 >
@@ -130,7 +130,7 @@ DEFERRED (D2): the doc ships with recipes; executing them is an operator lifecyc
 | `limit_price` | `Some(new_price)` | the only economic field `reprice` changes. | 📖 doc-cite |
 | `transmit` | `true` (forced) | a confirmed modify must not be staged. ibapi `Default` is already `true`. | 📖 doc-cite |
 
-**Scope**: single-leg `STK`/`OPT` with `order_type == "LMT"` only. Anything else (MKT, BAG/spread, funds) is data/4 and sends nothing. Without `--confirm`, or with the global `--preview` flag even when `--confirm` is set, the command returns the preview JSON (`transmits: false`) and does not call `place_order`. That preview path skips the live-write gate (including on a live port). Exit 8 (unconfirmed after a real send) and the open-order-only guard are unchanged. The same preview-by-default rule (`write_transmits`) covers `buy`/`sell`/`cancel`/`option-buy`/`option-sell`/`option-combo`/`option-close`; those verbs still run the live-write gate before connect when the port is live, so `--live` without `OMI_ALLOW_LIVE` stays `config` even on their preview arm.
+**Scope**: single-leg `STK`/`OPT` with `order_type == "LMT"` only. Anything else (MKT, BAG/spread, funds) is data/4 and sends nothing. Without `--confirm`, or with the global `--preview` flag even when `--confirm` is set, the command returns the preview JSON (`transmits: false`) and does not call `place_order`. That preview path skips the live-write gate (including on a live port). Exit 8 (unconfirmed after a real send) and the open-order-only guard are unchanged. The same preview-by-default rule (`write_transmits`) covers `buy`/`sell`/`cancel`/`option-buy`/`option-sell`/`option-combo`/`option-close`/`covered-call`/`short-put`; those verbs still run the live-write gate before connect when the port is live, so `--live` without `OMI_ALLOW_LIVE` stays `config` even on their preview arm.
 
 ### Probe (paper `:4002`) — Tiger modify is UNVERIFIED
 
