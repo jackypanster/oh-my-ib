@@ -11,10 +11,19 @@ pub enum ErrorKind {
     Timeout,
     /// A requested entity (contract, account) does not exist.
     NotFound,
-    /// The gateway accepted the request but returned an error/notice.
+    /// The gateway accepted the request but returned an error/notice, or a write
+    /// precondition failed before anything was sent (order NOT sent).
     Data,
-    /// Bad local config or flag combination.
+    /// Broker rejected a submitted order. The request was sent; it was not accepted.
+    Rejected,
+    /// A write was sent but the outcome is unknown (ack timeout, dropped connection).
+    /// Callers must never auto-retry — verify with `omi orders`.
+    Unconfirmed,
+    /// Bad local config or flag combination. The live-port env gate (`OMI_ALLOW_LIVE`)
+    /// stays here (exit 5); risk-cap blocks are [`ErrorKind::Guard`] (exit 64).
     Config,
+    /// Local guard or risk-cap blocked a write before it was sent (exit 64, same as usage).
+    Guard,
     /// Invalid command-line usage (argument parsing failure).
     Usage,
     /// Anything else.
@@ -48,8 +57,17 @@ impl AppError {
     pub fn data(message: impl Into<String>, context: impl Into<String>) -> Self {
         Self::new(ErrorKind::Data, message, Some(context.into()))
     }
+    pub fn rejected(message: impl Into<String>, context: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Rejected, message, Some(context.into()))
+    }
+    pub fn unconfirmed(message: impl Into<String>, context: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Unconfirmed, message, Some(context.into()))
+    }
     pub fn config(message: impl Into<String>, context: impl Into<String>) -> Self {
         Self::new(ErrorKind::Config, message, Some(context.into()))
+    }
+    pub fn guard(message: impl Into<String>, context: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Guard, message, Some(context.into()))
     }
     pub fn usage(message: impl Into<String>, context: impl Into<String>) -> Self {
         Self::new(ErrorKind::Usage, message, Some(context.into()))
@@ -65,7 +83,10 @@ impl AppError {
             ErrorKind::Timeout => "timeout",
             ErrorKind::NotFound => "not_found",
             ErrorKind::Data => "data",
+            ErrorKind::Rejected => "rejected",
+            ErrorKind::Unconfirmed => "unconfirmed",
             ErrorKind::Config => "config",
+            ErrorKind::Guard => "guard",
             ErrorKind::Usage => "usage",
             ErrorKind::Other => "error",
         }
@@ -78,7 +99,11 @@ impl AppError {
             ErrorKind::Timeout => 6,
             ErrorKind::NotFound => 3,
             ErrorKind::Data => 4,
+            ErrorKind::Rejected => 7,
+            // Write-path only. Read timeouts stay [`ErrorKind::Timeout`] → 6.
+            ErrorKind::Unconfirmed => 8,
             ErrorKind::Config => 5,
+            ErrorKind::Guard => 64, // same bucket as usage: blocked before send
             ErrorKind::Usage => 64, // EX_USAGE
             ErrorKind::Other => 1,
         }

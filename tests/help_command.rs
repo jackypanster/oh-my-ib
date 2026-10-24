@@ -71,6 +71,7 @@ fn help_inventory_matches_the_command_set() {
         "pnl-by-position",
         "positions",
         "quote",
+        "reprice",
         "search",
         "sell",
         "sma-signal",

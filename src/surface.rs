@@ -42,6 +42,7 @@ pub fn command_name(cmd: &Command) -> &'static str {
         Command::Buy(_) => "buy",
         Command::Sell(_) => "sell",
         Command::Cancel(_) => "cancel",
+        Command::Reprice(_) => "reprice",
         Command::OptionChain(_) => "option-chain",
         Command::OptionQuote(_) => "option-quote",
         Command::OptionBuy(_) => "option-buy",
@@ -179,6 +180,13 @@ const REGISTRY: &[Entry] = &[
         purpose: "Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)",
         usage: "omi cancel ORDER_ID",
         example: "omi cancel 42",
+        gate: WRITE,
+    },
+    Entry {
+        name: "reprice",
+        purpose: "Change the limit price of an open single-leg LMT order. Without --confirm, print a JSON preview and send nothing; with --confirm, resubmit the same order id. Live needs --live + OMI_ALLOW_LIVE=1. New notional is checked against OMI_MAX_NOTIONAL",
+        usage: "omi reprice --price P ORDER_ID [--confirm]",
+        example: "omi reprice --price 10.50 42 --confirm",
         gate: WRITE,
     },
     Entry {
@@ -335,7 +343,7 @@ mod tests {
         let known: BTreeSet<&str> = [
             "health", "brief", "account", "pnl", "pnl-by-position", "positions",
             "orders", "executions", "quote", "contract", "history", "search",
-            "completed-orders", "buy", "sell", "cancel", "option-chain",
+            "completed-orders", "buy", "sell", "cancel", "reprice", "option-chain",
             "option-quote", "option-buy", "option-sell", "option-combo",
             "option-close", "pcs-scan", "sma-signal", "grid-tick", "sma-tick", "help", "logs",
         ]

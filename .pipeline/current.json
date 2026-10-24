@@ -1,11 +1,11 @@
 {
   "repo": "git@github.com:jackypanster/oh-my-ib.git",
-  "branch": "main",
-  "feature": "pcs-scan",
-  "stage": "done",
+  "branch": "cursor/reprice-open-order-e22d",
+  "feature": "reprice",
+  "stage": "impl",
   "full-verify": [
     "cargo build",
-    "cargo test",
+    "cargo test --offline --locked",
     "cargo clippy --all-targets -- -D warnings"
   ]
 }

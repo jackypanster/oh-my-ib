@@ -1,7 +1,7 @@
 # write-path-semantics — reference-behavior audit
 
 > Source of truth for every field `omi` actually sends to the Tiger/IB gateway on a write
-> (`buy`/`sell`/`option-buy`/`option-sell`/`option-combo`/`option-close`/`cancel`). Frozen by
+> (`buy`/`sell`/`option-buy`/`option-sell`/`option-combo`/`option-close`/`cancel`/`reprice`). Frozen by
 > `tests/write_path_semantics_doc.rs` (ADR 0025). DOC-ONLY audit (D6): a value that looks WRONG is
 > registered `⚠️`, never fixed here — a fix is its own feature.
 >
@@ -110,6 +110,28 @@ DEFERRED (D2): the doc ships with recipes; executing them is an operator lifecyc
 - **Fallback (any rejection/misprice)**: record the sign + scalar-vector convention Tiger actually
   enforces in a new ADR; fix is either the `build_combo_order` sign handling (`trade.rs:577`) or the
   CLI help string (`cli.rs:236`) — a separate feature (D6). Do NOT change the sign here.
+
+## Modify (`reprice`) — same order id, limit only
+
+`omi reprice` does **not** add a new encoder. ibapi 3.1 `Client::place_order` is documented *"Places or modifies an Order"* (`orders/sync.rs`). The TWS API modifies by calling `placeOrder` again with the **same** `orderId` and the same order fields except the changed limit (`https://interactivebrokers.github.io/tws-api/modifying_orders.html`). `reprice_order` clones the open `Order`, sets `order_id` to that existing id, `order_type = "LMT"`, `limit_price = Some(new)`, `transmit = true`, and changes nothing else. The gateway call is `place_order(existing_id, &open_contract, &modified)` — `next_order_id()` is **not** called. There is **no** cancel+replace fallback.
+
+| field | our value | why | verification tier |
+|---|---|---|---|
+| `order_id` | the open order's id, passed to `place_order` AND written onto `Order.order_id` | TWS treats a reused id as a modify. A new id is a second order. | 📖 doc-cite (IB modifying-orders + ibapi `place_order` doc). ⚠️ Tiger UNVERIFIED — see probe. |
+| `limit_price` | `Some(new_price)` | the only economic field `reprice` changes. | 📖 doc-cite |
+| `transmit` | `true` (forced) | a confirmed modify must not be staged. ibapi `Default` is already `true`. | 📖 doc-cite |
+
+**Scope**: single-leg `STK`/`OPT` with `order_type == "LMT"` only. Anything else (MKT, BAG/spread, funds) is data/4 and sends nothing. Without `--confirm`, or with the global `--preview` flag even when `--confirm` is set, the command returns the preview JSON (`transmits: false`) and does not call `place_order`. That path skips the live-write gate. Exit 8 (unconfirmed after a real send) and the open-order-only guard are unchanged.
+
+### Probe (paper `:4002`) — Tiger modify is UNVERIFIED
+
+1. Place a far-from-market LMT: `omi buy AAPL 1 --limit 1`.
+2. `omi orders` — note `order_id` and `limit_price`.
+3. `omi reprice --price 1.05 <order_id>` — stdout has `transmits: false`, `new_price: 1.05`, and the same `order_id`. `omi orders` still shows the old price (nothing was sent).
+4. `omi reprice --price 1.05 <order_id> --confirm`.
+5. **Confirms Tiger honors same-id modify** if `omi orders` shows that same `order_id` at `1.05` and no second working order appeared.
+6. **Confirms it does not** if the gateway rejects (exit 7), leaves the old price, or opens a second order. Do not paper over a rejection with cancel+replace. `omi cancel <id>` to clean up.
+7. Over-cap (live only, both gates set): a notional `qty × new_price × multiplier` above `OMI_MAX_NOTIONAL` must exit 64 `guard` with the order unchanged.
 
 ## Anti-rot guard
 
