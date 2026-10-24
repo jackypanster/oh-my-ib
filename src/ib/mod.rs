@@ -52,7 +52,7 @@ pub use pcs_scan::{
 pub use quote::{quote, quote_price_tick, shape_quotes};
 pub use search::{search, shape_search, SearchRow};
 pub use completed_orders::{completed_orders, shape_completed_orders, CompletedOrderRow};
-pub use trade::{apply_outside_rth, blocking_close_order_ids, build_combo_order, build_option_order, build_stk_order, cancel, buy, sell, check_live_write_posture, classify_submit_error, combo_live_max_risk, compute_notional, derive_close, option_buy, option_close, option_combo, option_sell, parse_combo_leg, plan_reprice, refuse_live_combo_on_live, reprice, reprice_order, reprice_transmits, require_live_write_gate, resolve_max_notional, shape_combo_order_ack, shape_option_close_ack, shape_order_ack, shape_option_order_ack, shape_preview, shape_reprice_preview, stamp_order_account, submit_timeout_error, ConfirmedReprice, LegSpec, RepricePlan, RepriceTarget};
+pub use trade::{apply_outside_rth, blocking_close_order_ids, build_combo_order, build_option_order, build_stk_order, cancel, buy, sell, check_live_write_posture, classify_submit_error, combo_live_max_risk, compute_notional, derive_close, option_buy, option_close, option_combo, option_sell, parse_combo_leg, plan_reprice, refuse_live_combo_on_live, reprice, reprice_order, reprice_transmits, require_live_write_gate, resolve_max_notional, shape_cancel_preview, shape_combo_order_ack, shape_option_close_ack, shape_order_ack, shape_option_order_ack, shape_preview, shape_reprice_preview, stamp_order_account, submit_timeout_error, write_transmits, ConfirmedReprice, LegSpec, RepricePlan, RepriceTarget};
 pub use signal::{sma_signal, sma_signal_cmd, Bar, SmaSignal, SignalState};
 pub use sma_tick::{plan_sma_tick, sma_tick_cmd, TickAction};
 

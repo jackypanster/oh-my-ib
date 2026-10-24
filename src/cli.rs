@@ -32,8 +32,9 @@ pub struct GlobalOpts {
     /// Use the LIVE account (port 4001) instead of paper
     #[arg(long, global = true)]
     pub live: bool,
-    /// Preview the order via IB whatIf (no transmit): resolved contract + margin/commission,
-    /// no order placed.
+    /// Force the write-verb preview path even if `--confirm` is set.
+    /// Writes are preview-by-default; `--confirm` is what sends. Kept so old
+    /// `--preview` invocations still never transmit.
     #[arg(long, global = true)]
     pub preview: bool,
     /// API client id (default: 100)
@@ -81,13 +82,19 @@ pub enum Command {
     Search(SearchArgs),
     /// Today's completed orders (filled/cancelled) with status
     CompletedOrders,
-    /// Place a BUY order (paper by default; live needs --live + OMI_ALLOW_LIVE=1).
+    /// Place a BUY order. Preview by default (nothing sent); `--confirm` sends.
+    /// Paper by default; live needs --live + OMI_ALLOW_LIVE=1.
     /// Live orders must be LMT; notional capped at OMI_MAX_NOTIONAL (default $500).
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     Buy(OrderArgs),
-    /// Place a SELL order (paper by default; live needs --live + OMI_ALLOW_LIVE=1).
+    /// Place a SELL order. Preview by default (nothing sent); `--confirm` sends.
+    /// Paper by default; live needs --live + OMI_ALLOW_LIVE=1.
     /// Live orders must be LMT; notional capped at OMI_MAX_NOTIONAL (default $500).
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     Sell(OrderArgs),
-    /// Cancel an order by id (paper by default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Cancel an order by id. Preview by default (nothing sent); `--confirm` sends.
+    /// Paper by default; live needs --live + OMI_ALLOW_LIVE=1.
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     Cancel(CancelArgs),
     /// Change the limit price of an open single-leg LMT order.
     /// Without --confirm, print a JSON preview and send nothing.
@@ -99,13 +106,21 @@ pub enum Command {
     OptionChain(OptionChainArgs),
     /// Snapshot quote + greeks for one option contract
     OptionQuote(OptionQuoteArgs),
-    /// Place a single-leg option BUY (LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Place a single-leg option BUY (LMT/DAY). Preview by default; `--confirm` sends.
+    /// Paper default; live needs --live + OMI_ALLOW_LIVE=1.
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     OptionBuy(OptionOrderArgs),
-    /// Place a single-leg option SELL (LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Place a single-leg option SELL (LMT/DAY). Preview by default; `--confirm` sends.
+    /// Paper default; live needs --live + OMI_ALLOW_LIVE=1.
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     OptionSell(OptionOrderArgs),
-    /// Place a multi-leg option combo (BAG, LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Place a multi-leg option combo (BAG, LMT/DAY). Preview by default; `--confirm` sends.
+    /// Paper default; live needs --live + OMI_ALLOW_LIVE=1.
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     OptionCombo(OptionComboArgs),
-    /// Close a HELD option position by conid (side derived from held position; LMT/DAY; paper default; live needs --live + OMI_ALLOW_LIVE=1)
+    /// Close a HELD option position by conid (side derived from held position; LMT/DAY).
+    /// Preview by default; `--confirm` sends. Paper default; live needs --live + OMI_ALLOW_LIVE=1.
+    /// Global `--preview` forces the preview even if `--confirm` is set.
     OptionClose(OptionCloseArgs),
     /// Rank put-credit-spread candidates over symbols (read-only)
     PcsScan(PcsScanArgs),
@@ -139,12 +154,20 @@ pub struct OrderArgs {
     /// Requires a limit price (MKT cannot fill outside RTH).
     #[arg(long)]
     pub outside_rth: bool,
+    /// Send the order. Absent ⇒ JSON preview only (`transmits: false`); nothing is sent.
+    /// Global `--preview` forces that preview even when this flag is set.
+    #[arg(long)]
+    pub confirm: bool,
 }
 
 #[derive(Args, Debug)]
 pub struct CancelArgs {
     /// Order id to cancel
     pub order_id: i32,
+    /// Send the cancel. Absent ⇒ JSON preview only; `cancel_order` is not called.
+    /// Global `--preview` forces that preview even when this flag is set.
+    #[arg(long)]
+    pub confirm: bool,
 }
 
 /// omi reprice --price 10.5 ORDER_ID [--confirm]
@@ -269,6 +292,10 @@ pub struct OptionOrderArgs {
     /// Trading class, e.g. SPXW (optional; gateway resolves when absent)
     #[arg(long)]
     pub trading_class: Option<String>,
+    /// Send the order. Absent ⇒ JSON preview only (`transmits: false`); nothing is sent.
+    /// Global `--preview` forces that preview even when this flag is set.
+    #[arg(long)]
+    pub confirm: bool,
 }
 
 /// omi option-combo --action BUY --qty 1 --limit 0.05 --leg "BUY 1 AAPL 20260918 240 C" --leg "SELL 1 AAPL 20260918 250 C"
@@ -292,6 +319,10 @@ pub struct OptionComboArgs {
     /// Currency
     #[arg(long, default_value = "USD")]
     pub currency: String,
+    /// Send the order. Absent ⇒ JSON preview only (`transmits: false`); nothing is sent.
+    /// Global `--preview` forces that preview even when this flag is set.
+    #[arg(long)]
+    pub confirm: bool,
 }
 
 /// omi option-close --conid 123456789 --limit 3.20 [--qty 1]
@@ -306,6 +337,10 @@ pub struct OptionCloseArgs {
     /// Quantity to close in whole contracts (>= 1); omit to close the full position
     #[arg(long)]
     pub qty: Option<f64>,
+    /// Send the close. Absent ⇒ JSON preview only (`transmits: false`); nothing is sent.
+    /// Global `--preview` forces that preview even when this flag is set.
+    #[arg(long)]
+    pub confirm: bool,
 }
 
 /// omi pcs-scan SYMBOL... [--dte-min 21] [--dte-max 45] [--dte-target 30] [--delta 0.20] [--width 5] [--min-credit-ratio 0.25]

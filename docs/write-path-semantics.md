@@ -5,6 +5,15 @@
 > `tests/write_path_semantics_doc.rs` (ADR 0025). DOC-ONLY audit (D6): a value that looks WRONG is
 > registered `⚠️`, never fixed here — a fix is its own feature.
 >
+> **Preview by default.** None of those verbs call `place_order` / `cancel_order` unless
+> `--confirm` is set AND the global `--preview` flag is absent (`write_transmits`). No
+> `--confirm` returns the existing preview envelope (`shape_preview`, `transmits: false`;
+> `cancel` returns `shape_cancel_preview`) and sends nothing. `--confirm` is the send switch;
+> global `--preview` forces the preview even when `--confirm` is also set (back-compat — the
+> flag never transmits). A live port (`:4001` / `--live`) still runs the live-write gate
+> before connect on the preview arm, so `--live` without `OMI_ALLOW_LIVE` stays `config`.
+> Paper preview skips that gate. Exit codes on a real send (4/7/8/64) are unchanged.
+>
 > **Field sources**: `Order` built via `..Default::default()` → ibapi's CUSTOM `impl Default`
 > (`ibapi/orders/mod.rs:478-624`); a derived `Default` would be false and silently stage orders.
 > Builders: `src/ib/trade.rs` (`build_stk_order`/`build_option_order`/`build_combo_order`/
@@ -121,7 +130,7 @@ DEFERRED (D2): the doc ships with recipes; executing them is an operator lifecyc
 | `limit_price` | `Some(new_price)` | the only economic field `reprice` changes. | 📖 doc-cite |
 | `transmit` | `true` (forced) | a confirmed modify must not be staged. ibapi `Default` is already `true`. | 📖 doc-cite |
 
-**Scope**: single-leg `STK`/`OPT` with `order_type == "LMT"` only. Anything else (MKT, BAG/spread, funds) is data/4 and sends nothing. Without `--confirm`, or with the global `--preview` flag even when `--confirm` is set, the command returns the preview JSON (`transmits: false`) and does not call `place_order`. That path skips the live-write gate. Exit 8 (unconfirmed after a real send) and the open-order-only guard are unchanged.
+**Scope**: single-leg `STK`/`OPT` with `order_type == "LMT"` only. Anything else (MKT, BAG/spread, funds) is data/4 and sends nothing. Without `--confirm`, or with the global `--preview` flag even when `--confirm` is set, the command returns the preview JSON (`transmits: false`) and does not call `place_order`. That preview path skips the live-write gate (including on a live port). Exit 8 (unconfirmed after a real send) and the open-order-only guard are unchanged. The same preview-by-default rule (`write_transmits`) covers `buy`/`sell`/`cancel`/`option-buy`/`option-sell`/`option-combo`/`option-close`; those verbs still run the live-write gate before connect when the port is live, so `--live` without `OMI_ALLOW_LIVE` stays `config` even on their preview arm.
 
 ### Probe (paper `:4002`) — Tiger modify is UNVERIFIED
 
