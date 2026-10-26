@@ -9,7 +9,7 @@ driven by an LLM agent: user gives natural-language instructions → agent runs 
 parses JSON → reports. Reads everything; writes exist but are Phase-2 gated (see Hard safety rules). The operator runs a **Tiger Brokers
 gateway** (TWS-API-compatible) live on `:4001`; drive it with `omi --live`. No API keys — auth is the
 logged-in gateway. The gateway's `HKT` timezone is auto-registered, so no `IBAPI_TIMEZONE_ALIASES`
-env var is needed.
+env var is needed. `omi ledger --days N` (default 7, max 90) is read-only: JSON `account`, `days`, `coverage` (`supported`|`unsupported`|`partial`), `source`, `entries[]` (`time`, `amount`, `currency`, `type`, `description`); `$LEDGER` is a balance snapshot, so no dated cash-transaction feed ⇒ exit 0, `coverage: "unsupported"`, message names Deferred Flex, `empty_means: "feed_missing"` — never a silent empty `entries`.
 
 ## Authoring (agent-first)
 **This repo is agent/LLM-facing. Write docs AND code for an agent to read and act on, not for human

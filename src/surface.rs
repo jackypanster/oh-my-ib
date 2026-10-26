@@ -29,6 +29,7 @@ pub fn command_name(cmd: &Command) -> &'static str {
         Command::Health => "health",
         Command::Brief => "brief",
         Command::Account => "account",
+        Command::Ledger(_) => "ledger",
         Command::Pnl => "pnl",
         Command::PnlByPosition => "pnl-by-position",
         Command::Positions => "positions",
@@ -93,6 +94,13 @@ const REGISTRY: &[Entry] = &[
         purpose: "Account summary (net liq, cash, buying power)",
         usage: "omi account",
         example: "omi account",
+        gate: READ_ONLY,
+    },
+    Entry {
+        name: "ledger",
+        purpose: "N-day cash ledger (deposits and other cash movements). Read-only. coverage=supported|unsupported|partial. $LEDGER is a balance snapshot; no dated feed ⇒ coverage unsupported and a Deferred Flex message (never a silent empty entries)",
+        usage: "omi ledger [--days N]",
+        example: "omi ledger --days 7",
         gate: READ_ONLY,
     },
     Entry {
@@ -374,7 +382,7 @@ mod tests {
         // the registry `name` strings themselves (e.g. a stray "helth").
         let known: BTreeSet<&str> = [
             "health", "brief", "account", "pnl", "pnl-by-position", "positions",
-            "orders", "executions", "quote", "contract", "history", "search",
+            "orders", "executions", "quote", "contract", "history", "ledger", "search",
             "completed-orders", "buy", "sell", "cancel", "reprice", "option-chain",
             "option-quote", "option-buy", "option-sell", "option-combo",
             "option-close", "covered-call", "short-put", "pcs-scan", "spreads", "delta-legs", "sma-signal", "grid-tick", "sma-tick", "help", "logs",

@@ -105,6 +105,7 @@ fn run(cli: &Cli) -> Result<serde_json::Value, AppError> {
         Command::Health => ib::health(&config),
         Command::Brief => ib::brief(&config),
         Command::Account => ib::account(&config),
+        Command::Ledger(args) => ib::ledger(&config, args.days),
         Command::Pnl => ib::pnl(&config),
         Command::PnlByPosition => ib::pnl_by_position(&config),
         Command::Positions => ib::positions(&config),
