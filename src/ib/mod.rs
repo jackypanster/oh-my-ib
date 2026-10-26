@@ -11,6 +11,7 @@ use crate::config::Config;
 use crate::error::AppError;
 
 mod account;
+mod ledger;
 mod brief;
 mod client;
 mod completed_orders;
@@ -34,6 +35,7 @@ mod search;
 mod trade;
 
 pub use account::account;
+pub use ledger::ledger;
 pub use grid::grid_tick;
 pub use brief::{assemble_brief, brief};
 pub use client::health;

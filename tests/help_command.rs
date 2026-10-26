@@ -60,6 +60,7 @@ fn help_inventory_matches_the_command_set() {
         "health",
         "help",
         "history",
+        "ledger",
         "logs",
         "option-buy",
         "option-chain",

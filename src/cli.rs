@@ -62,6 +62,11 @@ pub enum Command {
     Brief,
     /// Account summary (net liq, cash, buying power)
     Account,
+    /// N-day cash ledger (deposits and other cash movements). Read-only; places no orders.
+    /// `--days` lookback default 7, maximum 90.
+    /// No dated cash-transaction feed ⇒ exit 0, coverage "unsupported", message names Deferred Flex
+    /// (never a silent empty entries array). A dead gateway is still exit 2 (`connection`).
+    Ledger(LedgerArgs),
     /// Account PnL (daily, unrealized, realized)
     Pnl,
     /// Per-position PnL (daily, unrealized, realized)
@@ -512,6 +517,14 @@ pub struct SmaTickArgs {
     /// Plan only: print the signal + planned action without placing the order.
     #[arg(long)]
     pub dry_run: bool,
+}
+
+/// omi ledger [--days N]
+#[derive(Args, Debug)]
+pub struct LedgerArgs {
+    /// Lookback window in calendar days, inclusive (default 7, maximum 90).
+    #[arg(long, default_value_t = 7)]
+    pub days: u32,
 }
 
 /// omi logs [--tail N]
